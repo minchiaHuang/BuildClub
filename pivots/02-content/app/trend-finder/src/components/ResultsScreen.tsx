@@ -6,6 +6,9 @@ import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
 import { compact, platformName, plural, stageText, times } from '../lib/metrics'
 import { VideoCard } from './VideoCard'
+import { PlatformToggles } from './PlatformToggles'
+import { Suggestions } from './Suggestions'
+import { focusFirstSuggestion } from '../lib/suggest'
 
 export type Chip =
   | { kind: 'keyword'; value: string }
@@ -22,6 +25,7 @@ interface Props {
   interp: Interpretation
   answer: Answer | null
   formats: Format[]
+  allVideos: Video[]
   onSearch: (text: string) => void
   onRemoveChip: (chip: Chip) => void
   likeThis: React.ReactNode
@@ -73,33 +77,55 @@ export function ResultsScreen(p: Props) {
           p.onSearch(draft)
         }}
       >
-        <input
-          id="toolbar-keyword"
-          className="toolbar-search"
-          aria-label="Search a niche, or ask a question"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+        <PlatformToggles selected={p.query.platforms} onChange={(platforms) => p.setQuery({ ...p.query, platforms })} />
+        <div className="toolbar-row">
+          <input
+            id="toolbar-keyword"
+            className="toolbar-search"
+            aria-label="Search a niche, or ask a question"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={focusFirstSuggestion}
+          />
+          <button type="submit" className="btn btn-primary">
+            Search
+          </button>
+        </div>
+      </form>
+
+      {draft !== i.text && (
+        <Suggestions
+          text={draft}
+          formats={p.formats}
+          videos={p.allVideos}
+          inputId="toolbar-keyword"
+          onRefine={setDraft}
+          onAsk={(q) => {
+            setDraft(q)
+            p.onSearch(q)
+          }}
         />
-        <button type="submit" className="btn btn-primary">
-          Search
-        </button>
-        {(['instagram', 'tiktok'] as Platform[]).map((pl) => {
-          const on = p.query.platforms.includes(pl)
-          return (
+      )}
+
+      <div className="understood">
+        <span className="field-label">Searching for</span>
+        {chips.length === 0 && <span className="muted small">Nothing yet. Type a niche like "tofu".</span>}
+        {chips.map(({ chip, label, tone }) => (
+          <span key={label} className={`q-chip ${tone ? `q-chip-${tone}` : ''}`}>
+            {label}
             <button
-              key={pl}
               type="button"
-              className={`chip ${on ? 'chip-on' : ''}`}
-              aria-pressed={on}
-              onClick={() => {
-                const next = on ? p.query.platforms.filter((x) => x !== pl) : [...p.query.platforms, pl]
-                if (next.length) p.setQuery({ ...p.query, platforms: next })
-              }}
+              className="q-chip-x"
+              aria-label={`Remove ${label}`}
+              onClick={() => p.onRemoveChip(chip)}
             >
-              {platformName[pl]}
+              ✕
             </button>
-          )
-        })}
+          </span>
+        ))}
+      </div>
+
+      <div className="filters">
         <select
           id="toolbar-days"
           aria-label="Posted in"
@@ -130,24 +156,6 @@ export function ResultsScreen(p: Props) {
             <option value="fastest">Fastest growing</option>
           </select>
         </label>
-      </form>
-
-      <div className="understood">
-        <span className="field-label">Searching for</span>
-        {chips.length === 0 && <span className="muted small">Nothing yet. Type a niche like "tofu".</span>}
-        {chips.map(({ chip, label, tone }) => (
-          <span key={label} className={`q-chip ${tone ? `q-chip-${tone}` : ''}`}>
-            {label}
-            <button
-              type="button"
-              className="q-chip-x"
-              aria-label={`Remove ${label}`}
-              onClick={() => p.onRemoveChip(chip)}
-            >
-              ✕
-            </button>
-          </span>
-        ))}
       </div>
 
       {p.likeThis}

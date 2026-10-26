@@ -27,6 +27,8 @@ export interface Shot {
 export interface Format {
   id: string
   name: string
+  // How people would search for it ("tofu desserts"). Used in search suggestions.
+  short: string
   // Words that point a search at this format ("dessert", "taste test").
   tags: string[]
   // Who this format tends to work for. Used by audience search ("for busy mums").

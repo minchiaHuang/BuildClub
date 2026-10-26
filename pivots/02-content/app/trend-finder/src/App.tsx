@@ -43,7 +43,7 @@ export default function App() {
   const client = clients.find((c) => c.id === query.clientId) ?? clients[0]
   const videoById = useMemo(() => new Map(videos.map((v) => [v.id, v])), [])
 
-  const [interp, setInterp] = useState<Interpretation>(() => parseQuery(defaultQuery.keyword, formats))
+  const [interp, setInterp] = useState<Interpretation>(() => parseQuery('tofu', formats))
   const formatById = useMemo(() => new Map(formats.map((f) => [f.id, f])), [])
 
   // Turn the search box text into filters. Anything the text mentions (time, platform, length)
@@ -67,7 +67,7 @@ export default function App() {
       ...q,
       keyword: text,
       days: next.days ?? q.days,
-      platforms: next.platforms ?? defaultQuery.platforms,
+      platforms: next.platforms ?? q.platforms,
       maxLength: next.maxLength ?? q.maxLength,
     }))
     setFormatFilter(null)
@@ -225,6 +225,7 @@ export default function App() {
             interp={interp}
             answer={answer}
             formats={formats}
+            allVideos={videos}
             onSearch={runSearch}
             onRemoveChip={removeChip}
             likeThis={

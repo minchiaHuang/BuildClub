@@ -1,7 +1,8 @@
-import type { Platform } from '../types'
 import type { Query } from '../state'
-import { clients } from '../data/sample'
-import { platformName } from '../lib/metrics'
+import { clients, formats, videos } from '../data/sample'
+import { focusFirstSuggestion } from '../lib/suggest'
+import { PlatformToggles } from './PlatformToggles'
+import { Suggestions } from './Suggestions'
 
 export interface Attachment {
   name: string
@@ -16,8 +17,6 @@ interface Props {
   setAttachment: (a: Attachment | null) => void
 }
 
-const allPlatforms: Platform[] = ['instagram', 'tiktok']
-
 const examples = [
   'tofu',
   'tofu desserts for busy mums',
@@ -31,12 +30,6 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
     setAttachment({ name: file.name || 'screenshot.png', url: URL.createObjectURL(file) })
     // An old link in the box would compete with the screenshot, so clear it.
     if (/https?:\/\//.test(query.keyword)) setQuery({ ...query, keyword: '' })
-  }
-
-  const togglePlatform = (p: Platform) => {
-    const has = query.platforms.includes(p)
-    const next = has ? query.platforms.filter((x) => x !== p) : [...query.platforms, p]
-    if (next.length) setQuery({ ...query, platforms: next })
   }
 
   return (
@@ -57,7 +50,16 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
           onSearch(query.keyword)
         }}
       >
-        <label htmlFor="keyword" className="field-label">
+        <div className="search-on">
+          <span className="field-label">Search on</span>
+          <PlatformToggles
+            selected={query.platforms}
+            onChange={(platforms) => setQuery({ ...query, platforms })}
+            showSoon
+          />
+        </div>
+
+        <label htmlFor="keyword" className="sr-only">
           Search a niche, ask a question, or paste a video link
         </label>
         <div className="search-row">
@@ -75,6 +77,7 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
               id="keyword"
               value={query.keyword}
               onChange={(e) => setQuery({ ...query, keyword: e.target.value })}
+              onKeyDown={focusFirstSuggestion}
               onPaste={(e) => {
                 const file = [...e.clipboardData.files].find((f) => f.type.startsWith('image/'))
                 if (file) {
@@ -100,30 +103,31 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
               <span className="sr-only">Attach a screenshot</span>
             </label>
           </div>
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={!query.keyword.trim() && !attachment}>
             {attachment || /https?:\/\//.test(query.keyword) ? 'Find more like this' : 'Find trending videos'}
           </button>
         </div>
 
-        <div className="search-options">
-          <fieldset className="chip-group">
-            <legend className="field-label">Platforms</legend>
-            {allPlatforms.map((p) => (
-              <button
-                type="button"
-                key={p}
-                className={`chip ${query.platforms.includes(p) ? 'chip-on' : ''}`}
-                aria-pressed={query.platforms.includes(p)}
-                onClick={() => togglePlatform(p)}
-              >
-                {platformName[p]}
-              </button>
-            ))}
-            <button type="button" className="chip" disabled title="Coming later">
-              YouTube Shorts · soon
-            </button>
-          </fieldset>
+        <Suggestions
+          text={attachment ? '' : query.keyword}
+          formats={formats}
+          videos={videos}
+          inputId="keyword"
+          onRefine={(value) => setQuery({ ...query, keyword: value })}
+          onAsk={onSearch}
+          fallback={
+            <div className="examples">
+              <span className="field-label">Try:</span>
+              {examples.map((ex) => (
+                <button key={ex} type="button" className="example" onClick={() => onSearch(ex)}>
+                  {ex.startsWith('http') ? 'Paste a TikTok link (example)' : ex}
+                </button>
+              ))}
+            </div>
+          }
+        />
 
+        <div className="search-options">
           <label className="select-field">
             <span className="field-label">Posted in</span>
             <select id="days" value={query.days} onChange={(e) => setQuery({ ...query, days: Number(e.target.value) })}>
@@ -159,15 +163,6 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
           </label>
         </div>
       </form>
-
-      <div className="examples">
-        <span className="field-label">Try:</span>
-        {examples.map((ex) => (
-          <button key={ex} type="button" className="example" onClick={() => onSearch(ex)}>
-            {ex.startsWith('http') ? 'Paste a TikTok link (example)' : ex}
-          </button>
-        ))}
-      </div>
 
       <p className="hint">Sample data covers one niche for now: tofu.</p>
     </section>

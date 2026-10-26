@@ -50,7 +50,13 @@ In `src/lib/metrics.ts`:
 
 - **Video link or screenshot:** paste a TikTok / Instagram link, or attach or paste a screenshot (paperclip button or Ctrl/Cmd+V). This switches to **"Find more like this"**: a short "Reading this video…" animation, then a card saying which format it matches, whether it's worth copying (Early / Rising / Everywhere), why it works, and a button to plan a version for the client. **This is a mock:** nothing is fetched or analysed. The format is guessed from words in the link or file name (e.g. "taste-test"), falling back to the crispy ASMR format.
 
-Whatever's left (minus filler words) becomes the keywords. `src/lib/answer.ts` writes the answer from templates. Both can be swapped for an AI call that returns the same shape.
+Whatever's left (minus filler words) becomes the keywords.
+
+**Suggestions while typing** (`src/lib/suggest.ts`): chips pop up under the search box as she types.
+
+- **Narrow it down:** after a niche ("tofu"), chips offer the formats that exist for it (most promising first), an audience, "this week", "on TikTok" and "under 30 sec". A half-typed word gets finished ("tofu des" → "desserts"). Picking one adds it to the box.
+- **Ask:** once she starts with why / what / is / how…, chips become full questions built from the formats that exist ("why are tofu desserts trending?"). Picking one runs the search.
+- ↓ moves from the box into the chips, ← / → move between them, Esc or ↑ goes back. An empty box shows the "Try:" examples instead. `src/lib/answer.ts` writes the answer from templates. Both can be swapped for an AI call that returns the same shape.
 
 ## Swapping in real videos
 

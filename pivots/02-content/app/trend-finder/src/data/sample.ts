@@ -7,6 +7,7 @@ export const formats: Format[] = [
   {
     id: 'crispy-asmr',
     name: 'Crispy tofu ASMR, top-down',
+    short: 'crispy tofu',
     tags: ['crispy', 'crunchy', 'crunch', 'asmr', 'fried', 'fry', 'sizzle'],
     audiences: ['students', 'young professionals', 'busy mums'],
     summary: 'Overhead pan shot, loud sizzle, no talking. Text hook promises speed.',
@@ -31,6 +32,7 @@ export const formats: Format[] = [
   {
     id: 'blind-taste-test',
     name: 'Street blind taste test: "Is it chicken?"',
+    short: 'tofu taste tests',
     tags: ['taste test', 'blind', 'street', 'chicken', 'guess', 'strangers', 'reaction'],
     audiences: ['young professionals', 'students'],
     summary: 'Ask people on the street to guess what they are eating. Reveal: it is tofu.',
@@ -55,8 +57,9 @@ export const formats: Format[] = [
   {
     id: 'three-ingredient-dessert',
     name: '3-ingredient tofu dessert',
+    short: 'tofu desserts',
     tags: ['dessert', 'sweet', 'mousse', 'pudding', 'cheesecake', 'chocolate', '3 ingredient', '3-ingredient'],
-    audiences: ['busy mums', 'families', 'health-conscious'],
+    audiences: ['busy mums', 'families', 'health-conscious eaters'],
     summary: 'Silken tofu blended into a dessert. Ingredients counted on screen.',
     why: {
       hook: 'A surprising use ("dessert made from tofu") plus a small number ("3 ingredients").',
@@ -78,6 +81,7 @@ export const formats: Format[] = [
   {
     id: 'buying-wrong',
     name: '"You are buying tofu wrong" supermarket guide',
+    short: 'tofu buying guides',
     tags: ['supermarket', 'grocery', 'buying', 'buy', 'types', 'guide', 'aisle'],
     audiences: ['busy mums', 'families'],
     summary: 'Filmed in the supermarket aisle. Explains which tofu to buy for which dish.',
@@ -101,6 +105,7 @@ export const formats: Format[] = [
   {
     id: 'press-hack',
     name: 'Pressing tofu without a press',
+    short: 'tofu hacks',
     tags: ['hack', 'press', 'pressing', 'tip', 'trick'],
     audiences: ['students', 'young professionals'],
     summary: 'Kitchen hack using a tea towel and a heavy book.',

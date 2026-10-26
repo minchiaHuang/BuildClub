@@ -12,7 +12,8 @@ export interface Query {
 }
 
 export const defaultQuery: Query = {
-  keyword: 'tofu',
+  // Starts empty so the search page shows example searches first.
+  keyword: '',
   platforms: ['instagram', 'tiktok'],
   days: 30,
   maxLength: 0,

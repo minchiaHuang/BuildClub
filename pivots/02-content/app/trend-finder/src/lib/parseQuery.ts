@@ -89,7 +89,7 @@ const audienceRules: [RegExp, string][] = [
   [/\b(uni |university |college )?students?\b|\buni\b/, 'students'],
   [/\b(kids|children|families|family)\b/, 'families'],
   [/\b(young )?professionals?\b|\boffice workers?\b|\bbusy people\b/, 'young professionals'],
-  [/\b(gym|protein|fitness|healthy|health)\b/, 'health-conscious'],
+  [/\b(gym|protein|fitness|healthy|health)\b/, 'health-conscious eaters'],
 ]
 
 const stopwords = new Set(
