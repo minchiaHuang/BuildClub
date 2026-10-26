@@ -409,6 +409,16 @@ export default function App() {
               onRemoveChip={removeChip}
               clientName={client.name}
               onPlan={planFromVideo}
+              clientExamples={client.examples}
+              chipGroups={chipGroups}
+              pulse={{
+                live,
+                loading: pulseLoading === client.id,
+                fetchedAt: pulses[client.id]?.fetchedAt,
+                topic: clientTopic(client),
+                error: pulseError,
+              }}
+              onRefreshPulse={() => void refreshPulse(client, true)}
               live={live}
               patterns={
                 live ? (

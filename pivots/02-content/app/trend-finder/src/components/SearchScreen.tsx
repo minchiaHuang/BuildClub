@@ -1,13 +1,7 @@
-import { useState } from 'react'
 import type { Query } from '../state'
-import { formats, videos } from '../data/sample'
-import { focusFirstSuggestion } from '../lib/suggest'
-import { PlatformToggles } from './PlatformToggles'
-import { Suggestions } from './Suggestions'
-import { ClientChips } from './ClientChips'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
-import { VoiceButton } from './VoiceButton'
+import { SearchBox } from './SearchBox'
 
 interface Props {
   query: Query
@@ -30,16 +24,8 @@ interface Props {
   onBackToResults: () => void
 }
 
-
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
-  const [listening, setListening] = useState(false)
-  // One row only: what's trending for this client, or its starter searches until trends are available.
-  const trending = props.chipGroups.find((g) => g.id === 'trending')
-  const oneRow = trending
-    ? [trending]
-    : [{ id: 'ideas' as const, title: 'Ideas to try', chips: props.clientExamples.slice(0, 5).map((e) => ({ label: e, value: e })) }]
-
   return (
     <section className="search-screen">
       <div className="search-intro">
@@ -63,72 +49,21 @@ export function SearchScreen(props: Props) {
         </p>
       </div>
 
-      <form
-        className="search-box"
-        onSubmit={(e) => {
-          e.preventDefault()
-          onSearch(query.keyword)
-        }}
-      >
-        <div className="search-on">
-          <span className="field-label">Search on</span>
-          <PlatformToggles
-            selected={query.platforms}
-            onChange={(platforms) => setQuery({ ...query, platforms })}
-            showSoon
-            live={live}
-          />
-        </div>
-
-        <label htmlFor="keyword" className="sr-only">
-          Search a niche, ask a question, or paste a video link
-        </label>
-        <div className="search-row">
-          <div className="search-input">
-            <input
-              id="keyword"
-              value={query.keyword}
-              onChange={(e) => setQuery({ ...query, keyword: e.target.value })}
-              onKeyDown={focusFirstSuggestion}
-              placeholder={
-                listening
-                  ? 'Listening… say what you want to find'
-                  : live
-                    ? `e.g. ${props.clientExamples[0] ?? 'tofu recipe'}`
-                    : 'e.g. tofu, a question, or a TikTok / Reel link'
-              }
-              autoFocus
-            />
-            <VoiceButton
-              onText={(text) => setQuery({ ...query, keyword: text })}
-              onDone={onSearch}
-              onListeningChange={setListening}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={!query.keyword.trim()}>
-            {/https?:\/\//.test(query.keyword) ? 'Find more like this' : 'Find trending videos'}
-          </button>
-        </div>
-
-        <Suggestions
-          // The search page always shows the client's "Trending now" chips, not typing suggestions.
-          text=""
-          formats={formats}
-          videos={videos}
-          inputId="keyword"
-          onRefine={(value) => setQuery({ ...query, keyword: value })}
-          onAsk={onSearch}
-          fallback={
-            <ClientChips
-              clientName={clientName}
-              groups={oneRow}
-              pulse={props.pulse}
-              onPick={onSearch}
-              onRefresh={props.onRefreshPulse}
-            />
-          }
-        />
-      </form>
+      <SearchBox
+        inputId="keyword"
+        value={query.keyword}
+        onValueChange={(text) => setQuery({ ...query, keyword: text })}
+        onSearch={onSearch}
+        platforms={query.platforms}
+        onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
+        live={live}
+        clientName={clientName}
+        clientExamples={props.clientExamples}
+        chipGroups={props.chipGroups}
+        pulse={props.pulse}
+        onRefreshPulse={props.onRefreshPulse}
+        autoFocus
+      />
 
       {props.lastSearch && (
         <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>

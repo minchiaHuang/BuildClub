@@ -7,10 +7,10 @@ import type { Answer } from '../lib/answer'
 import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
-import { PlatformLogo, PlatformToggles } from './PlatformToggles'
-import { Suggestions } from './Suggestions'
-import { VoiceButton } from './VoiceButton'
-import { focusFirstSuggestion } from '../lib/suggest'
+import { PlatformLogo } from './PlatformToggles'
+import { SearchBox } from './SearchBox'
+import type { PulseInfo } from './ClientChips'
+import type { ChipGroup } from '../lib/clientChips'
 
 export type Chip =
   | { kind: 'keyword'; value: string }
@@ -47,6 +47,11 @@ interface Props {
   onToggleSave: (id: string) => void
   clientName: string
   onPlan: (id: string) => void
+  // Same search box as the search page, so a new search can start right here.
+  clientExamples: string[]
+  chipGroups: ChipGroup[]
+  pulse: PulseInfo
+  onRefreshPulse: () => void
 }
 
 const stageLabel = {
@@ -131,53 +136,20 @@ export function ResultsScreen(p: Props) {
 
   return (
     <section className="results">
-      <form
-        className="toolbar"
-        onSubmit={(e) => {
-          e.preventDefault()
-          p.onSearch(draft)
-        }}
-      >
-        <PlatformToggles
-          selected={p.query.platforms}
-          onChange={(platforms) => p.setQuery({ ...p.query, platforms })}
-          live={p.live}
-        />
-        <div className="toolbar-row">
-          <input
-            id="toolbar-keyword"
-            className="toolbar-search"
-            aria-label="Search a niche, or ask a question"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={focusFirstSuggestion}
-          />
-          <VoiceButton
-            onText={setDraft}
-            onDone={(text) => {
-              setDraft(text)
-              p.onSearch(text)
-            }}
-          />
-          <button type="submit" className="btn btn-primary">
-            Search
-          </button>
-        </div>
-      </form>
-
-      {draft !== i.text && !p.live && (
-        <Suggestions
-          text={draft}
-          formats={p.formats}
-          videos={p.allVideos}
-          inputId="toolbar-keyword"
-          onRefine={setDraft}
-          onAsk={(q) => {
-            setDraft(q)
-            p.onSearch(q)
-          }}
-        />
-      )}
+      <SearchBox
+        inputId="toolbar-keyword"
+        value={draft}
+        onValueChange={setDraft}
+        onSearch={p.onSearch}
+        platforms={p.query.platforms}
+        onPlatformsChange={(platforms) => p.setQuery({ ...p.query, platforms })}
+        live={p.live}
+        clientName={p.clientName}
+        clientExamples={p.clientExamples}
+        chipGroups={p.chipGroups}
+        pulse={p.pulse}
+        onRefreshPulse={p.onRefreshPulse}
+      />
 
       <div className="understood">
         <span className="field-label">Searching for</span>
