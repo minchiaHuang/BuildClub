@@ -583,3 +583,19 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .best-score .score { font-size: 34px; line-height: 1; }
 @media (max-width: 600px) { .best-score { justify-items: start; text-align: left; max-width: none; } .best-score .score { font-size: 26px; } }
 @media (min-width: 601px) { .best-body { padding-right: 190px; } }
+
+/* Usual → this video numbers (best pick and tiles) */
+.best-compare { position: absolute; top: 16px; right: 18px; display: grid; grid-template-columns: auto auto auto; column-gap: 10px; row-gap: 2px; align-items: baseline; text-align: center; }
+.cmp-num { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.cmp-from { color: var(--muted); font-size: 22px; }
+.cmp-arrow { color: var(--muted); font-size: 20px; }
+.cmp-cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.cmp-tier { grid-column: 1 / -1; justify-self: center; margin-top: 8px; }
+@media (max-width: 600px) { .best-compare { position: static; grid-column: 2; justify-self: start; text-align: left; } .cmp-tier { justify-self: start; } }
+.tile-compare { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile-compare .cmp-from { font-size: 15px; color: var(--muted); }
+.tile-compare .cmp-arrow { font-size: 14px; color: var(--muted); }
+.tile-compare .cmp-to { font-size: 24px; line-height: 1; }
+.tile-cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.tile-tier { justify-self: start; margin: 3px 0 2px; }
+.tile-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

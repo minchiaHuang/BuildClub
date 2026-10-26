@@ -4,7 +4,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { Thumb } from './Thumb'
 import { PlatformLogo, PlatformToggles } from './PlatformToggles'
@@ -247,9 +247,17 @@ export function ResultsScreen(p: Props) {
                   </button>
                 </div>
               </div>
-              <div className="best-score">
-                <span className={`score score-${tierOf(outlierScore(best))}`}>{times(outlierScore(best))}</span>
-                <span className={`score-line score-line-${tierOf(outlierScore(best))}`}>{scoreLine(best)}</span>
+              {/* Usual → this video, so the jump reads without decoding the × score. */}
+              <div className="best-compare" aria-label={scoreLine(best)}>
+                <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
+                <span className="cmp-arrow" aria-hidden="true">→</span>
+                <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
+                <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
+                <span />
+                <span className="cmp-cap">this video</span>
+                <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>
+                  {tierName[tierOf(outlierScore(best))]} · {times(outlierScore(best))}
+                </span>
               </div>
             </div>
           )}
