@@ -13,6 +13,19 @@ npm run dev
 
 Or start `trend-finder` from `pivots/02-content/.claude/launch.json` (port 5174).
 
+## App layout (agency workspace)
+
+Laid out like an agency platform (e.g. GoHighLevel):
+
+- **Sign-in (mock):** "Continue as demo agency" enters as **Sample Social Co.** (a made-up agency). No account or password is checked or stored. Sign out from the bottom of the sidebar.
+- **Left sidebar** with a **client switcher** at the top: "All clients" (agency view) or one client. "Add client" is a placeholder.
+- **All clients → Overview:** every client's videos approved vs monthly target, how many are waiting for approval, and the next due date.
+- **Inside a client:** Search, Saved ideas, Approvals, Recreate plans, Tracking (soon), Client settings. Saving, the "Can they film this?" check and plans all use the selected client.
+- **Client settings:** name, what they sell, audience, videos per month, and what the client can't do (feeds the film check).
+- On phones the sidebar opens from a ☰ menu button.
+
+Clients, saved ideas, the selected client and sign-in are kept in the browser (localStorage). The app starts with a few **sample saved ideas** (`sampleIdeas` in `src/data/sample.ts`) so the overview, approvals and plans aren't empty.
+
 ## Screens
 
 1. **Search**: one box for a niche, a sentence or a question, plus example searches. Platforms (Instagram, TikTok), date range, video length, client.

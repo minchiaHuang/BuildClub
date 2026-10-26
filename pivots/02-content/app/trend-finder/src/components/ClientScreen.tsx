@@ -5,9 +5,7 @@ import { compact, times, outlierScore } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
-  clients: Client[]
-  clientId: string
-  setClientId: (id: string) => void
+  client: Client
   ideas: SavedIdea[]
   videoById: Map<string, Video>
   setStatus: (ideaIds: string[], status: IdeaStatus) => void
@@ -25,7 +23,7 @@ const statusLabel: Record<IdeaStatus, string> = {
 
 export function ClientScreen(p: Props) {
   const [phoneOpen, setPhoneOpen] = useState(false)
-  const client = p.clients.find((c) => c.id === p.clientId) ?? p.clients[0]
+  const client = p.client
   const mine = p.ideas.filter((i) => i.clientId === client.id)
   const count = (s: IdeaStatus) => mine.filter((i) => i.status === s).length
   const unsent = mine.filter((i) => i.status === 'saved')
@@ -35,24 +33,10 @@ export function ClientScreen(p: Props) {
 
   return (
     <section className="client">
-      <div className="client-tabs" role="tablist">
-        {p.clients.map((c) => (
-          <button
-            key={c.id}
-            role="tab"
-            aria-selected={c.id === client.id}
-            className={`tab ${c.id === client.id ? 'tab-on' : ''}`}
-            onClick={() => p.setClientId(c.id)}
-          >
-            {c.name}
-          </button>
-        ))}
-      </div>
-
       <header className="client-head">
         <div>
-          <span className="eyebrow">Step 4 · Client shortlist</span>
-          <h1>{client.name}</h1>
+          <span className="eyebrow">{client.name} · Saved ideas</span>
+          <h1>Saved ideas</h1>
           <p className="muted">
             {client.niche} · Audience: {client.audience}
           </p>

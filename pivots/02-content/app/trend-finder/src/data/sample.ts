@@ -1,7 +1,7 @@
 // SAMPLE DATA. Every account, number and caption below is made up to show how the app works.
 // Replace with real videos collected by hand (see README.md for the fields).
 
-import type { Client, Format, Video } from '../types'
+import type { Client, Format, SavedIdea, Video } from '../types'
 
 export const formats: Format[] = [
   {
@@ -201,4 +201,37 @@ export const clients: Client[] = [
     monthlyTarget: 8,
     cannot: ['People willing to be filmed on the street', 'A confident presenter'],
   },
+]
+
+// Sample saved ideas so the overview, approvals and plans pages aren't empty on first open.
+const inDays = (n: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+const idea = (clientId: string, videoId: string, status: SavedIdea['status'], due: number): SavedIdea => {
+  const formatId = videos.find((v) => v.id === videoId)!.formatId
+  return {
+    id: `${clientId}-${videoId}`,
+    videoId,
+    clientId,
+    status,
+    dueDate: inDays(due),
+    notes: formats.find((f) => f.id === formatId)!.editorNotes,
+  }
+}
+
+export const sampleIdeas: SavedIdea[] = [
+  idea('evergreen', 't1', 'approved', 2),
+  idea('evergreen', 't9', 'approved', 5),
+  idea('evergreen', 'i2', 'approved', 8),
+  idea('evergreen', 't6', 'approved', 12),
+  idea('evergreen', 'i5', 'approved', 15),
+  idea('evergreen', 't2', 'waiting', 14),
+  idea('evergreen', 'i6', 'waiting', 14),
+  idea('evergreen', 't3', 'saved', 14),
+  idea('student-eats', 't4', 'approved', 1),
+  idea('student-eats', 't14', 'approved', 9),
+  idea('student-eats', 't7', 'waiting', 14),
 ]

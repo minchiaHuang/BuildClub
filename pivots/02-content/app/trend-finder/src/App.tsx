@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { IdeaStatus, SavedIdea } from './types'
-import { clients, formats, videos } from './data/sample'
+import { clients as sampleClients, formats, videos } from './data/sample'
 import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
-import { defaultQuery, inTwoWeeks, useSavedIdeas } from './state'
-import type { Query, Sort } from './state'
+import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
+import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
 import { ResultsScreen } from './components/ResultsScreen'
 import type { Chip } from './components/ResultsScreen'
@@ -16,8 +16,14 @@ import { buildAnswer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
-
-type View = 'search' | 'results' | 'client' | 'plan'
+import { Sidebar } from './components/Sidebar'
+import type { View } from './components/Sidebar'
+import { OverviewScreen } from './components/OverviewScreen'
+import { ApprovalsScreen } from './components/ApprovalsScreen'
+import { PlansScreen } from './components/PlansScreen'
+import { SettingsScreen } from './components/SettingsScreen'
+import { LoginScreen } from './components/LoginScreen'
+import type { Client } from './types'
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -27,7 +33,11 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
 }
 
 export default function App() {
-  const [view, setView] = useState<View>('search')
+  const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
+  const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v1', sampleClients)
+  const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace', sampleClients[0].id)
+  const [view, setView] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
+  const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState<Query>(defaultQuery)
   const [sort, setSort] = useState<Sort>('outlier')
   const [formatFilter, setFormatFilter] = useState<string | null>(null)
@@ -40,7 +50,18 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [view])
 
-  const client = clients.find((c) => c.id === query.clientId) ?? clients[0]
+  // Inside a client, everything (saving, fit checks, plans) is for that client.
+  const client = clients.find((c) => c.id === workspace) ?? clients[0]
+
+  const setWorkspace = (w: Workspace) => {
+    setWorkspaceRaw(w)
+    setOpenVideoId(null)
+    if (w === 'all') setView('overview')
+    else if (view === 'overview' || view === 'plan') setView('search')
+  }
+
+  const updateClient = (patch: Partial<Client>) =>
+    setClients((prev) => prev.map((c) => (c.id === client.id ? { ...c, ...patch } : c)))
   const videoById = useMemo(() => new Map(videos.map((v) => [v.id, v])), [])
 
   const [interp, setInterp] = useState<Interpretation>(() => parseQuery('tofu', formats))
@@ -176,110 +197,148 @@ export default function App() {
   const planVideo = planIdea && videoById.get(planIdea.videoId)
   const planFormat = planVideo && formats.find((f) => f.id === planVideo.formatId)
   const planClient = planIdea && clients.find((c) => c.id === planIdea.clientId)
-  const clientIdeaCount = ideas.filter((i) => i.clientId === client.id).length
+  const mine = ideas.filter((i) => i.clientId === client.id)
+  const counts = {
+    saved: mine.length,
+    waiting: mine.filter((i) => i.status === 'waiting').length,
+    plans: mine.filter((i) => i.status === 'approved').length,
+  }
+
+  if (!signedIn) return <LoginScreen onSignIn={() => setSignedIn(true)} />
+
+  const inClient = workspace !== 'all'
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <button className="brand" onClick={() => setView('search')}>
-          <span className="brand-mark" aria-hidden="true">
-            ↗
-          </span>
-          Trend Finder
-        </button>
-        <nav className="nav">
-          <button className={`nav-btn ${view === 'search' ? 'nav-on' : ''}`} onClick={() => setView('search')}>
-            Search
+    <div className="shell">
+      <Sidebar
+        clients={clients}
+        workspace={workspace}
+        setWorkspace={setWorkspace}
+        view={view}
+        setView={setView}
+        counts={counts}
+        onSignOut={() => setSignedIn(false)}
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      />
+
+      <div className="shell-main">
+        <header className="mobile-bar">
+          <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+            ☰
           </button>
-          <button className={`nav-btn ${view === 'results' ? 'nav-on' : ''}`} onClick={() => setView('results')}>
-            Results
-          </button>
-          <button
-            className={`nav-btn ${view === 'client' || view === 'plan' ? 'nav-on' : ''}`}
-            onClick={() => setView('client')}
-          >
-            {client.name}
-            {clientIdeaCount > 0 && <span className="count">{clientIdeaCount}</span>}
-          </button>
-        </nav>
-        <span className="sample-pill" title="All accounts and numbers are made up for this demo">
-          Sample data
-        </span>
-      </header>
+          <strong>{inClient ? client.name : 'All clients'}</strong>
+        </header>
 
-      <main className="main">
-        {view === 'search' && (
-          <SearchScreen
-            query={query}
-            setQuery={setQuery}
-            onSearch={runSearch}
-            attachment={attachment}
-            setAttachment={setAttachment}
-          />
-        )}
+        <main className="main">
+          {(!inClient || view === 'overview') && (
+            <OverviewScreen
+              clients={clients}
+              ideas={ideas}
+              onOpen={(id, v) => {
+                setWorkspaceRaw(id)
+                setView(v)
+              }}
+            />
+          )}
 
-        {view === 'results' && (
-          <ResultsScreen
-            query={query}
-            setQuery={setQuery}
-            interp={interp}
-            answer={answer}
-            formats={formats}
-            allVideos={videos}
-            onSearch={runSearch}
-            onRemoveChip={removeChip}
-            likeThis={
-              interp.source && likeFormat ? (
-                <LikeThisCard
-                  source={interp.source}
-                  format={likeFormat}
-                  trend={trends.find((t) => t.format.id === likeFormat.id)}
-                  matches={results}
-                  clientName={client.name}
-                  onPlan={planFromVideo}
-                />
-              ) : null
-            }
-            results={results}
-            trends={trends}
-            sort={sort}
-            setSort={setSort}
-            formatFilter={formatFilter}
-            setFormatFilter={setFormatFilter}
-            savedVideoIds={savedForClient}
-            onOpen={setOpenVideoId}
-            onToggleSave={toggleSave}
-          />
-        )}
+          {inClient && view === 'search' && (
+            <SearchScreen
+              query={query}
+              setQuery={setQuery}
+              onSearch={runSearch}
+              attachment={attachment}
+              setAttachment={setAttachment}
+              clientName={client.name}
+            />
+          )}
 
-        {view === 'client' && (
-          <ClientScreen
-            clients={clients}
-            clientId={client.id}
-            setClientId={(id) => setQuery({ ...query, clientId: id })}
-            ideas={ideas}
-            videoById={videoById}
-            setStatus={setStatus}
-            onRemove={(id) => setIdeas((prev) => prev.filter((i) => i.id !== id))}
-            onPlan={(id) => {
-              setPlanIdeaId(id)
-              setView('plan')
-            }}
-            onFindMore={() => setView('search')}
-          />
-        )}
+          {inClient && view === 'results' && (
+            <ResultsScreen
+              query={query}
+              setQuery={setQuery}
+              interp={interp}
+              answer={answer}
+              formats={formats}
+              allVideos={videos}
+              onSearch={runSearch}
+              onRemoveChip={removeChip}
+              likeThis={
+                interp.source && likeFormat ? (
+                  <LikeThisCard
+                    source={interp.source}
+                    format={likeFormat}
+                    trend={trends.find((t) => t.format.id === likeFormat.id)}
+                    matches={results}
+                    clientName={client.name}
+                    onPlan={planFromVideo}
+                  />
+                ) : null
+              }
+              results={results}
+              trends={trends}
+              sort={sort}
+              setSort={setSort}
+              formatFilter={formatFilter}
+              setFormatFilter={setFormatFilter}
+              savedVideoIds={savedForClient}
+              onOpen={setOpenVideoId}
+              onToggleSave={toggleSave}
+            />
+          )}
 
-        {view === 'plan' && planIdea && planVideo && planFormat && planClient && (
-          <PlanScreen
-            idea={planIdea}
-            video={planVideo}
-            format={planFormat}
-            client={planClient}
-            onChange={(patch) => setIdeas((prev) => prev.map((i) => (i.id === planIdea.id ? { ...i, ...patch } : i)))}
-            onBack={() => setView('client')}
-          />
-        )}
-      </main>
+          {inClient && view === 'saved' && (
+            <ClientScreen
+              client={client}
+              ideas={ideas}
+              videoById={videoById}
+              setStatus={setStatus}
+              onRemove={(id) => setIdeas((prev) => prev.filter((i) => i.id !== id))}
+              onPlan={(id) => {
+                setPlanIdeaId(id)
+                setView('plan')
+              }}
+              onFindMore={() => setView('search')}
+            />
+          )}
+
+          {inClient && view === 'approvals' && (
+            <ApprovalsScreen
+              client={client}
+              ideas={ideas}
+              videoById={videoById}
+              setStatus={setStatus}
+              onGoSaved={() => setView('saved')}
+            />
+          )}
+
+          {inClient && view === 'plans' && (
+            <PlansScreen
+              client={client}
+              ideas={ideas}
+              videoById={videoById}
+              onOpen={(id) => {
+                setPlanIdeaId(id)
+                setView('plan')
+              }}
+              onGoApprovals={() => setView('approvals')}
+            />
+          )}
+
+          {inClient && view === 'settings' && <SettingsScreen client={client} onChange={updateClient} />}
+
+          {inClient && view === 'plan' && planIdea && planVideo && planFormat && planClient && (
+            <PlanScreen
+              idea={planIdea}
+              video={planVideo}
+              format={planFormat}
+              client={planClient}
+              onChange={(patch) => setIdeas((prev) => prev.map((i) => (i.id === planIdea.id ? { ...i, ...patch } : i)))}
+              onBack={() => setView(planIdea.status === 'approved' ? 'plans' : 'saved')}
+            />
+          )}
+        </main>
+      </div>
 
       {openVideo && openFormat && (
         <BreakdownPanel

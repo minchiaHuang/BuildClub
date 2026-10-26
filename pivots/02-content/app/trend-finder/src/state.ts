@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Platform, SavedIdea } from './types'
+import { sampleIdeas } from './data/sample'
 
 export type Sort = 'outlier' | 'ratio' | 'newest' | 'fastest'
 
@@ -20,29 +21,32 @@ export const defaultQuery: Query = {
   clientId: 'evergreen',
 }
 
-const IDEAS_KEY = 'trend-finder.ideas.v1'
-
-function readIdeas(): SavedIdea[] {
-  try {
-    const raw = localStorage.getItem(IDEAS_KEY)
-    return raw ? (JSON.parse(raw) as SavedIdea[]) : []
-  } catch {
-    return []
-  }
-}
-
-// Saved ideas live in this browser only, so the demo keeps its state between reloads.
-export function useSavedIdeas() {
-  const [ideas, setIdeas] = useState<SavedIdea[]>(readIdeas)
+// State that lives in this browser only, so the demo keeps where it was between reloads.
+export function useStored<T>(key: string, initial: T) {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(key)
+      return raw ? (JSON.parse(raw) as T) : initial
+    } catch {
+      return initial
+    }
+  })
   useEffect(() => {
     try {
-      localStorage.setItem(IDEAS_KEY, JSON.stringify(ideas))
+      localStorage.setItem(key, JSON.stringify(value))
     } catch {
       // Storage blocked: the demo still works, it just won't remember.
     }
-  }, [ideas])
-  return [ideas, setIdeas] as const
+  }, [key, value])
+  return [value, setValue] as const
 }
+
+export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v2', sampleIdeas)
+
+// 'all' is the agency view across every client.
+export type Workspace = 'all' | string
+
+export const AGENCY_NAME = 'Sample Social Co.'
 
 export function inTwoWeeks(): string {
   const d = new Date()

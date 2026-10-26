@@ -1,5 +1,5 @@
 import type { Query } from '../state'
-import { clients, formats, videos } from '../data/sample'
+import { formats, videos } from '../data/sample'
 import { focusFirstSuggestion } from '../lib/suggest'
 import { PlatformToggles } from './PlatformToggles'
 import { Suggestions } from './Suggestions'
@@ -15,6 +15,7 @@ interface Props {
   onSearch: (text: string) => void
   attachment: Attachment | null
   setAttachment: (a: Attachment | null) => void
+  clientName: string
 }
 
 const examples = [
@@ -25,7 +26,7 @@ const examples = [
   'https://www.tiktok.com/@smallkitchen.sample/video/crispy-tofu',
 ]
 
-export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachment }: Props) {
+export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachment, clientName }: Props) {
   const attach = (file: File) => {
     setAttachment({ name: file.name || 'screenshot.png', url: URL.createObjectURL(file) })
     // An old link in the box would compete with the screenshot, so clear it.
@@ -35,7 +36,7 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
   return (
     <section className="search-screen">
       <div className="search-intro">
-        <span className="eyebrow">Step 1 · Search</span>
+        <span className="eyebrow">{clientName} · Search</span>
         <h1>Find videos that are working right now</h1>
         <p className="lede">
           Type a niche or ask a question in plain words. We search Instagram and TikTok, rank videos from small
@@ -151,16 +152,6 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
             </select>
           </label>
 
-          <label className="select-field">
-            <span className="field-label">For client</span>
-            <select id="client" value={query.clientId} onChange={(e) => setQuery({ ...query, clientId: e.target.value })}>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
       </form>
 
