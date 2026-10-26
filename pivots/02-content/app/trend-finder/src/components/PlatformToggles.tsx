@@ -45,16 +45,27 @@ interface Props {
   selected: Platform[]
   onChange: (next: Platform[]) => void
   showSoon?: boolean
+  // Live search covers TikTok only for now, so Instagram shows as coming soon.
+  live?: boolean
 }
 
 const all: Platform[] = ['instagram', 'tiktok']
 
 // Platform on/off buttons with each platform's logo. At least one stays on.
-export function PlatformToggles({ selected, onChange, showSoon = false }: Props) {
+export function PlatformToggles({ selected, onChange, showSoon = false, live = false }: Props) {
   return (
     <div className="platforms" role="group" aria-label="Platforms">
       {all.map((p) => {
-        const on = selected.includes(p)
+        if (live && p === 'instagram') {
+          return (
+            <button key={p} type="button" className="platform platform-soon" disabled title="Live Instagram search is coming later">
+              <PlatformLogo platform={p} />
+              {platformName[p]}
+              <span className="soon">Soon</span>
+            </button>
+          )
+        }
+        const on = live ? p === 'tiktok' : selected.includes(p)
         return (
           <button
             key={p}
@@ -62,6 +73,7 @@ export function PlatformToggles({ selected, onChange, showSoon = false }: Props)
             className={`platform ${on ? 'platform-on' : ''}`}
             aria-pressed={on}
             onClick={() => {
+              if (live) return
               const next = on ? selected.filter((x) => x !== p) : [...selected, p]
               if (next.length) onChange(next)
             }}

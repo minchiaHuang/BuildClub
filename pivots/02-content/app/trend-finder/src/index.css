@@ -55,6 +55,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg);
@@ -275,6 +276,9 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
   color: #fff; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px;
 }
 .thumb-lg { max-width: 200px; }
+.thumb-img { background: var(--surface-2); }
+.thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.thumb .plat, .thumb .thumb-len { z-index: 1; }
 .thumb-hook { font-size: 11px; font-weight: 600; line-height: 1.2; text-shadow: 0 1px 4px rgb(0 0 0 / 0.5); }
 .thumb-lg .thumb-hook { font-size: 15px; }
 .thumb-len { position: absolute; top: 6px; right: 6px; font-family: var(--font-mono); font-size: 10px; background: rgb(0 0 0 / 0.45); padding: 1px 5px; border-radius: 4px; }
@@ -487,3 +491,10 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .login-form input:disabled { opacity: 0.6; }
 .login-btn { padding: 12px; font-size: 15px; }
 .login-note { text-align: center; }
+
+.live-pill { justify-self: start; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 10px; border-radius: 999px; background: var(--early-soft); color: var(--early); }
+.error { background: var(--no-soft); color: var(--no); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+.live-facts { gap: 8px; }
+.watch-link { justify-self: start; text-decoration: none; }
+.caption { white-space: pre-line; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 140px; overflow-y: auto; }
+.pattern-label { overflow-wrap: anywhere; }

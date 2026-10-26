@@ -29,6 +29,9 @@ interface Props {
   onSearch: (text: string) => void
   onRemoveChip: (chip: Chip) => void
   likeThis: React.ReactNode
+  // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
+  live: boolean
+  patterns: React.ReactNode
   results: Video[]
   trends: FormatTrend[]
   sort: Sort
@@ -48,7 +51,9 @@ const stageLabel = {
 }
 
 export function ResultsScreen(p: Props) {
-  const columns: Platform[] = (['instagram', 'tiktok'] as Platform[]).filter((x) => p.query.platforms.includes(x))
+  const columns: Platform[] = p.live
+    ? ['tiktok']
+    : (['instagram', 'tiktok'] as Platform[]).filter((x) => p.query.platforms.includes(x))
   const shown = p.formatFilter ? p.results.filter((v) => v.formatId === p.formatFilter) : p.results
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
@@ -77,7 +82,11 @@ export function ResultsScreen(p: Props) {
           p.onSearch(draft)
         }}
       >
-        <PlatformToggles selected={p.query.platforms} onChange={(platforms) => p.setQuery({ ...p.query, platforms })} />
+        <PlatformToggles
+          selected={p.query.platforms}
+          onChange={(platforms) => p.setQuery({ ...p.query, platforms })}
+          live={p.live}
+        />
         <div className="toolbar-row">
           <input
             id="toolbar-keyword"
@@ -93,7 +102,7 @@ export function ResultsScreen(p: Props) {
         </div>
       </form>
 
-      {draft !== i.text && (
+      {draft !== i.text && !p.live && (
         <Suggestions
           text={draft}
           formats={p.formats}
@@ -135,6 +144,7 @@ export function ResultsScreen(p: Props) {
           <option value={7}>Last 7 days</option>
           <option value={30}>Last 30 days</option>
           <option value={90}>Last 90 days</option>
+          <option value={3650}>Any time</option>
         </select>
         <select
           id="toolbar-length"
@@ -177,12 +187,14 @@ export function ResultsScreen(p: Props) {
         <div className="empty">
           <h2>No videos match all of that</h2>
           <p>
-            Try removing a chip above, or widen the date and length filters. The sample data only covers tofu for now.
+            {p.live
+              ? 'Try a broader search, or widen the date and length filters. TikTok search often returns older videos.'
+              : 'Try removing a chip above, or widen the date and length filters. The sample data only covers tofu for now.'}
           </p>
         </div>
       ) : (
         <>
-          <div className="trends">
+          {p.patterns ?? <div className="trends">
             <div className="section-head">
               <div>
                 <span className="eyebrow">Step 2 · Formats that repeat</span>
@@ -214,19 +226,28 @@ export function ResultsScreen(p: Props) {
                 )
               })}
             </div>
-          </div>
+          </div>}
 
           <div className="section-head">
             <div>
               <span className="eyebrow">Step 3 · Top videos</span>
               <h2>
-                {activeTrend ? activeTrend.format.name : i.topics.length || i.audience ? 'Matching videos' : 'All formats'}{' '}
+                {p.live ? 'Top videos' : activeTrend ? activeTrend.format.name : i.topics.length || i.audience ? 'Matching videos' : 'All formats'}{' '}
                 <span className="muted">· {plural(shown.length, 'video')}</span>
               </h2>
             </div>
             <p className="legend">
-              <b>Outlier score</b> = views ÷ the account's usual views. <b>{times(10)}</b> means 10 times better than
-              normal.
+              {p.live ? (
+                <>
+                  <b>Score</b> = views ÷ the account's followers, so small accounts with big views rank first. (We don't
+                  fetch each account's usual views yet.)
+                </>
+              ) : (
+                <>
+                  <b>Outlier score</b> = views ÷ the account's usual views. <b>{times(10)}</b> means 10 times better than
+                  normal.
+                </>
+              )}
             </p>
           </div>
 

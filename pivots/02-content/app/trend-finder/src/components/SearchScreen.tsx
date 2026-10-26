@@ -16,6 +16,10 @@ interface Props {
   attachment: Attachment | null
   setAttachment: (a: Attachment | null) => void
   clientName: string
+  // Live mode searches real TikTok videos; otherwise the sample tofu data.
+  live: boolean
+  clientExamples: string[]
+  error: string | null
 }
 
 const examples = [
@@ -26,7 +30,9 @@ const examples = [
   'https://www.tiktok.com/@smallkitchen.sample/video/crispy-tofu',
 ]
 
-export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachment, clientName }: Props) {
+export function SearchScreen(props: Props) {
+  const { query, setQuery, onSearch, attachment, setAttachment, clientName, live, clientExamples, error } = props
+  const shownExamples = live ? clientExamples : examples
   const attach = (file: File) => {
     setAttachment({ name: file.name || 'screenshot.png', url: URL.createObjectURL(file) })
     // An old link in the box would compete with the screenshot, so clear it.
@@ -39,8 +45,9 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
         <span className="eyebrow">{clientName} · Search</span>
         <h1>Find videos that are working right now</h1>
         <p className="lede">
-          Type a niche or ask a question in plain words. We search Instagram and TikTok, rank videos from small
-          accounts with big views, and show which formats are spreading.
+          {live
+            ? 'Type what this client is about. We search TikTok live, rank videos by how far they beat the account’s size, and show which sounds and hashtags keep coming up.'
+            : 'Type a niche or ask a question in plain words. We search Instagram and TikTok, rank videos from small accounts with big views, and show which formats are spreading.'}
         </p>
       </div>
 
@@ -57,6 +64,7 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
             selected={query.platforms}
             onChange={(platforms) => setQuery({ ...query, platforms })}
             showSoon
+            live={live}
           />
         </div>
 
@@ -86,10 +94,16 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
                   attach(file)
                 }
               }}
-              placeholder={attachment ? 'Press Find to see more like this' : 'e.g. tofu, a question, or a TikTok / Reel link'}
+              placeholder={
+                attachment
+                  ? 'Press Find to see more like this'
+                  : live
+                    ? `e.g. ${clientExamples[0] ?? 'tofu recipe'}`
+                    : 'e.g. tofu, a question, or a TikTok / Reel link'
+              }
               autoFocus
             />
-            <label className="attach-btn" title="Attach a screenshot of a video">
+            <label className="attach-btn" title="Attach a screenshot of a video" hidden={live}>
               <input
                 id="screenshot"
                 type="file"
@@ -110,7 +124,7 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
         </div>
 
         <Suggestions
-          text={attachment ? '' : query.keyword}
+          text={attachment || live ? '' : query.keyword}
           formats={formats}
           videos={videos}
           inputId="keyword"
@@ -119,7 +133,7 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
           fallback={
             <div className="examples">
               <span className="field-label">Try:</span>
-              {examples.map((ex) => (
+              {shownExamples.map((ex) => (
                 <button key={ex} type="button" className="example" onClick={() => onSearch(ex)}>
                   {ex.startsWith('http') ? 'Paste a TikTok link (example)' : ex}
                 </button>
@@ -135,6 +149,7 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
               <option value={90}>Last 90 days</option>
+              <option value={3650}>Any time</option>
             </select>
           </label>
 
@@ -155,7 +170,16 @@ export function SearchScreen({ query, setQuery, onSearch, attachment, setAttachm
         </div>
       </form>
 
-      <p className="hint">Sample data covers one niche for now: tofu.</p>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="hint">
+        {live
+          ? 'Live TikTok search. Each new search costs a few cents of Apify credit; repeats within 24 hours are free.'
+          : 'Sample data covers one niche for now: tofu. Add an Apify key to turn on live TikTok search (see README).'}
+      </p>
     </section>
   )
 }

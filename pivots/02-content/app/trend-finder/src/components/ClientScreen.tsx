@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import type { Client, IdeaStatus, SavedIdea, Video } from '../types'
-import { formats } from '../data/sample'
+import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, times, outlierScore } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
@@ -8,6 +7,7 @@ interface Props {
   client: Client
   ideas: SavedIdea[]
   videoById: Map<string, Video>
+  formatById: Map<string, Format>
   setStatus: (ideaIds: string[], status: IdeaStatus) => void
   onRemove: (ideaId: string) => void
   onPlan: (ideaId: string) => void
@@ -91,7 +91,7 @@ export function ClientScreen(p: Props) {
           {mine.map((idea) => {
             const v = p.videoById.get(idea.videoId)
             if (!v) return null
-            const f = formats.find((x) => x.id === v.formatId)
+            const f = p.formatById.get(v.formatId)
             return (
               <li key={idea.id} className="idea">
                 <Thumb video={v} />
@@ -137,7 +137,7 @@ export function ClientScreen(p: Props) {
               {waiting.length === 0 && <p className="muted small">All done. Nothing waiting.</p>}
               {waiting.map((idea) => {
                 const v = p.videoById.get(idea.videoId)!
-                const f = formats.find((x) => x.id === v.formatId)
+                const f = p.formatById.get(v.formatId)
                 return (
                   <div key={idea.id} className="phone-card">
                     <Thumb video={v} />

@@ -23,7 +23,10 @@ import { ApprovalsScreen } from './components/ApprovalsScreen'
 import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
-import type { Client } from './types'
+import type { Client, Format, Video } from './types'
+import { checkLive, findPatterns, searchLive } from './lib/live'
+import { PatternStrip } from './components/PatternStrip'
+import { LiveLoading } from './components/LiveLoading'
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -34,8 +37,8 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
 
 export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
-  const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v1', sampleClients)
-  const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace', sampleClients[0].id)
+  const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v2', sampleClients)
+  const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   const [view, setView] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState<Query>(defaultQuery)
@@ -44,6 +47,26 @@ export default function App() {
   const [openVideoId, setOpenVideoId] = useState<string | null>(null)
   const [planIdeaId, setPlanIdeaId] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
+
+  // Live mode: real TikTok search through the local API (npm run api). Without it, the app uses sample data.
+  const [live, setLive] = useState(false)
+  const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
+    videos: [],
+    formats: [],
+  })
+  const [liveResults, setLiveResults] = useState<Video[]>([])
+  const [liveQuery, setLiveQuery] = useState('')
+  const [searching, setSearching] = useState<string | null>(null)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [patternFilter, setPatternFilter] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkLive().then((ok) => {
+      setLive(ok)
+      // TikTok's top results are often older, so live search starts with no date limit.
+      if (ok) setQuery((q) => ({ ...q, days: 3650 }))
+    })
+  }, [])
 
   // Each screen starts at the top, like a new page.
   useEffect(() => {
@@ -62,17 +85,61 @@ export default function App() {
 
   const updateClient = (patch: Partial<Client>) =>
     setClients((prev) => prev.map((c) => (c.id === client.id ? { ...c, ...patch } : c)))
-  const videoById = useMemo(() => new Map(videos.map((v) => [v.id, v])), [])
+  const videoById = useMemo(
+    () => new Map([...videos, ...liveStore.videos].map((v) => [v.id, v])),
+    [liveStore.videos],
+  )
 
   const [interp, setInterp] = useState<Interpretation>(() => parseQuery('tofu', formats))
-  const formatById = useMemo(() => new Map(formats.map((f) => [f.id, f])), [])
+  const formatById = useMemo(
+    () => new Map([...formats, ...liveStore.formats].map((f) => [f.id, f])),
+    [liveStore.formats],
+  )
 
   // Turn the search box text into filters. Anything the text mentions (time, platform, length)
   // overrides the dropdowns; everything else keeps its current value.
   const [attachment, setAttachment] = useState<Attachment | null>(null)
   const [reading, setReading] = useState<MediaSource | null>(null)
 
+  const runLiveSearch = async (text: string) => {
+    if (/https?:\/\//.test(text)) {
+      setSearchError("Link search isn't live yet. Type what the video is about instead.")
+      return
+    }
+    const parsed = parseQuery(text, formats)
+    // Send TikTok the meaningful words; time and length words become filters instead.
+    const q = ([...parsed.keywords, ...parsed.topics.map((t) => t.word)].join(' ') || text).trim()
+    if (!q) return
+    setSearchError(null)
+    setSearching(q)
+    try {
+      const res = await searchLive(q)
+      setLiveStore((prev) => {
+        const keep = (list: { id: string }[], add: { id: string }[]) => {
+          const ids = new Set(add.map((x) => x.id))
+          return [...add, ...list.filter((x) => !ids.has(x.id))].slice(0, 600)
+        }
+        return { videos: keep(prev.videos, res.videos) as Video[], formats: keep(prev.formats, res.formats) as Format[] }
+      })
+      setLiveResults(res.videos)
+      setLiveQuery(q)
+      setInterp({ ...parsed, text, keywords: [q], topics: [], audience: null, isQuestion: false, source: null })
+      setQuery((qq) => ({ ...qq, keyword: text, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
+      setPatternFilter(null)
+      setFormatFilter(null)
+      setView('results')
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : 'Search failed.')
+    } finally {
+      setSearching(null)
+    }
+  }
+
   const runSearch = (text: string) => {
+    if (live) {
+      void runLiveSearch(text)
+      return
+    }
     const media = interpretMedia(text, attachment, formats)
     const next = media ?? parseQuery(text, formats)
     setInterp(next)
@@ -125,40 +192,46 @@ export default function App() {
   // Everything matching the words, before platform/date/length filters.
   // Format labels use this pool so a filter can't make a trend look "early".
   const keywordPool = useMemo(() => {
+    if (live) return liveResults
     if (interp.keywords.length === 0) return interp.topics.length || interp.audience ? videos : []
     return videos.filter((v) => interp.keywords.some((k) => matchesKeyword(v, formatById.get(v.formatId), k)))
-  }, [interp, formatById])
+  }, [interp, formatById, live, liveResults])
 
-  const results = useMemo(
-    () =>
-      keywordPool
-        .filter((v) => query.platforms.includes(v.platform))
-        .filter((v) => v.daysAgo <= query.days)
-        .filter((v) => !query.maxLength || v.lengthSec <= query.maxLength)
-        .filter((v) => !interp.topics.length || interp.topics.some((t) => t.formatId === v.formatId))
-        .filter((v) => !interp.audience || formatById.get(v.formatId)!.audiences.includes(interp.audience))
-        .sort(sorters[sort]),
-    [keywordPool, query, sort, interp, formatById],
-  )
+  const patterns = useMemo(() => (live ? findPatterns(liveResults, liveQuery) : []), [live, liveResults, liveQuery])
+
+  const results = useMemo(() => {
+    const pattern = patterns.find((x) => x.label === patternFilter)
+    return keywordPool
+      .filter((v) => live || query.platforms.includes(v.platform))
+      .filter((v) => v.daysAgo <= query.days)
+      .filter((v) => !query.maxLength || v.lengthSec <= query.maxLength)
+      .filter((v) => live || !interp.topics.length || interp.topics.some((t) => t.formatId === v.formatId))
+      .filter((v) => live || !interp.audience || formatById.get(v.formatId)!.audiences.includes(interp.audience))
+      .filter((v) => !pattern || pattern.videoIds.includes(v.id))
+      .sort(sorters[sort])
+  }, [keywordPool, query, sort, interp, formatById, live, patterns, patternFilter])
 
   const trends = useMemo(
     () =>
-      formats
+      (live ? [] : formats)
         .filter((f) => results.some((v) => v.formatId === f.id))
         .map((f) => formatTrend(f, keywordPool))
         .sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage]),
-    [results, keywordPool],
+    [results, keywordPool, live],
   )
 
-  const answer = useMemo(() => buildAnswer(interp, results, trends), [interp, results, trends])
+  const answer = useMemo(() => (live ? null : buildAnswer(interp, results, trends)), [interp, results, trends, live])
 
-  const savedForClient = new Set(ideas.filter((i) => i.clientId === client.id).map((i) => i.videoId))
+  // Live mode shows only ideas saved from real videos; sample mode only sample ones.
+  const shownIdeas = ideas.filter((i) => Boolean(videoById.get(i.videoId)?.live) === live)
+
+  const savedForClient = new Set(shownIdeas.filter((i) => i.clientId === client.id).map((i) => i.videoId))
 
   const saveIdea = (videoId: string): SavedIdea => {
     const existing = ideas.find((i) => i.videoId === videoId && i.clientId === client.id)
     if (existing) return existing
     const v = videoById.get(videoId)!
-    const f = formats.find((x) => x.id === v.formatId)!
+    const f = formatById.get(v.formatId)!
     const idea: SavedIdea = {
       id: `${client.id}-${videoId}`,
       videoId,
@@ -192,12 +265,12 @@ export default function App() {
     setIdeas((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, status } : i)))
 
   const openVideo = openVideoId ? videoById.get(openVideoId) : undefined
-  const openFormat = openVideo && formats.find((f) => f.id === openVideo.formatId)
+  const openFormat = openVideo && formatById.get(openVideo.formatId)
   const planIdea = ideas.find((i) => i.id === planIdeaId)
   const planVideo = planIdea && videoById.get(planIdea.videoId)
-  const planFormat = planVideo && formats.find((f) => f.id === planVideo.formatId)
+  const planFormat = planVideo && formatById.get(planVideo.formatId)
   const planClient = planIdea && clients.find((c) => c.id === planIdea.clientId)
-  const mine = ideas.filter((i) => i.clientId === client.id)
+  const mine = shownIdeas.filter((i) => i.clientId === client.id)
   const counts = {
     saved: mine.length,
     waiting: mine.filter((i) => i.status === 'waiting').length,
@@ -220,6 +293,7 @@ export default function App() {
         onSignOut={() => setSignedIn(false)}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
+        live={live}
       />
 
       <div className="shell-main">
@@ -234,7 +308,7 @@ export default function App() {
           {(!inClient || view === 'overview') && (
             <OverviewScreen
               clients={clients}
-              ideas={ideas}
+              ideas={shownIdeas}
               onOpen={(id, v) => {
                 setWorkspaceRaw(id)
                 setView(v)
@@ -250,6 +324,9 @@ export default function App() {
               attachment={attachment}
               setAttachment={setAttachment}
               clientName={client.name}
+              live={live}
+              clientExamples={client.examples}
+              error={searchError}
             />
           )}
 
@@ -263,6 +340,12 @@ export default function App() {
               allVideos={videos}
               onSearch={runSearch}
               onRemoveChip={removeChip}
+              live={live}
+              patterns={
+                live ? (
+                  <PatternStrip query={liveQuery} patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
+                ) : null
+              }
               likeThis={
                 interp.source && likeFormat ? (
                   <LikeThisCard
@@ -290,7 +373,8 @@ export default function App() {
           {inClient && view === 'saved' && (
             <ClientScreen
               client={client}
-              ideas={ideas}
+              ideas={shownIdeas}
+              formatById={formatById}
               videoById={videoById}
               setStatus={setStatus}
               onRemove={(id) => setIdeas((prev) => prev.filter((i) => i.id !== id))}
@@ -305,7 +389,8 @@ export default function App() {
           {inClient && view === 'approvals' && (
             <ApprovalsScreen
               client={client}
-              ideas={ideas}
+              ideas={shownIdeas}
+              formatById={formatById}
               videoById={videoById}
               setStatus={setStatus}
               onGoSaved={() => setView('saved')}
@@ -315,7 +400,8 @@ export default function App() {
           {inClient && view === 'plans' && (
             <PlansScreen
               client={client}
-              ideas={ideas}
+              ideas={shownIdeas}
+              formatById={formatById}
               videoById={videoById}
               onOpen={(id) => {
                 setPlanIdeaId(id)
@@ -354,6 +440,7 @@ export default function App() {
       )}
 
       {reading && <ReadingOverlay source={reading} onDone={finishReading} />}
+      {searching && <LiveLoading query={searching} />}
     </div>
   )
 }

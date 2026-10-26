@@ -191,15 +191,17 @@ export const clients: Client[] = [
     niche: 'Tofu brand sold at Woolworths',
     audience: 'Busy mums and young professionals',
     monthlyTarget: 12,
+    examples: ['tofu recipe', 'crispy tofu', 'tofu dessert', 'high protein vegetarian meal', 'easy weeknight dinner'],
     cannot: ['Permission to film in a supermarket'],
   },
   {
-    id: 'student-eats',
-    name: 'Campus Kitchen (example)',
-    niche: 'Student meal kits',
-    audience: 'Uni students',
+    id: 'myst',
+    name: 'MYST Nightclub Sydney',
+    niche: 'Nightclub in Sydney: weekly event promos',
+    audience: '18–30 Sydney party-goers',
     monthlyTarget: 8,
-    cannot: ['People willing to be filmed on the street', 'A confident presenter'],
+    examples: ['sydney nightclub', 'nightclub promo', 'club night crowd', 'sydney nightlife', 'dj set club'],
+    cannot: [],
   },
 ]
 
@@ -231,7 +233,4 @@ export const sampleIdeas: SavedIdea[] = [
   idea('evergreen', 't2', 'waiting', 14),
   idea('evergreen', 'i6', 'waiting', 14),
   idea('evergreen', 't3', 'saved', 14),
-  idea('student-eats', 't4', 'approved', 1),
-  idea('student-eats', 't14', 'approved', 9),
-  idea('student-eats', 't7', 'waiting', 14),
 ]

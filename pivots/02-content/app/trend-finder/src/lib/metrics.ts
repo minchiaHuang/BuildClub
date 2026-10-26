@@ -1,9 +1,9 @@
 import type { Client, Format, Platform, Video } from '../types'
 
-export const outlierScore = (v: Video) => v.views / v.medianViews
-export const viewsPerFollower = (v: Video) => v.views / v.followers
+export const outlierScore = (v: Video) => v.views / Math.max(v.medianViews ?? v.followers, 1)
+export const viewsPerFollower = (v: Video) => v.views / Math.max(v.followers, 1)
 // Shares + saves per 100 views. Instagram hides saves, so it counts shares only there.
-export const shareSaveRate = (v: Video) => ((v.shares + (v.saves ?? 0)) / v.views) * 100
+export const shareSaveRate = (v: Video) => ((v.shares + (v.saves ?? 0)) / Math.max(v.views, 1)) * 100
 export const viewsPerDay = (v: Video) => v.views / Math.max(v.daysAgo, 1)
 
 export function compact(n: number): string {
@@ -17,7 +17,7 @@ export const times = (n: number) => `${n >= 10 ? Math.round(n) : n.toFixed(1).re
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-export const ago =(days: number) => (days <= 1 ? 'today' : `${days} days ago`)
+export const ago = (days: number) => (days <= 1 ? 'today' : `${days} days ago`)
 
 export type TrendStage = 'early' | 'rising' | 'everywhere' | 'one-off'
 
@@ -66,6 +66,7 @@ export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, eve
 export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram' }
 
 export function clientFit(format: Format, client: Client) {
+  if (format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }
   const blockers = format.needs.filter((n) => client.cannot.includes(n))
   if (blockers.length) return { ok: false, text: `Hard for ${client.name}: needs ${blockers.join(' and ').toLowerCase()}.` }
   const needs = format.needs.join(' and ').toLowerCase()

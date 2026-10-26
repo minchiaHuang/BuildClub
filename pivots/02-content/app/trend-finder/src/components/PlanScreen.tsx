@@ -70,7 +70,18 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack }: Pr
         <div className="plan-main">
           <section className="block">
             <h3>Shot list</h3>
-            <ol className="shots">
+            {format.shotList.length === 0 && (
+              <p className="muted small">
+                No shot list yet for live videos.{' '}
+                {video.url && (
+                  <a href={video.url} target="_blank" rel="noreferrer">
+                    Watch the reference on TikTok ↗
+                  </a>
+                )}{' '}
+                and write the shots in the notes below.
+              </p>
+            )}
+            <ol className="shots" hidden={format.shotList.length === 0}>
               {format.shotList.map((s) => (
                 <li key={s.time}>
                   <span className="shot-time">{s.time}</span>

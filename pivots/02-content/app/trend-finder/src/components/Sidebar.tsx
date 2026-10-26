@@ -44,6 +44,7 @@ interface Props {
   onSignOut: () => void
   open: boolean
   onClose: () => void
+  live: boolean
 }
 
 function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'>) {
@@ -173,9 +174,15 @@ export function Sidebar(p: Props) {
         </nav>
 
         <div className="side-foot">
-          <span className="sample-pill" title="All accounts and numbers are made up for this demo">
-            Sample data
-          </span>
+          {p.live ? (
+            <span className="live-pill" title="Search results are real TikTok videos">
+              Live TikTok data
+            </span>
+          ) : (
+            <span className="sample-pill" title="All accounts and numbers are made up for this demo">
+              Sample data
+            </span>
+          )}
           <div className="side-user">
             <span className="avatar avatar-user">D</span>
             <span className="side-user-text">

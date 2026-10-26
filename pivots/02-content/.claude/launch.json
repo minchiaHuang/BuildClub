@@ -4,8 +4,28 @@
     {
       "name": "trend-finder",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "app/trend-finder", "--", "--port", "5174", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "app/trend-finder",
+        "--",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
       "port": 5174
+    },
+    {
+      "name": "trend-finder-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "api",
+        "--prefix",
+        "app/trend-finder"
+      ],
+      "port": 8787
     }
   ]
 }
