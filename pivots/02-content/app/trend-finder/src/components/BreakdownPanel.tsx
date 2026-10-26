@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import type { Client, Format, Video } from '../types'
 import {
   ago,
-  clientFit,
   compact,
   outlierScore,
   platformName,
@@ -12,7 +11,6 @@ import {
   tierOf,
   times,
   viewsPerDay,
-  viewsPerFollower,
 } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
@@ -34,26 +32,24 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const fit = clientFit(format, client)
-  const metrics = [
-    {
-      label: 'Score',
-      value: `${times(outlierScore(video))} · ${tierName[tierOf(outlierScore(video))]}`,
-      note:
-        video.medianViews === null
-          ? `${scoreLine(video)} (${compact(video.views)} views, ${compact(video.followers)} followers)`
-          : `${scoreLine(video)} (${compact(video.views)} vs usually ${compact(video.medianViews)})`,
-    },
-    ...(video.medianViews === null
-      ? []
-      : [{ label: 'Views ÷ followers', value: times(viewsPerFollower(video)), note: `${compact(video.followers)} followers` }]),
+  const score = outlierScore(video)
+  const tier = tierOf(score)
+  // The numbers are the point of this panel, so they get their own row of cards.
+  const stats = [
+    { label: 'Views', value: compact(video.views), note: `${compact(video.followers)} followers` },
     {
       label: 'Shares + saves',
-      value: `${shareSaveRate(video).toFixed(1)} per 100 views`,
-      note: video.saves === null ? 'Instagram hides saves, so shares only' : `${compact(video.shares)} shares, ${compact(video.saves)} saves`,
+      value: `${shareSaveRate(video).toFixed(1)}`,
+      unit: 'per 100 views',
+      note: video.saves === null ? 'Instagram hides saves' : `${compact(video.shares)} shares · ${compact(video.saves)} saves`,
     },
-    { label: 'Growth', value: `${compact(viewsPerDay(video))} views/day`, note: `Posted ${ago(video.daysAgo)}` },
-    { label: 'Format used by', value: `${formatAccounts} accounts`, note: formatAccounts >= 3 ? 'A pattern, not luck' : 'Too few to be sure' },
+    { label: 'Growth', value: compact(viewsPerDay(video)), unit: 'views a day', note: `Posted ${ago(video.daysAgo)}` },
+    {
+      label: 'Format used by',
+      value: String(formatAccounts),
+      unit: formatAccounts === 1 ? 'account' : 'accounts',
+      note: formatAccounts >= 3 ? 'A pattern, not luck' : 'Too few to be sure',
+    },
   ]
 
   return (
@@ -78,18 +74,33 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
         </header>
 
         <div className="drawer-body">
-          <div className="drawer-top">
+          <div className="drawer-video">
             <Thumb video={video} large />
-            <dl className="metric-list">
-              {metrics.map((m) => (
-                <div key={m.label}>
-                  <dt>{m.label}</dt>
-                  <dd>{m.value}</dd>
-                  <span className="note">{m.note}</span>
-                </div>
-              ))}
-            </dl>
           </div>
+
+          <section className="stats" aria-label="Video analytics">
+            <div className={`stat-card stat-score stat-${tier}`}>
+              <span className="stat-label">Score</span>
+              <div className="stat-score-row">
+                <span className="stat-big">{times(score)}</span>
+                <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
+              </div>
+              <span className="stat-note">{scoreLine(video)}</span>
+              <span className="stat-compare">
+                {compact(video.medianViews ?? video.followers)} → <strong>{compact(video.views)}</strong>
+              </span>
+            </div>
+            {stats.map((m) => (
+              <div key={m.label} className="stat-card">
+                <span className="stat-label">{m.label}</span>
+                <span className="stat-value">
+                  {m.value}
+                  {m.unit && <span className="stat-unit"> {m.unit}</span>}
+                </span>
+                <span className="stat-note">{m.note}</span>
+              </div>
+            ))}
+          </section>
 
           {video.live && (
             <section className="block live-facts">
@@ -103,15 +114,10 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             </section>
           )}
 
-          <div className={`fit ${fit.ok ? 'fit-ok' : 'fit-no'}`}>
-            <strong>Can {client.name} film this?</strong>
-            <span>{fit.text}</span>
-          </div>
-
           <section className="block">
             <h3>
               {video.live ? 'What we know' : 'Why it worked'}{' '}
-              <span className="ai-tag">{video.live ? 'From TikTok data' : 'AI breakdown · sample'}</span>
+              <span className="ai-tag">{video.live ? 'From TikTok data' : 'Sample · written by hand'}</span>
             </h3>
             <dl className="why">
               <div>
@@ -137,26 +143,6 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             </dl>
           </section>
 
-          <section className="block">
-            <h3>Shot list</h3>
-            {format.shotList.length === 0 && (
-              <p className="muted small">
-                Not available yet. Shot lists need AI that watches the video. For now, watch it and write the shots in
-                the recreate plan.
-              </p>
-            )}
-            <ol className="shots" hidden={format.shotList.length === 0}>
-              {format.shotList.map((s) => (
-                <li key={s.time}>
-                  <span className="shot-time">{s.time}</span>
-                  <span>
-                    {s.shot}
-                    {s.text && <span className="shot-text">Text: "{s.text}"</span>}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
         </div>
 
         <footer className="drawer-foot">

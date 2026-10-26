@@ -1,48 +1,46 @@
 import type { Query } from '../state'
-import { formats, videos } from '../data/sample'
-import { focusFirstSuggestion } from '../lib/suggest'
-import { PlatformToggles } from './PlatformToggles'
-import { Suggestions } from './Suggestions'
-
-export interface Attachment {
-  name: string
-  url: string
-}
+import type { PulseInfo } from './ClientChips'
+import type { ChipGroup } from '../lib/clientChips'
+import { SearchBox } from './SearchBox'
 
 interface Props {
   query: Query
   setQuery: (q: Query) => void
   onSearch: (text: string) => void
-  attachment: Attachment | null
-  setAttachment: (a: Attachment | null) => void
   clientName: string
   // Live mode searches real TikTok videos; otherwise the sample tofu data.
   live: boolean
   clientExamples: string[]
   error: string | null
+  // Client-specific chips: trending now, fits the audience, more like saved ideas.
+  chipGroups: ChipGroup[]
+  pulse: PulseInfo
+  onRefreshPulse: () => void
+  // Videos sent or approved for this client this month, and the monthly target.
+  planned: number
+  target: number
+  // The last search that had results, to offer a way back.
+  lastSearch: string | null
+  onBackToResults: () => void
 }
 
-const examples = [
-  'tofu',
-  'tofu desserts for busy mums',
-  'why is crispy tofu trending?',
-  'tofu taste tests on TikTok this week',
-  'https://www.tiktok.com/@smallkitchen.sample/video/crispy-tofu',
-]
-
 export function SearchScreen(props: Props) {
-  const { query, setQuery, onSearch, attachment, setAttachment, clientName, live, clientExamples, error } = props
-  const shownExamples = live ? clientExamples : examples
-  const attach = (file: File) => {
-    setAttachment({ name: file.name || 'screenshot.png', url: URL.createObjectURL(file) })
-    // An old link in the box would compete with the screenshot, so clear it.
-    if (/https?:\/\//.test(query.keyword)) setQuery({ ...query, keyword: '' })
-  }
-
+  const { query, setQuery, onSearch, clientName, live, error } = props
   return (
     <section className="search-screen">
       <div className="search-intro">
         <span className="eyebrow">{clientName} · Search</span>
+        {props.planned > 0 && (
+          <span className="progress-line">
+            <strong>
+              {props.planned} of {props.target}
+            </strong>{' '}
+            videos planned for {clientName} this month
+            <span className="progress-mini" aria-hidden="true">
+              <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
+            </span>
+          </span>
+        )}
         <h1>Find videos that are working right now</h1>
         <p className="lede">
           {live
@@ -51,124 +49,27 @@ export function SearchScreen(props: Props) {
         </p>
       </div>
 
-      <form
-        className="search-box"
-        onSubmit={(e) => {
-          e.preventDefault()
-          onSearch(query.keyword)
-        }}
-      >
-        <div className="search-on">
-          <span className="field-label">Search on</span>
-          <PlatformToggles
-            selected={query.platforms}
-            onChange={(platforms) => setQuery({ ...query, platforms })}
-            showSoon
-            live={live}
-          />
-        </div>
+      <SearchBox
+        inputId="keyword"
+        value={query.keyword}
+        onValueChange={(text) => setQuery({ ...query, keyword: text })}
+        onSearch={onSearch}
+        platforms={query.platforms}
+        onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
+        live={live}
+        clientName={clientName}
+        clientExamples={props.clientExamples}
+        chipGroups={props.chipGroups}
+        pulse={props.pulse}
+        onRefreshPulse={props.onRefreshPulse}
+        autoFocus
+      />
 
-        <label htmlFor="keyword" className="sr-only">
-          Search a niche, ask a question, or paste a video link
-        </label>
-        <div className="search-row">
-          <div className="search-input">
-            {attachment && (
-              <span className="attach-chip">
-                <img src={attachment.url} alt="" />
-                {attachment.name}
-                <button type="button" className="q-chip-x" aria-label="Remove screenshot" onClick={() => setAttachment(null)}>
-                  ✕
-                </button>
-              </span>
-            )}
-            <input
-              id="keyword"
-              value={query.keyword}
-              onChange={(e) => setQuery({ ...query, keyword: e.target.value })}
-              onKeyDown={focusFirstSuggestion}
-              onPaste={(e) => {
-                const file = [...e.clipboardData.files].find((f) => f.type.startsWith('image/'))
-                if (file) {
-                  e.preventDefault()
-                  attach(file)
-                }
-              }}
-              placeholder={
-                attachment
-                  ? 'Press Find to see more like this'
-                  : live
-                    ? `e.g. ${clientExamples[0] ?? 'tofu recipe'}`
-                    : 'e.g. tofu, a question, or a TikTok / Reel link'
-              }
-              autoFocus
-            />
-            <label className="attach-btn" title="Attach a screenshot of a video" hidden={live}>
-              <input
-                id="screenshot"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) attach(file)
-                  e.target.value = ''
-                }}
-              />
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.4 11.6-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8" /></svg>
-              <span className="sr-only">Attach a screenshot</span>
-            </label>
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={!query.keyword.trim() && !attachment}>
-            {attachment || /https?:\/\//.test(query.keyword) ? 'Find more like this' : 'Find trending videos'}
-          </button>
-        </div>
-
-        <Suggestions
-          text={attachment || live ? '' : query.keyword}
-          formats={formats}
-          videos={videos}
-          inputId="keyword"
-          onRefine={(value) => setQuery({ ...query, keyword: value })}
-          onAsk={onSearch}
-          fallback={
-            <div className="examples">
-              <span className="field-label">Try:</span>
-              {shownExamples.map((ex) => (
-                <button key={ex} type="button" className="example" onClick={() => onSearch(ex)}>
-                  {ex.startsWith('http') ? 'Paste a TikTok link (example)' : ex}
-                </button>
-              ))}
-            </div>
-          }
-        />
-
-        <div className="search-options">
-          <label className="select-field">
-            <span className="field-label">Posted in</span>
-            <select id="days" value={query.days} onChange={(e) => setQuery({ ...query, days: Number(e.target.value) })}>
-              <option value={7}>Last 7 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={90}>Last 90 days</option>
-              <option value={3650}>Any time</option>
-            </select>
-          </label>
-
-          <label className="select-field">
-            <span className="field-label">Video length</span>
-            <select
-              id="length"
-              value={query.maxLength}
-              onChange={(e) => setQuery({ ...query, maxLength: Number(e.target.value) })}
-            >
-              <option value={0}>Any length</option>
-              <option value={15}>Under 15 sec</option>
-              <option value={30}>Under 30 sec</option>
-              <option value={60}>Under 60 sec</option>
-            </select>
-          </label>
-
-        </div>
-      </form>
+      {props.lastSearch && (
+        <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>
+          ← Back to results for "{props.lastSearch}"
+        </button>
+      )}
 
       {error && (
         <p className="error" role="alert">

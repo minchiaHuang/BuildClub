@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import type { Format, Platform, Video } from '../types'
+import type { Format, IdeaStatus, Platform, Video } from '../types'
 import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
 import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
-import { Thumb } from './Thumb'
-import { PlatformLogo, PlatformToggles } from './PlatformToggles'
-import { Suggestions } from './Suggestions'
-import { focusFirstSuggestion } from '../lib/suggest'
+import { BestVideo } from './BestVideo'
+import { PlatformLogo } from './PlatformToggles'
+import { SearchBox } from './SearchBox'
+import type { PulseInfo } from './ClientChips'
+import type { ChipGroup } from '../lib/clientChips'
 
 export type Chip =
   | { kind: 'keyword'; value: string }
@@ -40,10 +41,17 @@ interface Props {
   formatFilter: string | null
   setFormatFilter: (id: string | null) => void
   savedVideoIds: Set<string>
+  // Status of each video's plan for this client (saved, sent, approved…).
+  ideaStatus: Map<string, IdeaStatus>
   onOpen: (id: string) => void
   onToggleSave: (id: string) => void
   clientName: string
   onPlan: (id: string) => void
+  // Same search box as the search page, so a new search can start right here.
+  clientExamples: string[]
+  chipGroups: ChipGroup[]
+  pulse: PulseInfo
+  onRefreshPulse: () => void
 }
 
 const stageLabel = {
@@ -58,6 +66,7 @@ export function ResultsScreen(p: Props) {
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
   const best = shown.length ? [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))[0] : undefined
+  const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
   const platformCounts = (['tiktok', 'instagram'] as Platform[])
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
@@ -127,46 +136,20 @@ export function ResultsScreen(p: Props) {
 
   return (
     <section className="results">
-      <form
-        className="toolbar"
-        onSubmit={(e) => {
-          e.preventDefault()
-          p.onSearch(draft)
-        }}
-      >
-        <PlatformToggles
-          selected={p.query.platforms}
-          onChange={(platforms) => p.setQuery({ ...p.query, platforms })}
-          live={p.live}
-        />
-        <div className="toolbar-row">
-          <input
-            id="toolbar-keyword"
-            className="toolbar-search"
-            aria-label="Search a niche, or ask a question"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={focusFirstSuggestion}
-          />
-          <button type="submit" className="btn btn-primary">
-            Search
-          </button>
-        </div>
-      </form>
-
-      {draft !== i.text && !p.live && (
-        <Suggestions
-          text={draft}
-          formats={p.formats}
-          videos={p.allVideos}
-          inputId="toolbar-keyword"
-          onRefine={setDraft}
-          onAsk={(q) => {
-            setDraft(q)
-            p.onSearch(q)
-          }}
-        />
-      )}
+      <SearchBox
+        inputId="toolbar-keyword"
+        value={draft}
+        onValueChange={setDraft}
+        onSearch={p.onSearch}
+        platforms={p.query.platforms}
+        onPlatformsChange={(platforms) => p.setQuery({ ...p.query, platforms })}
+        live={p.live}
+        clientName={p.clientName}
+        clientExamples={p.clientExamples}
+        chipGroups={p.chipGroups}
+        pulse={p.pulse}
+        onRefreshPulse={p.onRefreshPulse}
+      />
 
       <div className="understood">
         <span className="field-label">Searching for</span>
@@ -226,38 +209,40 @@ export function ResultsScreen(p: Props) {
             ))}
           </p>
 
+          {best && <h1 className="best-title">Best to copy</h1>}
           {best && (
             <div className="best">
-              <button className="best-cover" onClick={() => p.onOpen(best.id)} aria-label={`Open breakdown: ${best.hook}`}>
-                <Thumb video={best} />
-              </button>
+              <BestVideo video={best} onOpen={() => p.onOpen(best.id)} />
               <div className="best-body">
-                <span className="eyebrow">Best to copy</span>
                 <strong className="best-hook">"{best.hook}"</strong>
                 <span className="small muted">
                   {compact(best.views)} views from an account with {compact(best.followers)} followers ·{' '}
                   {best.handle} · {agoShort(best.daysAgo)} ago
                 </span>
+                {/* Usual → this video, so the jump reads without decoding the × score. */}
+                <div className="best-compare" aria-label={scoreLine(best)}>
+                  <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
+                  <span className="cmp-arrow" aria-hidden="true">→</span>
+                  <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
+                  <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
+                  <span />
+                  <span className="cmp-cap">this video</span>
+                  <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>
+                    {tierName[tierOf(outlierScore(best))]} · {times(outlierScore(best))}
+                  </span>
+                </div>
                 <div className="best-actions">
                   <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
-                    Plan a version for {p.clientName}
+                    {bestStatus && bestStatus !== 'saved'
+                      ? `Open plan · ${bestStatus === 'waiting' ? 'Waiting for Annie' : bestStatus === 'approved' ? 'Approved' : 'Not approved'}`
+                      : bestStatus === 'saved'
+                        ? 'Continue plan'
+                        : `Plan a version for ${p.clientName}`}
                   </button>
                   <button className="btn btn-ghost" onClick={() => p.onOpen(best.id)}>
                     See why it worked
                   </button>
                 </div>
-              </div>
-              {/* Usual → this video, so the jump reads without decoding the × score. */}
-              <div className="best-compare" aria-label={scoreLine(best)}>
-                <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
-                <span className="cmp-arrow" aria-hidden="true">→</span>
-                <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
-                <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
-                <span />
-                <span className="cmp-cap">this video</span>
-                <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>
-                  {tierName[tierOf(outlierScore(best))]} · {times(outlierScore(best))}
-                </span>
               </div>
             </div>
           )}
@@ -317,6 +302,7 @@ export function ResultsScreen(p: Props) {
                 saved={p.savedVideoIds.has(v.id)}
                 onOpen={() => p.onOpen(v.id)}
                 onToggleSave={() => p.onToggleSave(v.id)}
+                status={p.ideaStatus.get(v.id)}
               />
             ))}
           </div>

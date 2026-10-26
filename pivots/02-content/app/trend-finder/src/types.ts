@@ -65,6 +65,8 @@ export interface Client {
   monthlyTarget: number
   // Starter searches shown on the search page for this client.
   examples: string[]
+  // What the daily trend check searches for (first one is used). Optional so older saved clients still load.
+  topics?: string[]
   // Things this client can't do, used for the "Can they film this?" check.
   cannot: string[]
 }
@@ -77,5 +79,12 @@ export interface SavedIdea {
   clientId: string
   status: IdeaStatus
   dueDate: string
+  // Notes for the editor, used once the idea is approved.
   notes: string
+  // The client's own version of the shot list. Starts as a copy of the reference format's shots.
+  shots?: Shot[]
+  // Short pitch shown to the approver with the plan.
+  noteToApprover?: string
+  sentAt?: number
+  rejectReason?: string
 }
