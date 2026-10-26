@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { IdeaStatus, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
 import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
@@ -9,7 +9,6 @@ import { ResultsScreen } from './components/ResultsScreen'
 import type { Chip } from './components/ResultsScreen'
 import { interpretMedia, matchesKeyword, parseQuery } from './lib/parseQuery'
 import type { Interpretation, MediaSource } from './lib/parseQuery'
-import type { Attachment } from './components/SearchScreen'
 import { LikeThisCard } from './components/LikeThisCard'
 import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
@@ -25,6 +24,8 @@ import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Video } from './types'
 import { checkLive, findPatterns, searchLive } from './lib/live'
+import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
+import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
 import { LiveLoading } from './components/LiveLoading'
 
@@ -37,7 +38,7 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
 
 export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
-  const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v2', sampleClients)
+  const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   const [view, setView] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
   const [menuOpen, setMenuOpen] = useState(false)
@@ -59,6 +60,12 @@ export default function App() {
   const [searching, setSearching] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
+
+  // Daily live trend check per client, which powers the "Trending now" chips on the search page.
+  const [pulses, setPulses] = useStored<Record<string, Pulse>>('trend-finder.pulse.v1', {})
+  const [pulseLoading, setPulseLoading] = useState<string | null>(null)
+  const [pulseError, setPulseError] = useState<string | null>(null)
+  const pulseTried = useRef(new Set<string>())
 
   useEffect(() => {
     checkLive().then((ok) => {
@@ -98,7 +105,6 @@ export default function App() {
 
   // Turn the search box text into filters. Anything the text mentions (time, platform, length)
   // overrides the dropdowns; everything else keeps its current value.
-  const [attachment, setAttachment] = useState<Attachment | null>(null)
   const [reading, setReading] = useState<MediaSource | null>(null)
 
   const runLiveSearch = async (text: string) => {
@@ -140,7 +146,8 @@ export default function App() {
       void runLiveSearch(text)
       return
     }
-    const media = interpretMedia(text, attachment, formats)
+    // Screenshot attachments are switched off for now; pasted video links still work in sample mode.
+    const media = interpretMedia(text, null, formats)
     const next = media ?? parseQuery(text, formats)
     setInterp(next)
     if (media) {
@@ -148,7 +155,6 @@ export default function App() {
       setQuery((q) => ({ ...q, keyword: next.text, platforms: defaultQuery.platforms, days: 90, maxLength: 0 }))
       setFormatFilter(null)
       setReading(media.source)
-      setAttachment(null)
       return
     }
     setQuery((q) => ({
@@ -162,6 +168,36 @@ export default function App() {
     setView('results')
   }
 
+  const refreshPulse = useCallback(
+    async (c: Client, fresh: boolean) => {
+      const topic = clientTopic(c)
+      setPulseLoading(c.id)
+      setPulseError(null)
+      try {
+        const res = await searchLive(topic, fresh)
+        setPulses((prev) => ({ ...prev, [c.id]: pulseFrom(topic, res.videos, findPatterns(res.videos, topic)) }))
+      } catch (e) {
+        setPulseError(e instanceof Error ? e.message : 'Trend check failed.')
+      } finally {
+        setPulseLoading(null)
+      }
+    },
+    [setPulses],
+  )
+
+  // Check once a day per client, when its search page opens. Each attempt runs once per session, even if it fails.
+  useEffect(() => {
+    if (!live || workspace === 'all' || view !== 'search' || pulseLoading) return
+    const topic = clientTopic(client)
+    const p = pulses[client.id]
+    const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
+    const key = `${client.id}|${topic}`
+    if (stale && !pulseTried.current.has(key)) {
+      pulseTried.current.add(key)
+      void refreshPulse(client, false)
+    }
+  }, [live, workspace, view, client, pulses, pulseLoading, refreshPulse])
+
   const finishReading = useCallback(() => {
     setReading(null)
     setView('results')
@@ -170,7 +206,6 @@ export default function App() {
   const removeChip = (chip: Chip) => {
     if (chip.kind === 'source') {
       setInterp((x) => ({ ...x, source: null, topics: [], keywords: ['tofu'] }))
-      setAttachment(null)
     }
     if (chip.kind === 'keyword') setInterp((x) => ({ ...x, keywords: x.keywords.filter((k) => k !== chip.value) }))
     if (chip.kind === 'topic') setInterp((x) => ({ ...x, topics: x.topics.filter((t) => t.formatId !== chip.formatId) }))
@@ -224,6 +259,17 @@ export default function App() {
 
   // Live mode shows only ideas saved from real videos; sample mode only sample ones.
   const shownIdeas = ideas.filter((i) => Boolean(videoById.get(i.videoId)?.live) === live)
+
+  const chipGroups = buildChipGroups({
+    client,
+    live,
+    pulse: pulses[client.id],
+    ideas: shownIdeas,
+    videoById,
+    formatById,
+    sampleFormats: formats,
+    sampleVideos: videos,
+  })
 
   const savedForClient = new Set(shownIdeas.filter((i) => i.clientId === client.id).map((i) => i.videoId))
 
@@ -321,12 +367,19 @@ export default function App() {
               query={query}
               setQuery={setQuery}
               onSearch={runSearch}
-              attachment={attachment}
-              setAttachment={setAttachment}
               clientName={client.name}
               live={live}
               clientExamples={client.examples}
               error={searchError}
+              chipGroups={chipGroups}
+              pulse={{
+                live,
+                loading: pulseLoading === client.id,
+                fetchedAt: pulses[client.id]?.fetchedAt,
+                topic: clientTopic(client),
+                error: pulseError,
+              }}
+              onRefreshPulse={() => void refreshPulse(client, true)}
             />
           )}
 

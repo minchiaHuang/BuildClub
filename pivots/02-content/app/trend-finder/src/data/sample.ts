@@ -192,6 +192,7 @@ export const clients: Client[] = [
     audience: 'Busy mums and young professionals',
     monthlyTarget: 12,
     examples: ['tofu recipe', 'crispy tofu', 'tofu dessert', 'high protein vegetarian meal', 'easy weeknight dinner'],
+    topics: ['tofu recipe', 'tofu'],
     cannot: ['Permission to film in a supermarket'],
   },
   {
@@ -201,6 +202,7 @@ export const clients: Client[] = [
     audience: '18–30 Sydney party-goers',
     monthlyTarget: 8,
     examples: ['sydney nightclub', 'nightclub promo', 'club night crowd', 'sydney nightlife', 'dj set club'],
+    topics: ['sydney nightclub', 'sydney nightlife'],
     cannot: [],
   },
 ]

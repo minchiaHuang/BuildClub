@@ -65,6 +65,8 @@ export interface Client {
   monthlyTarget: number
   // Starter searches shown on the search page for this client.
   examples: string[]
+  // What the daily trend check searches for (first one is used). Optional so older saved clients still load.
+  topics?: string[]
   // Things this client can't do, used for the "Can they film this?" check.
   cannot: string[]
 }

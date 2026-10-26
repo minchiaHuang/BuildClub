@@ -9,6 +9,7 @@ import { VideoTile } from './VideoTile'
 import { Thumb } from './Thumb'
 import { PlatformLogo, PlatformToggles } from './PlatformToggles'
 import { Suggestions } from './Suggestions'
+import { VoiceButton } from './VoiceButton'
 import { focusFirstSuggestion } from '../lib/suggest'
 
 export type Chip =
@@ -147,6 +148,13 @@ export function ResultsScreen(p: Props) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={focusFirstSuggestion}
+          />
+          <VoiceButton
+            onText={setDraft}
+            onDone={(text) => {
+              setDraft(text)
+              p.onSearch(text)
+            }}
           />
           <button type="submit" className="btn btn-primary">
             Search

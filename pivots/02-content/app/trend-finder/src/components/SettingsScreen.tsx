@@ -21,7 +21,7 @@ export function SettingsScreen({ client, onChange }: Props) {
       <header className="page-head">
         <span className="eyebrow">{client.name} · Client settings</span>
         <h1>About this client</h1>
-        <p className="muted">Used for the "Can they film this?" check and the monthly target. Changes save as you type.</p>
+        <p className="muted">Used for the search suggestions, the "Can they film this?" check and the monthly target. Changes save as you type.</p>
       </header>
 
       <div className="settings-grid">
@@ -46,6 +46,26 @@ export function SettingsScreen({ client, onChange }: Props) {
               <option key={a} value={a} />
             ))}
           </datalist>
+        </label>
+        <label className="field field-wide">
+          <span className="field-label">Topics to watch (comma-separated)</span>
+          <input
+            id="client-topics"
+            value={(client.topics ?? []).join(', ')}
+            placeholder="e.g. sydney nightclub, club night"
+            onChange={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trimStart()) })}
+            onBlur={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
+          />
+          <span className="small muted">The first topic is checked on TikTok once a day for the "Trending now" chips.</span>
+        </label>
+        <label className="field field-wide">
+          <span className="field-label">Starter searches (comma-separated)</span>
+          <input
+            id="client-examples"
+            value={client.examples.join(', ')}
+            onChange={(e) => onChange({ examples: e.target.value.split(',').map((t) => t.trimStart()) })}
+            onBlur={(e) => onChange({ examples: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
+          />
         </label>
         <label className="field">
           <span className="field-label">Videos per month</span>

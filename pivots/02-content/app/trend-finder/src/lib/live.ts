@@ -98,8 +98,8 @@ function toFormat(item: LiveItem, v: Video): Format {
   }
 }
 
-export async function searchLive(query: string): Promise<LiveSearch> {
-  const r = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+export async function searchLive(query: string, fresh = false): Promise<LiveSearch> {
+  const r = await fetch(`/api/search?q=${encodeURIComponent(query)}${fresh ? '&fresh=1' : ''}`)
   const body = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(body.error ?? 'Search failed. Is the API running (npm run api)?')
   const videos: Video[] = []
