@@ -1,4 +1,4 @@
-import type { Video } from '../types'
+import type { IdeaStatus, Video } from '../types'
 import { agoShort, compact, outlierScore, scoreLine, tierName, tierOf, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
@@ -7,10 +7,19 @@ interface Props {
   saved: boolean
   onOpen: () => void
   onToggleSave: () => void
+  // Where this video stands for the current client, if it's been saved or sent.
+  status?: IdeaStatus
+}
+
+const statusBadge: Record<IdeaStatus, string> = {
+  saved: 'Saved',
+  waiting: 'Sent to Annie',
+  approved: 'Approved',
+  rejected: 'Not approved',
 }
 
 // One video in the results grid: cover, usual → this video's views, a plain label, the hook and who posted it.
-export function VideoTile({ video, saved, onOpen, onToggleSave }: Props) {
+export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props) {
   const score = outlierScore(video)
   const tier = tierOf(score)
   const byFollowers = video.medianViews === null
@@ -18,6 +27,7 @@ export function VideoTile({ video, saved, onOpen, onToggleSave }: Props) {
     <article className="tile">
       <button className="tile-main" onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}`}>
         <Thumb video={video} />
+        {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge[status]}</span>}
         <div className="tile-body">
           <div className="tile-compare">
             <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>

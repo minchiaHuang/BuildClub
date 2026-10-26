@@ -22,19 +22,39 @@ interface Props {
   chipGroups: ChipGroup[]
   pulse: PulseInfo
   onRefreshPulse: () => void
+  // Videos sent or approved for this client this month, and the monthly target.
+  planned: number
+  target: number
+  // The last search that had results, to offer a way back.
+  lastSearch: string | null
+  onBackToResults: () => void
 }
 
-// Sample mode only: show that questions and video links work too.
-const sampleExtras = ['why is crispy tofu trending?', 'https://www.tiktok.com/@smallkitchen.sample/video/crispy-tofu']
 
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
   const [listening, setListening] = useState(false)
+  // One row only: what's trending for this client, or its starter searches until trends are available.
+  const trending = props.chipGroups.find((g) => g.id === 'trending')
+  const oneRow = trending
+    ? [trending]
+    : [{ id: 'ideas' as const, title: 'Ideas to try', chips: props.clientExamples.slice(0, 5).map((e) => ({ label: e, value: e })) }]
 
   return (
     <section className="search-screen">
       <div className="search-intro">
         <span className="eyebrow">{clientName} · Search</span>
+        {props.planned > 0 && (
+          <span className="progress-line">
+            <strong>
+              {props.planned} of {props.target}
+            </strong>{' '}
+            videos planned for {clientName} this month
+            <span className="progress-mini" aria-hidden="true">
+              <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
+            </span>
+          </span>
+        )}
         <h1>Find videos that are working right now</h1>
         <p className="lede">
           {live
@@ -91,7 +111,8 @@ export function SearchScreen(props: Props) {
         </div>
 
         <Suggestions
-          text={live ? '' : query.keyword}
+          // The search page always shows the client's "Trending now" chips, not typing suggestions.
+          text=""
           formats={formats}
           videos={videos}
           inputId="keyword"
@@ -100,28 +121,20 @@ export function SearchScreen(props: Props) {
           fallback={
             <ClientChips
               clientName={clientName}
-              groups={props.chipGroups}
+              groups={oneRow}
               pulse={props.pulse}
               onPick={onSearch}
               onRefresh={props.onRefreshPulse}
-              extra={
-                live ? null : (
-                  <div className="chip-group">
-                    <span className="chip-group-title">You can also</span>
-                    <div className="chip-row">
-                      {sampleExtras.map((ex) => (
-                        <button key={ex} type="button" className="example" onClick={() => onSearch(ex)}>
-                          {ex.startsWith('http') ? 'Paste a TikTok link (example)' : `Ask: ${ex}`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )
-              }
             />
           }
         />
       </form>
+
+      {props.lastSearch && (
+        <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>
+          ← Back to results for "{props.lastSearch}"
+        </button>
+      )}
 
       {error && (
         <p className="error" role="alert">

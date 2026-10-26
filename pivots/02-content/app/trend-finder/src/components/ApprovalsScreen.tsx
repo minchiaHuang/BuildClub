@@ -9,9 +9,10 @@ interface Props {
   formatById: Map<string, Format>
   setStatus: (ids: string[], status: IdeaStatus) => void
   onGoSaved: () => void
+  onPlan: (ideaId: string) => void
 }
 
-export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById }: Props) {
+export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById, onPlan }: Props) {
   const mine = ideas.filter((i) => i.clientId === client.id)
   const waiting = mine.filter((i) => i.status === 'waiting')
   const decided = mine.filter((i) => i.status === 'approved' || i.status === 'rejected')
@@ -30,20 +31,16 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
             Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
           </span>
         </div>
-        {actions ? (
-          <div className="approval-actions">
-            <button className="approve" onClick={() => setStatus([idea.id], 'approved')}>
-              ✓ Approve
-            </button>
-            <button className="reject" onClick={() => setStatus([idea.id], 'rejected')}>
-              ✕ Reject
-            </button>
-          </div>
-        ) : (
-          <button className="link-btn" onClick={() => setStatus([idea.id], 'waiting')}>
-            Undo
+        <div className="idea-actions">
+          <button className="btn btn-ghost" onClick={() => onPlan(idea.id)}>
+            Open plan
           </button>
-        )}
+          {actions && (
+            <button className="link-btn" onClick={() => setStatus([idea.id], 'saved')}>
+              Withdraw
+            </button>
+          )}
+        </div>
       </li>
     )
   }
@@ -53,7 +50,7 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
       <header className="page-head">
         <span className="eyebrow">{client.name} · Approvals</span>
         <h1>{waiting.length ? `${waiting.length} waiting for Annie` : 'Nothing waiting'}</h1>
-        <p className="muted">Ideas sent for approval. Annie can approve here, or from her phone.</p>
+        <p className="muted">Ideas you've sent to Annie. Her answers will show up here.</p>
       </header>
 
       {waiting.length === 0 ? (

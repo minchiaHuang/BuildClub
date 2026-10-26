@@ -79,5 +79,12 @@ export interface SavedIdea {
   clientId: string
   status: IdeaStatus
   dueDate: string
+  // Notes for the editor, used once the idea is approved.
   notes: string
+  // The client's own version of the shot list. Starts as a copy of the reference format's shots.
+  shots?: Shot[]
+  // Short pitch shown to the approver with the plan.
+  noteToApprover?: string
+  sentAt?: number
+  rejectReason?: string
 }

@@ -56,6 +56,15 @@ export function buildChipGroups(x: Input): ChipGroup[] {
   // The sample data only covers tofu, so sample trends are only shown for a tofu client.
   const sampleFits = /tofu/i.test(`${client.niche} ${(client.topics ?? []).join(' ')} ${client.examples.join(' ')}`)
 
+  // Formats and videos already sent or approved for this client drop out of "Trending now",
+  // so the chips always point at something new.
+  const sentVideos = x.ideas
+    .filter((i) => i.clientId === client.id && (i.status === 'waiting' || i.status === 'approved'))
+    .map((i) => x.videoById.get(i.videoId))
+    .filter((v): v is Video => Boolean(v))
+  const sentFormats = new Set(sentVideos.map((v) => v.formatId))
+  const sentHooks = new Set(sentVideos.map((v) => v.hook))
+
   // 1. Trending now
   if (x.live && x.pulse) {
     const chips: ClientChip[] = [
@@ -65,19 +74,21 @@ export function buildChipGroups(x: Input): ChipGroup[] {
         hint: `${p.accounts} accounts`,
         hot: p.accounts >= 3,
       })),
-      ...x.pulse.breakouts.map((b) => ({ label: `"${b.hook}"`, value: b.hook, hint: `${b.score}× breakout`, hot: true })),
+      ...x.pulse.breakouts.filter((b) => !sentHooks.has(b.hook)).map((b) => ({ label: `"${b.hook}"`, value: b.hook, hint: `${b.score}× breakout`, hot: true })),
     ]
     if (chips.length) groups.push({ id: 'trending', title: 'Trending now', chips })
   } else if (!x.live && sampleFits) {
-    const trends = x.sampleFormats
+    const unused = x.sampleFormats
       .map((f) => formatTrend(f, x.sampleVideos))
-      .filter((t) => t.stage === 'early' || t.stage === 'rising')
       .filter((t) => !t.format.needs.some((n) => client.cannot.includes(n)))
+      .filter((t) => !sentFormats.has(t.format.id))
       .sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage])
-    const chips = trends.map((t) => ({
+    // Early and Rising formats first; if those are all used up, the rest still count as fresh ideas.
+    const stageHint = { early: '', rising: 'Rising', everywhere: 'Popular now', 'one-off': 'New, not proven' } as const
+    const chips = unused.slice(0, 5).map((t) => ({
       label: t.format.short,
       value: t.format.short,
-      hint: t.stage === 'early' && t.leader ? `Early on ${platformName[t.leader]}` : 'Rising',
+      hint: t.stage === 'early' && t.leader ? `Early on ${platformName[t.leader]}` : stageHint[t.stage],
       hot: t.stage === 'early',
     }))
     if (chips.length) groups.push({ id: 'trending', title: 'Trending now', chips })

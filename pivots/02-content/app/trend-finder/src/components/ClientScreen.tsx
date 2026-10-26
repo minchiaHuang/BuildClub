@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, times, outlierScore } from '../lib/metrics'
 import { Thumb } from './Thumb'
@@ -22,12 +21,10 @@ const statusLabel: Record<IdeaStatus, string> = {
 }
 
 export function ClientScreen(p: Props) {
-  const [phoneOpen, setPhoneOpen] = useState(false)
   const client = p.client
   const mine = p.ideas.filter((i) => i.clientId === client.id)
   const count = (s: IdeaStatus) => mine.filter((i) => i.status === s).length
   const unsent = mine.filter((i) => i.status === 'saved')
-  const waiting = mine.filter((i) => i.status === 'waiting')
   const approved = count('approved')
   const progress = Math.min(approved / client.monthlyTarget, 1) * 100
 
@@ -58,11 +55,6 @@ export function ClientScreen(p: Props) {
         <span className="pill pill-ok">{approved} approved</span>
         <span className="pill pill-no">{count('rejected')} rejected</span>
         <span className="spacer" />
-        {waiting.length > 0 && (
-          <button className="btn btn-ghost" onClick={() => setPhoneOpen(true)}>
-            See Annie's view
-          </button>
-        )}
         <button
           className="btn btn-primary"
           disabled={unsent.length === 0}
@@ -71,7 +63,6 @@ export function ClientScreen(p: Props) {
               unsent.map((i) => i.id),
               'waiting',
             )
-            setPhoneOpen(true)
           }}
         >
           Send {unsent.length || ''} to Annie for approval
@@ -117,52 +108,6 @@ export function ClientScreen(p: Props) {
         </ul>
       )}
 
-      {phoneOpen && (
-        <div className="phone-wrap" onClick={() => setPhoneOpen(false)}>
-          <div
-            className="phone"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Annie's approval view"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="phone-notch" />
-            <div className="phone-head">
-              <span className="small muted">What Annie sees on her phone</span>
-              <strong>
-                {client.name}: {waiting.length} to review
-              </strong>
-            </div>
-            <div className="phone-list">
-              {waiting.length === 0 && <p className="muted small">All done. Nothing waiting.</p>}
-              {waiting.map((idea) => {
-                const v = p.videoById.get(idea.videoId)!
-                const f = p.formatById.get(v.formatId)
-                return (
-                  <div key={idea.id} className="phone-card">
-                    <Thumb video={v} />
-                    <div className="phone-card-body">
-                      <strong>{f?.name}</strong>
-                      <span className="small muted">{times(outlierScore(v))} usual views</span>
-                      <div className="phone-actions">
-                        <button className="yes" onClick={() => p.setStatus([idea.id], 'approved')}>
-                          ✓ Approve
-                        </button>
-                        <button className="no" onClick={() => p.setStatus([idea.id], 'rejected')}>
-                          ✕ Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <button className="btn btn-ghost phone-close" onClick={() => setPhoneOpen(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

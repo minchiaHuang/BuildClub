@@ -47,6 +47,8 @@ export default function App() {
   const [formatFilter, setFormatFilter] = useState<string | null>(null)
   const [openVideoId, setOpenVideoId] = useState<string | null>(null)
   const [planIdeaId, setPlanIdeaId] = useState<string | null>(null)
+  // The last search that produced results, so the search page can offer a way back to it.
+  const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
   // Live mode: real TikTok search through the local API (npm run api). Without it, the app uses sample data.
@@ -133,6 +135,7 @@ export default function App() {
       setQuery((qq) => ({ ...qq, keyword: text, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
+      setLastSearch(text)
       setView('results')
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : 'Search failed.')
@@ -165,7 +168,14 @@ export default function App() {
       maxLength: next.maxLength ?? q.maxLength,
     }))
     setFormatFilter(null)
+    setLastSearch(text)
     setView('results')
+  }
+
+  // Start the next video from a clean search page (new idea), keeping the last results one click away.
+  const planAnother = () => {
+    setQuery((q) => ({ ...q, keyword: '' }))
+    setView('search')
   }
 
   const refreshPulse = useCallback(
@@ -380,6 +390,10 @@ export default function App() {
                 error: pulseError,
               }}
               onRefreshPulse={() => void refreshPulse(client, true)}
+              planned={shownIdeas.filter((i) => i.clientId === client.id && (i.status === 'waiting' || i.status === 'approved')).length}
+              target={client.monthlyTarget}
+              lastSearch={lastSearch}
+              onBackToResults={() => setView('results')}
             />
           )}
 
@@ -420,6 +434,7 @@ export default function App() {
               formatFilter={formatFilter}
               setFormatFilter={setFormatFilter}
               savedVideoIds={savedForClient}
+              ideaStatus={new Map(shownIdeas.filter((i) => i.clientId === client.id).map((i) => [i.videoId, i.status]))}
               onOpen={setOpenVideoId}
               onToggleSave={toggleSave}
             />
@@ -449,6 +464,10 @@ export default function App() {
               videoById={videoById}
               setStatus={setStatus}
               onGoSaved={() => setView('saved')}
+              onPlan={(id) => {
+                setPlanIdeaId(id)
+                setView('plan')
+              }}
             />
           )}
 
@@ -475,7 +494,10 @@ export default function App() {
               format={planFormat}
               client={planClient}
               onChange={(patch) => setIdeas((prev) => prev.map((i) => (i.id === planIdea.id ? { ...i, ...patch } : i)))}
-              onBack={() => setView(planIdea.status === 'approved' ? 'plans' : 'saved')}
+              onBack={() => setView('results')}
+              onFindMore={planAnother}
+              onPlanAnother={planAnother}
+              onGoApprovals={() => setView('approvals')}
             />
           )}
         </main>
