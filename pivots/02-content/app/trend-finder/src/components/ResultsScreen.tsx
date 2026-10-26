@@ -4,9 +4,10 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { compact, platformName, plural, stageText, times } from '../lib/metrics'
-import { VideoCard } from './VideoCard'
-import { PlatformToggles } from './PlatformToggles'
+import { agoShort, compact, outlierScore, platformName, plural, stageText, tierOf, times } from '../lib/metrics'
+import { VideoTile } from './VideoTile'
+import { Thumb } from './Thumb'
+import { PlatformLogo, PlatformToggles } from './PlatformToggles'
 import { Suggestions } from './Suggestions'
 import { focusFirstSuggestion } from '../lib/suggest'
 
@@ -41,6 +42,10 @@ interface Props {
   savedVideoIds: Set<string>
   onOpen: (id: string) => void
   onToggleSave: (id: string) => void
+  clientName: string
+  onPlan: (id: string) => void
+  // The sound, hashtag or format that's spreading most, for the summary line.
+  spreading: string | null
 }
 
 const stageLabel = {
@@ -51,13 +56,15 @@ const stageLabel = {
 }
 
 export function ResultsScreen(p: Props) {
-  const columns: Platform[] = p.live
-    ? ['tiktok']
-    : (['instagram', 'tiktok'] as Platform[]).filter((x) => p.query.platforms.includes(x))
   const shown = p.formatFilter ? p.results.filter((v) => v.formatId === p.formatFilter) : p.results
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
+  const best = shown.length ? [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))[0] : undefined
+  const platformCounts = (['tiktok', 'instagram'] as Platform[])
+    .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
+    .filter((x) => x.n > 0)
   const i = p.interp
+  const queryLabel = i.source ? '' : i.keywords.join(' ')
 
   const chips: { chip: Chip; label: string; tone?: string }[] = [
     ...(i.source ? [{ chip: { kind: 'source' } as Chip, label: `like: ${i.source.label}`, tone: 'topic' }] : []),
@@ -72,6 +79,53 @@ export function ResultsScreen(p: Props) {
     ...(i.platforms ? [{ chip: { kind: 'platforms' } as Chip, label: i.platforms.map((x) => platformName[x]).join(' + ') }] : []),
     ...(i.maxLength ? [{ chip: { kind: 'length' } as Chip, label: `under ${i.maxLength} sec` }] : []),
   ]
+
+  const filterControls = (
+    <>
+      <select
+        id="toolbar-days"
+        aria-label="Posted in"
+        value={p.query.days}
+        onChange={(e) => p.setQuery({ ...p.query, days: Number(e.target.value) })}
+      >
+        <option value={7}>Last 7 days</option>
+        <option value={30}>Last 30 days</option>
+        <option value={90}>Last 90 days</option>
+        <option value={3650}>Any time</option>
+      </select>
+      <select
+        id="toolbar-length"
+        aria-label="Video length"
+        value={p.query.maxLength}
+        onChange={(e) => p.setQuery({ ...p.query, maxLength: Number(e.target.value) })}
+      >
+        <option value={0}>Any length</option>
+        <option value={15}>Under 15 sec</option>
+        <option value={30}>Under 30 sec</option>
+        <option value={60}>Under 60 sec</option>
+      </select>
+      <label className="sort">
+        <span>Sort by</span>
+        <select id="toolbar-sort" value={p.sort} onChange={(e) => p.setSort(e.target.value as Sort)}>
+          <option value="outlier">Outlier score</option>
+          <option value="ratio">Views ÷ followers</option>
+          <option value="newest">Newest</option>
+          <option value="fastest">Fastest growing</option>
+        </select>
+      </label>
+      <span
+        className="info"
+        tabIndex={0}
+        title={
+          p.live
+            ? "Score = views ÷ the account's followers. Small accounts with big views rank first. Breakout = 100× or more, Strong = 10× or more."
+            : "Outlier score = views ÷ the account's usual views. Breakout = 100× or more, Strong = 10× or more."
+        }
+      >
+        ⓘ How scores work
+      </span>
+    </>
+  )
 
   return (
     <section className="results">
@@ -134,40 +188,6 @@ export function ResultsScreen(p: Props) {
         ))}
       </div>
 
-      <div className="filters">
-        <select
-          id="toolbar-days"
-          aria-label="Posted in"
-          value={p.query.days}
-          onChange={(e) => p.setQuery({ ...p.query, days: Number(e.target.value) })}
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-          <option value={3650}>Any time</option>
-        </select>
-        <select
-          id="toolbar-length"
-          aria-label="Video length"
-          value={p.query.maxLength}
-          onChange={(e) => p.setQuery({ ...p.query, maxLength: Number(e.target.value) })}
-        >
-          <option value={0}>Any length</option>
-          <option value={15}>Under 15 sec</option>
-          <option value={30}>Under 30 sec</option>
-          <option value={60}>Under 60 sec</option>
-        </select>
-        <label className="sort">
-          <span>Sort by</span>
-          <select id="toolbar-sort" value={p.sort} onChange={(e) => p.setSort(e.target.value as Sort)}>
-            <option value="outlier">Outlier score</option>
-            <option value="ratio">Views ÷ followers</option>
-            <option value="newest">Newest</option>
-            <option value="fastest">Fastest growing</option>
-          </select>
-        </label>
-      </div>
-
       {p.likeThis}
 
       {p.answer && (
@@ -184,99 +204,117 @@ export function ResultsScreen(p: Props) {
       )}
 
       {p.results.length === 0 ? (
-        <div className="empty">
-          <h2>No videos match all of that</h2>
-          <p>
-            {p.live
-              ? 'Try a broader search, or widen the date and length filters. TikTok search often returns older videos.'
-              : 'Try removing a chip above, or widen the date and length filters. The sample data only covers tofu for now.'}
-          </p>
-        </div>
-      ) : (
         <>
-          {p.patterns ?? <div className="trends">
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">Step 2 · Formats that repeat</span>
-                <h2>What's spreading{i.keywords.length ? ` in "${i.keywords.join(' ')}"` : ''}</h2>
-              </div>
-              {p.formatFilter && (
-                <button className="btn btn-ghost" onClick={() => p.setFormatFilter(null)}>
-                  Show all formats
-                </button>
-              )}
-            </div>
-            <div className="trend-row">
-              {p.trends.map((t) => {
-                const active = p.formatFilter === t.format.id
-                return (
-                  <button
-                    key={t.format.id}
-                    className={`trend-card stage-${t.stage} ${active ? 'trend-active' : ''}`}
-                    aria-pressed={active}
-                    onClick={() => p.setFormatFilter(active ? null : t.format.id)}
-                  >
-                    <span className={`stage-pill stage-pill-${t.stage}`}>{stageLabel[t.stage]}</span>
-                    <strong>{t.format.name}</strong>
-                    <span className="trend-text">{stageText(t)}</span>
-                    <span className="trend-counts">
-                      TikTok {t.counts.tiktok} · Instagram {plural(t.counts.instagram, 'account')}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>}
-
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">Step 3 · Top videos</span>
-              <h2>
-                {p.live ? 'Top videos' : activeTrend ? activeTrend.format.name : i.topics.length || i.audience ? 'Matching videos' : 'All formats'}{' '}
-                <span className="muted">· {plural(shown.length, 'video')}</span>
-              </h2>
-            </div>
-            <p className="legend">
-              {p.live ? (
-                <>
-                  <b>Score</b> = views ÷ the account's followers, so small accounts with big views rank first. (We don't
-                  fetch each account's usual views yet.)
-                </>
-              ) : (
-                <>
-                  <b>Outlier score</b> = views ÷ the account's usual views. <b>{times(10)}</b> means 10 times better than
-                  normal.
-                </>
-              )}
+          <div className="filters">{filterControls}</div>
+          <div className="empty">
+            <h2>No videos match all of that</h2>
+            <p>
+              {p.live
+                ? 'Try a broader search, or widen the date and length filters. TikTok search often returns older videos.'
+                : 'Try removing a chip above, or widen the date and length filters. The sample data only covers tofu for now.'}
             </p>
           </div>
+        </>
+      ) : (
+        <>
+          <p className="summary">
+            <strong>{plural(shown.length, 'video')}</strong>
+            {queryLabel && <> for "{queryLabel}"</>}
+            {platformCounts.map(({ pl, n }) => (
+              <span key={pl} className="summary-platform" title={platformName[pl]}>
+                <PlatformLogo platform={pl} size={16} />
+                {n}
+              </span>
+            ))}
+            {best && (
+              <>
+                {' '}· best one beat its account <strong>{times(outlierScore(best))}</strong>
+              </>
+            )}
+            {p.spreading && (
+              <>
+                {' '}· <strong>{p.spreading}</strong> is spreading
+              </>
+            )}
+          </p>
 
-          <div className={`columns cols-${columns.length}`}>
-            {columns.map((pl) => {
-              const list = shown.filter((v) => v.platform === pl)
-              const total = list.reduce((s, v) => s + v.views, 0)
-              return (
-                <div key={pl} className="column">
-                  <h3 className="col-head">
-                    <span className={`dot dot-${pl}`} />
-                    {platformName[pl]} <span className="muted">· {plural(list.length, 'video')} · {compact(total)} views</span>
-                  </h3>
-                  {list.length === 0 && <p className="muted small">Nothing here for this format.</p>}
-                  <div className="card-list">
-                    {list.map((v, i) => (
-                      <VideoCard
-                        key={v.id}
-                        video={v}
-                        rank={i + 1}
-                        saved={p.savedVideoIds.has(v.id)}
-                        onOpen={() => p.onOpen(v.id)}
-                        onToggleSave={() => p.onToggleSave(v.id)}
-                      />
-                    ))}
-                  </div>
+          {best && (
+            <div className="best">
+              <button className="best-cover" onClick={() => p.onOpen(best.id)} aria-label={`Open breakdown: ${best.hook}`}>
+                <Thumb video={best} />
+              </button>
+              <div className="best-body">
+                <span className="eyebrow">Best to copy</span>
+                <strong className="best-hook">"{best.hook}"</strong>
+                <span className="small muted">
+                  {compact(best.views)} views from an account with {compact(best.followers)} followers ·{' '}
+                  {best.handle} · {agoShort(best.daysAgo)} ago
+                </span>
+                <div className="best-actions">
+                  <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
+                    Plan a version for {p.clientName}
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => p.onOpen(best.id)}>
+                    See why it worked
+                  </button>
                 </div>
-              )
-            })}
+              </div>
+              <span className={`score score-${tierOf(outlierScore(best))} best-score`}>{times(outlierScore(best))}</span>
+            </div>
+          )}
+
+          {p.patterns ?? (
+            <div className="trends">
+              <div className="section-head">
+                <h2>What's spreading</h2>
+                {p.formatFilter && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => p.setFormatFilter(null)}>
+                    Show all formats
+                  </button>
+                )}
+              </div>
+              <div className="trend-row">
+                {p.trends.map((t) => {
+                  const active = p.formatFilter === t.format.id
+                  return (
+                    <button
+                      key={t.format.id}
+                      className={`trend-card stage-${t.stage} ${active ? 'trend-active' : ''}`}
+                      aria-pressed={active}
+                      onClick={() => p.setFormatFilter(active ? null : t.format.id)}
+                    >
+                      <span className={`stage-pill stage-pill-${t.stage}`}>{stageLabel[t.stage]}</span>
+                      <strong>{t.format.name}</strong>
+                      <span className="trend-text">{stageText(t)}</span>
+                      <span className="trend-counts">
+                        <PlatformLogo platform="tiktok" size={12} /> {t.counts.tiktok}
+                        <PlatformLogo platform="instagram" size={12} /> {t.counts.instagram}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="grid-head">
+            <h2>
+              {p.live ? 'All videos' : activeTrend ? activeTrend.format.name : 'All videos'}{' '}
+              <span className="muted">· {shown.length}</span>
+            </h2>
+            <div className="filters">{filterControls}</div>
+          </div>
+
+          <div className="grid">
+            {shown.map((v) => (
+              <VideoTile
+                key={v.id}
+                video={v}
+                saved={p.savedVideoIds.has(v.id)}
+                onOpen={() => p.onOpen(v.id)}
+                onToggleSave={() => p.onToggleSave(v.id)}
+              />
+            ))}
           </div>
         </>
       )}

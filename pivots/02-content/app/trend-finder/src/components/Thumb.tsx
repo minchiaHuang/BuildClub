@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Video } from '../types'
 import { platformName } from '../lib/metrics'
+import { PlatformLogo } from './PlatformToggles'
 
 const hues: Record<string, number> = {
   'crispy-asmr': 32,
@@ -21,7 +22,8 @@ export function Thumb({ video, large = false }: { video: Video; large?: boolean 
         <img src={video.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
       )}
       <span className={`plat plat-${video.platform}`} title={platformName[video.platform]}>
-        {large ? platformName[video.platform] : video.platform === 'tiktok' ? 'TT' : 'IG'}
+        <PlatformLogo platform={video.platform} size={large ? 16 : 14} />
+        {large && platformName[video.platform]}
       </span>
       {!showImage && <span className="thumb-hook">{video.hook}</span>}
       <span className="thumb-len">

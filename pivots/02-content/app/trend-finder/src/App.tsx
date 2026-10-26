@@ -340,10 +340,17 @@ export default function App() {
               allVideos={videos}
               onSearch={runSearch}
               onRemoveChip={removeChip}
+              clientName={client.name}
+              onPlan={planFromVideo}
+              spreading={
+                live
+                  ? (patterns[0]?.label ?? null)
+                  : (trends.find((t) => t.stage === 'early' || t.stage === 'rising')?.format.short ?? null)
+              }
               live={live}
               patterns={
                 live ? (
-                  <PatternStrip query={liveQuery} patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
+                  <PatternStrip patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
                 ) : null
               }
               likeThis={

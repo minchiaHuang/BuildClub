@@ -1,6 +1,11 @@
 import type { Client, Format, Platform, Video } from '../types'
 
 export const outlierScore = (v: Video) => v.views / Math.max(v.medianViews ?? v.followers, 1)
+// Plain-English label for a score, so people don't have to read the number.
+export type Tier = 'breakout' | 'strong' | 'normal'
+export const tierOf = (score: number): Tier => (score >= 100 ? 'breakout' : score >= 10 ? 'strong' : 'normal')
+export const tierName: Record<Tier, string> = { breakout: 'Breakout', strong: 'Strong', normal: 'Normal' }
+
 export const viewsPerFollower = (v: Video) => v.views / Math.max(v.followers, 1)
 // Shares + saves per 100 views. Instagram hides saves, so it counts shares only there.
 export const shareSaveRate = (v: Video) => ((v.shares + (v.saves ?? 0)) / Math.max(v.views, 1)) * 100
@@ -18,6 +23,17 @@ export const times = (n: number) => `${n >= 10 ? Math.round(n) : n.toFixed(1).re
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 export const ago = (days: number) => (days <= 1 ? 'today' : `${days} days ago`)
+// Short form for tight spaces: 5d, 3w, 4mo, 2y.
+export const agoShort = (days: number) =>
+  days < 1
+    ? 'today'
+    : days < 14
+      ? `${days}d`
+      : days < 60
+        ? `${Math.round(days / 7)}w`
+        : days < 730
+          ? `${Math.round(days / 30)}mo`
+          : `${Math.round(days / 365)}y`
 
 export type TrendStage = 'early' | 'rising' | 'everywhere' | 'one-off'
 

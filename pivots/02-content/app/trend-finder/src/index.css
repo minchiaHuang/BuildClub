@@ -498,3 +498,66 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .watch-link { justify-self: start; text-decoration: none; }
 .caption { white-space: pre-line; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 140px; overflow-y: auto; }
 .pattern-label { overflow-wrap: anywhere; }
+
+/* Results page: summary, best pick, video grid */
+.summary { font-size: 17px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: -6px; }
+.summary-platform { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px 2px 6px; font-size: 14px; font-weight: 600; }
+
+.best { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 18px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.best-cover { all: unset; cursor: pointer; display: block; border-radius: 8px; }
+.best-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.best-body { display: grid; gap: 6px; min-width: 0; padding-right: 90px; }
+.best-hook { font-family: var(--font-display); font-size: 20px; line-height: 1.25; }
+.best-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.best-score { position: absolute; top: 14px; right: 18px; font-size: 32px; }
+@media (max-width: 600px) { .best { grid-template-columns: 72px minmax(0, 1fr); } .best-body { padding-right: 0; } .best-score { position: static; grid-column: 2; font-size: 24px; } }
+
+.grid-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.grid-head .filters { margin: 0; }
+.info { font-size: 13px; color: var(--muted); cursor: help; border-bottom: 1px dotted var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+
+.tile { position: relative; display: grid; }
+.tile-main { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 8px; border-radius: 10px; }
+.tile-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tile-main .thumb { border-radius: 10px; transition: transform 0.15s; }
+.tile-main:hover .thumb { transform: translateY(-2px); box-shadow: var(--shadow); }
+@media (prefers-reduced-motion: reduce) { .tile-main .thumb { transition: none; } }
+.tile-body { display: grid; gap: 3px; min-width: 0; }
+.tile-score { display: flex; align-items: baseline; gap: 8px; }
+.tile-score .score { font-size: 22px; }
+.tile-hook { font-weight: 600; font-size: 14px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile-meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile-save { position: absolute; top: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgb(255 255 255 / 0.92); color: #1b221f; font-size: 16px; display: grid; place-items: center; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
+.tile-save:hover { transform: scale(1.06); }
+.tile-save-on { background: var(--accent); color: var(--accent-fg); }
+.tile .thumb-len { top: auto; bottom: 6px; right: 6px; }
+
+.score-breakout { color: var(--hot); }
+.score-strong { color: var(--accent); }
+.score-normal { color: var(--muted); }
+.tier { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 999px; }
+.tier-breakout { background: color-mix(in srgb, var(--hot) 14%, transparent); color: var(--hot); }
+.tier-strong { background: var(--accent-soft); color: var(--accent); }
+.tier-normal { background: var(--surface-2); color: var(--muted); }
+
+/* Platform badge on covers: the real logo on a white pill */
+.thumb .plat { display: inline-flex; align-items: center; gap: 5px; background: rgb(255 255 255 / 0.94); color: #111; padding: 3px 5px; border-radius: 6px; font-size: 11px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
+.thumb .plat svg path[fill="var(--tiktok)"] { fill: #111; }
+
+/* Compact "what's spreading" strip */
+.trend-row { grid-auto-columns: minmax(200px, 250px); }
+.trend-card { padding: 11px 13px; gap: 4px; }
+.trend-card strong { font-size: 14px; line-height: 1.3; }
+.trend-text { font-size: 13px; color: var(--muted); }
+.trend-counts { display: inline-flex; align-items: center; gap: 4px; }
+.trend-counts svg { margin-left: 4px; }
+.trend-counts svg:first-child { margin-left: 0; }
+.pattern-kind { display: inline-flex; align-items: center; gap: 6px; }
+.best-body .small { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .best { align-items: start; }
+  .best-actions .btn { white-space: normal; text-align: center; flex: 1 1 100%; }
+  .best-hook { font-size: 17px; }
+}
