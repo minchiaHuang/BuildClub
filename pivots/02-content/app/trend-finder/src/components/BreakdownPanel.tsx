@@ -6,7 +6,10 @@ import {
   compact,
   outlierScore,
   platformName,
+  scoreLine,
   shareSaveRate,
+  tierName,
+  tierOf,
   times,
   viewsPerDay,
   viewsPerFollower,
@@ -34,14 +37,16 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
   const fit = clientFit(format, client)
   const metrics = [
     {
-      label: video.medianViews === null ? 'Score' : 'Outlier score',
-      value: times(outlierScore(video)),
+      label: 'Score',
+      value: `${times(outlierScore(video))} · ${tierName[tierOf(outlierScore(video))]}`,
       note:
         video.medianViews === null
-          ? `${compact(video.views)} views vs ${compact(video.followers)} followers`
-          : `vs ${compact(video.medianViews)} usual views`,
+          ? `${scoreLine(video)} (${compact(video.views)} views, ${compact(video.followers)} followers)`
+          : `${scoreLine(video)} (${compact(video.views)} vs usually ${compact(video.medianViews)})`,
     },
-    { label: 'Views ÷ followers', value: times(viewsPerFollower(video)), note: `${compact(video.followers)} followers` },
+    ...(video.medianViews === null
+      ? []
+      : [{ label: 'Views ÷ followers', value: times(viewsPerFollower(video)), note: `${compact(video.followers)} followers` }]),
     {
       label: 'Shares + saves',
       value: `${shareSaveRate(video).toFixed(1)} per 100 views`,

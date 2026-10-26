@@ -342,11 +342,6 @@ export default function App() {
               onRemoveChip={removeChip}
               clientName={client.name}
               onPlan={planFromVideo}
-              spreading={
-                live
-                  ? (patterns[0]?.label ?? null)
-                  : (trends.find((t) => t.stage === 'early' || t.stage === 'rising')?.format.short ?? null)
-              }
               live={live}
               patterns={
                 live ? (

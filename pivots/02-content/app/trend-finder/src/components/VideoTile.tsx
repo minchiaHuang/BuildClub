@@ -1,5 +1,5 @@
 import type { Video } from '../types'
-import { agoShort, compact, outlierScore, tierName, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, outlierScore, scoreLine, tierName, tierOf, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   onToggleSave: () => void
 }
 
-// One video in the results grid: cover, one big score with a plain label, and a single line of context.
+// One video in the results grid: cover, one big score with a plain label and what it means, and one line of context.
 export function VideoTile({ video, saved, onOpen, onToggleSave }: Props) {
   const score = outlierScore(video)
   const tier = tierOf(score)
@@ -22,6 +22,7 @@ export function VideoTile({ video, saved, onOpen, onToggleSave }: Props) {
             <span className={`score score-${tier}`}>{times(score)}</span>
             <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
           </div>
+          <span className={`score-line score-line-${tier}`}>{scoreLine(video)}</span>
           <span className="tile-hook">{video.hook}</span>
           <span className="tile-meta">
             {compact(video.views)} views · {compact(video.followers)} followers · {agoShort(video.daysAgo)}

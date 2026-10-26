@@ -4,7 +4,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, outlierScore, platformName, plural, stageText, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierOf, times } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { Thumb } from './Thumb'
 import { PlatformLogo, PlatformToggles } from './PlatformToggles'
@@ -44,8 +44,6 @@ interface Props {
   onToggleSave: (id: string) => void
   clientName: string
   onPlan: (id: string) => void
-  // The sound, hashtag or format that's spreading most, for the summary line.
-  spreading: string | null
 }
 
 const stageLabel = {
@@ -64,15 +62,15 @@ export function ResultsScreen(p: Props) {
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
   const i = p.interp
-  const queryLabel = i.source ? '' : i.keywords.join(' ')
+  const queryLabel = i.source ? '' : i.text.trim()
 
   const chips: { chip: Chip; label: string; tone?: string }[] = [
     ...(i.source ? [{ chip: { kind: 'source' } as Chip, label: `like: ${i.source.label}`, tone: 'topic' }] : []),
     ...i.keywords.map((k) => ({ chip: { kind: 'keyword', value: k } as Chip, label: k })),
     ...(i.source ? [] : i.topics).map((t) => ({
       chip: { kind: 'topic', formatId: t.formatId } as Chip,
-      label: `format: ${p.formats.find((f) => f.id === t.formatId)?.name ?? t.word}`,
-      tone: 'topic',
+      // Show the word she typed ("crispy"), not the internal format name.
+      label: t.word,
     })),
     ...(i.audience ? [{ chip: { kind: 'audience' } as Chip, label: `audience: ${i.audience}`, tone: 'audience' }] : []),
     ...(i.days ? [{ chip: { kind: 'days' } as Chip, label: `last ${i.days} days` }] : []),
@@ -118,11 +116,11 @@ export function ResultsScreen(p: Props) {
         tabIndex={0}
         title={
           p.live
-            ? "Score = views ÷ the account's followers. Small accounts with big views rank first. Breakout = 100× or more, Strong = 10× or more."
-            : "Outlier score = views ÷ the account's usual views. Breakout = 100× or more, Strong = 10× or more."
+            ? 'The score compares views with the account’s followers. 77× means 77 times more views than followers, so the idea travelled far beyond the account’s own audience. Breakout = 100× or more, Strong = 10× or more, Normal = under 10×.'
+            : 'The score compares views with what the account usually gets. 77× means 77 times its usual views, so the idea did the work, not the account’s size. Breakout = 100× or more, Strong = 10× or more, Normal = under 10×.'
         }
       >
-        ⓘ How scores work
+        ⓘ What the × score means
       </span>
     </>
   )
@@ -226,16 +224,6 @@ export function ResultsScreen(p: Props) {
                 {n}
               </span>
             ))}
-            {best && (
-              <>
-                {' '}· best one beat its account <strong>{times(outlierScore(best))}</strong>
-              </>
-            )}
-            {p.spreading && (
-              <>
-                {' '}· <strong>{p.spreading}</strong> is spreading
-              </>
-            )}
           </p>
 
           {best && (
@@ -259,17 +247,25 @@ export function ResultsScreen(p: Props) {
                   </button>
                 </div>
               </div>
-              <span className={`score score-${tierOf(outlierScore(best))} best-score`}>{times(outlierScore(best))}</span>
+              <div className="best-score">
+                <span className={`score score-${tierOf(outlierScore(best))}`}>{times(outlierScore(best))}</span>
+                <span className={`score-line score-line-${tierOf(outlierScore(best))}`}>{scoreLine(best)}</span>
+              </div>
             </div>
           )}
 
           {p.patterns ?? (
             <div className="trends">
               <div className="section-head">
-                <h2>What's spreading</h2>
+                <div className="section-title">
+                  <h2>Ideas many accounts are copying</h2>
+                  <p className="section-sub">
+                    The same idea working for several accounts means it's a trend, not luck. Tap one to see those videos.
+                  </p>
+                </div>
                 {p.formatFilter && (
                   <button className="btn btn-ghost btn-sm" onClick={() => p.setFormatFilter(null)}>
-                    Show all formats
+                    Show all videos
                   </button>
                 )}
               </div>

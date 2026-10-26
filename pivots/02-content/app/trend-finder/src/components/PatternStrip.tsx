@@ -13,7 +13,12 @@ export function PatternStrip({ patterns, active, onPick }: Props) {
   return (
     <div className="trends">
       <div className="section-head">
-        <h2>What's spreading</h2>
+        <div className="section-title">
+          <h2>Sounds and hashtags many accounts are using</h2>
+          <p className="section-sub">
+            When several accounts use the same sound or hashtag, it's a trend, not luck. Tap one to see those videos.
+          </p>
+        </div>
         {active && (
           <button className="btn btn-ghost btn-sm" onClick={() => onPick(null)}>
             Show all videos

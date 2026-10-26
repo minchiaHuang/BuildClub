@@ -6,6 +6,15 @@ export type Tier = 'breakout' | 'strong' | 'normal'
 export const tierOf = (score: number): Tier => (score >= 100 ? 'breakout' : score >= 10 ? 'strong' : 'normal')
 export const tierName: Record<Tier, string> = { breakout: 'Breakout', strong: 'Strong', normal: 'Normal' }
 
+// The score in words, e.g. "77 times more views than followers".
+export function scoreLine(v: Video): string {
+  const score = outlierScore(v)
+  const byFollowers = v.medianViews === null
+  if (score < 1.5) return byFollowers ? 'About as many views as followers' : 'About its usual views'
+  const n = score >= 10 ? Math.round(score).toLocaleString() : score.toFixed(1).replace(/\.0$/, '')
+  return byFollowers ? `${n} times more views than followers` : `${n} times its usual views`
+}
+
 export const viewsPerFollower = (v: Video) => v.views / Math.max(v.followers, 1)
 // Shares + saves per 100 views. Instagram hides saves, so it counts shares only there.
 export const shareSaveRate = (v: Video) => ((v.shares + (v.saves ?? 0)) / Math.max(v.views, 1)) * 100
