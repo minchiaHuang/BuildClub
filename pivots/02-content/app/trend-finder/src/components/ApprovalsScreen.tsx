@@ -1,5 +1,4 @@
-import type { Client, IdeaStatus, SavedIdea, Video } from '../types'
-import { formats } from '../data/sample'
+import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, outlierScore, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
@@ -7,11 +6,12 @@ interface Props {
   client: Client
   ideas: SavedIdea[]
   videoById: Map<string, Video>
+  formatById: Map<string, Format>
   setStatus: (ids: string[], status: IdeaStatus) => void
   onGoSaved: () => void
 }
 
-export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved }: Props) {
+export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById }: Props) {
   const mine = ideas.filter((i) => i.clientId === client.id)
   const waiting = mine.filter((i) => i.status === 'waiting')
   const decided = mine.filter((i) => i.status === 'approved' || i.status === 'rejected')
@@ -19,7 +19,7 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
   const card = (idea: SavedIdea, actions: boolean) => {
     const v = videoById.get(idea.videoId)
     if (!v) return null
-    const f = formats.find((x) => x.id === v.formatId)
+    const f = formatById.get(v.formatId)
     return (
       <li key={idea.id} className="approval">
         <Thumb video={v} />

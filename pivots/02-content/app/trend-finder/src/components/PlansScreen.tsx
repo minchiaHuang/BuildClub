@@ -1,16 +1,16 @@
-import type { Client, SavedIdea, Video } from '../types'
-import { formats } from '../data/sample'
+import type { Client, Format, SavedIdea, Video } from '../types'
 import { Thumb } from './Thumb'
 
 interface Props {
   client: Client
   ideas: SavedIdea[]
   videoById: Map<string, Video>
+  formatById: Map<string, Format>
   onOpen: (ideaId: string) => void
   onGoApprovals: () => void
 }
 
-export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals }: Props) {
+export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, formatById }: Props) {
   const approved = ideas
     .filter((i) => i.clientId === client.id && i.status === 'approved')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
@@ -36,7 +36,7 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals }:
           {approved.map((idea) => {
             const v = videoById.get(idea.videoId)
             if (!v) return null
-            const f = formats.find((x) => x.id === v.formatId)
+            const f = formatById.get(v.formatId)
             return (
               <li key={idea.id} className="idea">
                 <Thumb video={v} />
@@ -44,7 +44,7 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals }:
                   <span className="small muted">Due {idea.dueDate}</span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">
-                    {f?.shotList.length} shots · {f?.props.length} props
+                    {f?.shotList.length ? `${f.shotList.length} shots · ${f.props.length} props` : 'Shot list to write from the reference'}
                   </span>
                 </div>
                 <div className="idea-actions">

@@ -13,6 +13,31 @@ npm run dev
 
 Or start `trend-finder` from `pivots/02-content/.claude/launch.json` (port 5174).
 
+## Live TikTok search
+
+Without a key the app runs on sample tofu data. With an Apify key it searches real TikTok videos.
+
+1. Create a free account at [apify.com](https://apify.com) and copy your API token (Console → Settings → API & Integrations).
+2. Copy `.env.example` to `.env` and paste the token after `APIFY_TOKEN=`. `.env` is git-ignored.
+3. Run the local API in a second terminal, next to `npm run dev`:
+
+   ```bash
+   npm run api
+   ```
+
+   It should print `live search ON`. Reload the app: the sidebar label changes to **Live TikTok data**.
+
+How it works:
+
+- The browser calls `/api/search`, which Vite forwards to the local API (`server/index.mjs`, port 8787). The API calls the Apify actor `clockworks/tiktok-scraper` with your token, so the token never reaches the browser.
+- Each search fetches up to 30 videos (`RESULTS_PER_SEARCH`). New searches take about 20–60 seconds. Results are cached in `server/cache/` for 24 hours (`CACHE_HOURS`), so repeats are instant and free. The cache is git-ignored.
+- **Cost:** Apify bills per result. The actor's page listed pricing "from $1.70 / 1,000 results" (checked 26 Oct 2026), so a 30-video search is roughly 5 cents. Check your Apify usage page.
+- **Score in live mode** = views ÷ followers. We don't fetch each account's usual views yet, so this replaces the outlier score.
+- **What's not live yet:** Instagram, link/screenshot search, the "Ask" answers and the AI shot lists. Live videos show what TikTok gives us (caption, sound, hashtags) and link to the video.
+- Live results only use public TikTok data. Check TikTok's and Apify's terms before using this beyond internal testing.
+
+Clients for testing: **Evergreen Foods** and **MYST Nightclub Sydney**, each with starter searches (edit in Client settings, or `examples` in `src/data/sample.ts`).
+
 ## App layout (agency workspace)
 
 Laid out like an agency platform (e.g. GoHighLevel):

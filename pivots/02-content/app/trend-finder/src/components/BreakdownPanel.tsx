@@ -6,7 +6,10 @@ import {
   compact,
   outlierScore,
   platformName,
+  scoreLine,
   shareSaveRate,
+  tierName,
+  tierOf,
   times,
   viewsPerDay,
   viewsPerFollower,
@@ -33,8 +36,17 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
 
   const fit = clientFit(format, client)
   const metrics = [
-    { label: 'Outlier score', value: times(outlierScore(video)), note: `vs ${compact(video.medianViews)} usual views` },
-    { label: 'Views ÷ followers', value: times(viewsPerFollower(video)), note: `${compact(video.followers)} followers` },
+    {
+      label: 'Score',
+      value: `${times(outlierScore(video))} · ${tierName[tierOf(outlierScore(video))]}`,
+      note:
+        video.medianViews === null
+          ? `${scoreLine(video)} (${compact(video.views)} views, ${compact(video.followers)} followers)`
+          : `${scoreLine(video)} (${compact(video.views)} vs usually ${compact(video.medianViews)})`,
+    },
+    ...(video.medianViews === null
+      ? []
+      : [{ label: 'Views ÷ followers', value: times(viewsPerFollower(video)), note: `${compact(video.followers)} followers` }]),
     {
       label: 'Shares + saves',
       value: `${shareSaveRate(video).toFixed(1)} per 100 views`,
@@ -79,6 +91,18 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             </dl>
           </div>
 
+          {video.live && (
+            <section className="block live-facts">
+              {video.url && (
+                <a className="btn btn-ghost watch-link" href={video.url} target="_blank" rel="noreferrer">
+                  Watch on TikTok ↗
+                </a>
+              )}
+              {video.caption && <p className="caption">{video.caption}</p>}
+              {video.music && <span className="small muted">Sound: {video.music}</span>}
+            </section>
+          )}
+
           <div className={`fit ${fit.ok ? 'fit-ok' : 'fit-no'}`}>
             <strong>Can {client.name} film this?</strong>
             <span>{fit.text}</span>
@@ -86,7 +110,8 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
 
           <section className="block">
             <h3>
-              Why it worked <span className="ai-tag">AI breakdown · sample</span>
+              {video.live ? 'What we know' : 'Why it worked'}{' '}
+              <span className="ai-tag">{video.live ? 'From TikTok data' : 'AI breakdown · sample'}</span>
             </h3>
             <dl className="why">
               <div>
@@ -114,7 +139,13 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
 
           <section className="block">
             <h3>Shot list</h3>
-            <ol className="shots">
+            {format.shotList.length === 0 && (
+              <p className="muted small">
+                Not available yet. Shot lists need AI that watches the video. For now, watch it and write the shots in
+                the recreate plan.
+              </p>
+            )}
+            <ol className="shots" hidden={format.shotList.length === 0}>
               {format.shotList.map((s) => (
                 <li key={s.time}>
                   <span className="shot-time">{s.time}</span>

@@ -8,7 +8,8 @@ export interface Video {
   views: number
   followers: number
   // The account's usual (median) views per video. Outlier score = views / medianViews.
-  medianViews: number
+  // Null when we haven't fetched it (live results); the score then falls back to followers.
+  medianViews: number | null
   daysAgo: number
   lengthSec: number
   shares: number
@@ -16,6 +17,13 @@ export interface Video {
   saves: number | null
   formatId: string
   keywords: string[]
+  // Live results only (real TikTok videos).
+  live?: boolean
+  url?: string
+  thumbnail?: string
+  caption?: string
+  music?: string
+  hashtags?: string[]
 }
 
 export interface Shot {
@@ -55,6 +63,8 @@ export interface Client {
   niche: string
   audience: string
   monthlyTarget: number
+  // Starter searches shown on the search page for this client.
+  examples: string[]
   // Things this client can't do, used for the "Can they film this?" check.
   cannot: string[]
 }
