@@ -56,8 +56,8 @@ export default function App() {
   const setWorkspace = (w: Workspace) => {
     setWorkspaceRaw(w)
     setOpenVideoId(null)
-    if (w === 'all') setView('overview')
-    else if (view === 'overview' || view === 'plan') setView('search')
+    // Picking a client from the switcher always starts on Search.
+    setView(w === 'all' ? 'overview' : 'search')
   }
 
   const updateClient = (patch: Partial<Client>) =>
