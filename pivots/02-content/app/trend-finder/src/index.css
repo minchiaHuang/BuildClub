@@ -640,3 +640,22 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .platform-soon svg { filter: none; opacity: 0.7; }
 .toolbar-row { position: relative; align-items: center; }
 .mic-error { left: auto; right: 0; z-index: 5; max-width: 320px; background: var(--surface); color: var(--no); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-shadow: var(--shadow); }
+/* Platform tags: fully round pills */
+.platform { border-radius: 999px; padding: 5px 12px 5px 5px; gap: 7px; }
+.platform .platform-check { margin-left: 2px; }
+.platform-soon { padding-right: 6px; }
+.platform-soon .soon { border-radius: 999px; padding: 2px 8px; }
+
+/* Platform toggles: round icon buttons (like a channel picker) */
+.platforms { align-items: center; gap: 10px; }
+.platform { position: relative; width: 44px; height: 44px; padding: 0; gap: 0; justify-content: center; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); }
+.platform svg { opacity: 1; filter: none; }
+.platform:not(.platform-on):not(:disabled) svg { opacity: 0.55; filter: grayscale(0.6); }
+.platform:hover:not(:disabled) { border-color: var(--accent); }
+.platform:hover:not(:disabled) svg { opacity: 1; filter: none; }
+.platform-on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.platform .platform-check { position: absolute; right: -3px; bottom: -3px; width: 17px; height: 17px; margin: 0; border-radius: 50%; display: grid; place-items: center; font-size: 10px; background: var(--accent); color: var(--accent-fg); border: 2px solid var(--surface); }
+.platform-soon { padding: 0; opacity: 1; }
+.platform-soon svg { opacity: 0.35; filter: grayscale(0.3); }
+.platforms-note { font-size: 13px; color: var(--muted); margin-left: 4px; }
+.platform-soon svg { opacity: 0.55; filter: grayscale(0.2); }
