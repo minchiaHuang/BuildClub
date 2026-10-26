@@ -77,6 +77,11 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
                 className={`cchip cchip-${g.id} ${c.hot ? 'cchip-hot' : ''}`}
                 onClick={() => onPick(c.value)}
               >
+                {g.id === 'trending' && (
+                  <svg className="cchip-trend" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />
+                  </svg>
+                )}
                 <span className="cchip-label">{c.label}</span>
                 {c.hint && <span className="cchip-hint">{c.hint}</span>}
               </button>

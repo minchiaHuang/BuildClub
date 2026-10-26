@@ -773,3 +773,13 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .progress-mini { display: inline-block; width: 90px; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .progress-mini span { display: block; height: 100%; background: var(--accent); }
 .back-results { justify-self: start; margin-top: -12px; }
+
+/* Trending chips: warm gradient, rising-arrow icon, a dot on the hottest ones */
+.cchip-trending { align-items: center; gap: 6px; padding: 7px 14px 7px 11px; border: 1px solid color-mix(in srgb, var(--hot) 30%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--hot) 14%, var(--surface)), color-mix(in srgb, #d6249f 10%, var(--surface))); color: var(--fg); font-weight: 600; }
+.cchip-trending:hover, .cchip-trending:focus-visible { border-color: var(--hot); color: var(--fg); box-shadow: 0 2px 8px color-mix(in srgb, var(--hot) 25%, transparent); transform: translateY(-1px); }
+.cchip-trending .cchip-trend { color: var(--hot); flex: none; }
+.cchip-trending .cchip-hint { color: var(--hot); opacity: 0.85; font-weight: 600; }
+.cchip-trending.cchip-hot::before { display: none; }
+.cchip-trending.cchip-hot { border-color: var(--hot); }
+.cchip-trending.cchip-hot::after { content: 'HOT'; font-size: 9px; font-weight: 800; letter-spacing: 0.06em; color: #fff; background: var(--hot); border-radius: 999px; padding: 1px 6px; }
+@media (prefers-reduced-motion: reduce) { .cchip-trending:hover { transform: none; } }

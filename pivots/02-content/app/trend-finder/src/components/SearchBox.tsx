@@ -29,7 +29,8 @@ export function SearchBox(p: Props) {
   const trending = p.chipGroups.find((g) => g.id === 'trending')
   const oneRow = trending
     ? [trending]
-    : [{ id: 'ideas' as const, title: 'Ideas to try', chips: p.clientExamples.slice(0, 5).map((e) => ({ label: e, value: e })) }]
+    : // No trend data yet (e.g. before live search is on): the client's starter searches fill the same row.
+      [{ id: 'trending' as const, title: 'Trending now', chips: p.clientExamples.slice(0, 5).map((e) => ({ label: e, value: e })) }]
 
   return (
     <form
