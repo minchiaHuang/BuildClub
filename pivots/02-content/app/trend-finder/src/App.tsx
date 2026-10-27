@@ -23,11 +23,20 @@ import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Video } from './types'
-import { analyzeVideo, applyBreakdown, checkLive, findPatterns, loadList, saveList, searchLive } from './lib/live'
+import {
+  analyzeVideo,
+  applyBreakdown,
+  checkLive,
+  findPatterns,
+  loadLibrary,
+  loadList,
+  saveLibrary,
+  saveList,
+  searchLive,
+} from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
-import { LiveLoading } from './components/LiveLoading'
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -59,7 +68,11 @@ export default function App() {
   })
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
+  // Live searches run in the background, so the rest of the app stays usable meanwhile.
   const [searching, setSearching] = useState<string | null>(null)
+  // A search that finished after the user moved to another screen, waiting to be opened.
+  const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
+  const searchSeq = useRef(0)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
 
@@ -81,11 +94,26 @@ export default function App() {
   // every change is saved back. If the API can't load them, this browser's copy is used.
   const [synced, setSynced] = useState(false)
   // What the API already holds, so the copy just loaded from it isn't written straight back.
-  const onServer = useRef<{ clients: Client[] | null; ideas: SavedIdea[] | null }>({ clients: null, ideas: null })
+  const onServer = useRef<{ clients: Client[] | null; ideas: SavedIdea[] | null; library: string | null }>({
+    clients: null,
+    ideas: null,
+    library: null,
+  })
   useEffect(() => {
     if (!live) return
-    Promise.all([loadList<Client>('clients'), loadList<SavedIdea>('ideas')])
-      .then(([savedClients, savedIdeas]) => {
+    Promise.all([loadList<Client>('clients'), loadList<SavedIdea>('ideas'), loadLibrary().catch(() => null)])
+      .then(([savedClients, savedIdeas, library]) => {
+        if (library) {
+          // Add the saved videos this browser hasn't seen; its own copies stay as they are.
+          setLiveStore((prev) => {
+            const add = <T extends { id: string }>(mine: T[], theirs: T[]) => {
+              const ids = new Set(mine.map((x) => x.id))
+              return [...mine, ...theirs.filter((x) => !ids.has(x.id))]
+            }
+            return { videos: add(prev.videos, library.videos), formats: add(prev.formats, library.formats) }
+          })
+          onServer.current.library = libraryKey(library)
+        }
         if (savedClients?.length) {
           setClients(savedClients)
           onServer.current.clients = savedClients
@@ -97,7 +125,7 @@ export default function App() {
         setSynced(true)
       })
       .catch(() => {})
-  }, [live, setClients, setIdeas])
+  }, [live, setClients, setIdeas, setLiveStore])
   useEffect(() => {
     if (!synced || clients === onServer.current.clients) return
     onServer.current.clients = clients
@@ -108,6 +136,27 @@ export default function App() {
     onServer.current.ideas = ideas
     saveList('ideas', ideas).catch(() => {})
   }, [synced, ideas])
+
+  // The videos and breakdowns behind saved ideas, kept on the API like the ideas themselves.
+  const library = useMemo(() => {
+    const ids = new Set(ideas.map((i) => i.videoId))
+    const saved = liveStore.videos.filter((v) => ids.has(v.id))
+    const formatIds = new Set(saved.map((v) => v.formatId))
+    return { videos: saved, formats: liveStore.formats.filter((f) => formatIds.has(f.id)) }
+  }, [ideas, liveStore])
+  useEffect(() => {
+    if (!synced) return
+    const key = libraryKey(library)
+    if (key === onServer.current.library) return
+    onServer.current.library = key
+    saveLibrary(library).catch(() => {})
+  }, [synced, library])
+
+  // Where the user is now, read when a background search finishes.
+  const here = useRef({ view, workspace })
+  useEffect(() => {
+    here.current = { view, workspace }
+  }, [view, workspace])
 
   // Each screen starts at the top, like a new page.
   useEffect(() => {
@@ -149,11 +198,16 @@ export default function App() {
     const parsed = parseQuery(text, formats)
     // Send TikTok the meaningful words; time and length words become filters instead.
     const q = ([...parsed.keywords, ...parsed.topics.map((t) => t.word)].join(' ') || text).trim()
-    if (!q) return
+    if (!q || q === searching) return
+    const seq = ++searchSeq.current
+    const clientId = workspace
     setSearchError(null)
+    setSearchDone(null)
     setSearching(q)
     try {
       const res = await searchLive(q)
+      // A newer search has started since; its results win.
+      if (seq !== searchSeq.current) return
       setLiveStore((prev) => {
         const keep = (list: { id: string }[], add: { id: string }[]) => {
           const ids = new Set(add.map((x) => x.id))
@@ -168,11 +222,16 @@ export default function App() {
       setPatternFilter(null)
       setFormatFilter(null)
       setLastSearch(text)
-      setView('results')
+      // Only jump to the results if the user is still waiting on this client's search page.
+      if (here.current.view === 'search' && here.current.workspace === clientId) setView('results')
+      else setSearchDone({ text, clientId })
     } catch (e) {
-      setSearchError(e instanceof Error ? e.message : 'Search failed.')
+      if (seq !== searchSeq.current) return
+      const message = e instanceof Error ? e.message : 'Search failed.'
+      setSearchError(message)
+      if (here.current.view !== 'search' || here.current.workspace !== clientId) setSearchDone({ text, clientId, error: message })
     } finally {
-      setSearching(null)
+      if (seq === searchSeq.current) setSearching(null)
     }
   }
 
@@ -581,7 +640,94 @@ export default function App() {
       )}
 
       {reading && <ReadingOverlay source={reading} onDone={finishReading} />}
-      {searching && <LiveLoading query={searching} />}
+      {(searching || searchDone) && (
+        <SearchStatus
+          searching={searching}
+          done={searchDone}
+          onView={() => {
+            if (!searchDone) return
+            setWorkspaceRaw(searchDone.clientId)
+            setView(searchDone.error ? 'search' : 'results')
+            setSearchDone(null)
+          }}
+          onDismiss={() => setSearchDone(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Order doesn't matter when comparing what's saved, so compare by id.
+function libraryKey(library: { videos: { id: string }[]; formats: { id: string }[] }) {
+  const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id)
+  return JSON.stringify([[...library.videos].sort(byId), [...library.formats].sort(byId)])
+}
+
+// A small corner notice for the background search, so the rest of the app stays usable.
+function SearchStatus({
+  searching,
+  done,
+  onView,
+  onDismiss,
+}: {
+  searching: string | null
+  done: { text: string; error?: string } | null
+  onView: () => void
+  onDismiss: () => void
+}) {
+  const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    if (!searching) return
+    setSeconds(0)
+    const id = setInterval(() => setSeconds((x) => x + 1), 1000)
+    return () => clearInterval(id)
+  }, [searching])
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: 'fixed',
+        right: 16,
+        bottom: 16,
+        zIndex: 40,
+        maxWidth: 'calc(100vw - 32px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '12px 16px',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderRadius: 12,
+        boxShadow: 'var(--shadow)',
+      }}
+    >
+      {searching ? (
+        <span className="small">
+          Searching TikTok for "{searching}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+        </span>
+      ) : done?.error ? (
+        <>
+          <span className="small">Search for "{done.text}" failed: {done.error}</span>
+          <button className="link-btn small" onClick={onView}>
+            Back to search
+          </button>
+          <button className="link-btn small" onClick={onDismiss} aria-label="Dismiss">
+            ✕
+          </button>
+        </>
+      ) : done ? (
+        <>
+          <span className="small">Results for "{done.text}" are ready.</span>
+          <button className="btn btn-primary btn-sm" onClick={onView}>
+            View
+          </button>
+          <button className="link-btn small" onClick={onDismiss} aria-label="Dismiss">
+            ✕
+          </button>
+        </>
+      ) : null}
     </div>
   )
 }

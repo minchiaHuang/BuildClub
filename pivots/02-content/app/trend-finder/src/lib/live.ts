@@ -180,6 +180,28 @@ export async function saveList<T>(name: 'clients' | 'ideas', items: T[]): Promis
   if (!r.ok) throw new Error(`Could not save ${name}.`)
 }
 
+// The real videos and breakdowns that saved ideas point to. Without them, a saved idea opened
+// in another browser has nothing to show.
+export interface Library {
+  videos: Video[]
+  formats: Format[]
+}
+
+export async function loadLibrary(): Promise<Library | null> {
+  const r = await fetch('/api/library')
+  if (!r.ok) throw new Error('Could not load saved videos.')
+  return r.json()
+}
+
+export async function saveLibrary(library: Library): Promise<void> {
+  const r = await fetch('/api/library', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(library),
+  })
+  if (!r.ok) throw new Error('Could not save saved videos.')
+}
+
 // Sounds and hashtags shared by several accounts in the results: the live version of "formats that repeat".
 export interface Pattern {
   kind: 'sound' | 'hashtag'

@@ -21,3 +21,20 @@ def test_ideas_round_trip(client):
 
 def test_bad_idea_status_is_rejected(client):
     assert client.put("/api/ideas", json=[{**IDEA, "status": "maybe"}]).status_code == 422
+
+
+LIBRARY = {"videos": [{"id": "tt-1", "live": True, "url": "https://www.tiktok.com/@a/video/1"}],
+           "formats": [{"id": "live-1", "shotList": [{"time": "0-2s", "shot": "close-up"}]}]}
+
+
+def test_library_is_null_until_saved(client):
+    assert client.get("/api/library").json() is None
+
+
+def test_library_round_trip(client):
+    assert client.put("/api/library", json=LIBRARY).status_code == 200
+    assert client.get("/api/library").json() == LIBRARY
+
+
+def test_library_needs_both_lists(client):
+    assert client.put("/api/library", json={"videos": []}).status_code == 422

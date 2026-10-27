@@ -28,7 +28,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from analyze import Jobs, job_id_for
-from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, SavedIdea, SearchResult
+from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, Library, SavedIdea, SearchResult
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -286,8 +286,8 @@ def load(key: str):
     return json.loads(row[0]) if row else None
 
 
-def save(key: str, items: list) -> None:
-    value = json.dumps([i.model_dump(exclude_none=True) for i in items])
+def save(key: str, items) -> None:
+    value = json.dumps([i.model_dump(exclude_none=True) for i in items] if isinstance(items, list) else items.model_dump())
     with db() as conn:
         conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, value))
 
@@ -312,6 +312,18 @@ def get_ideas():
 def put_ideas(ideas: list[SavedIdea]):
     save("ideas", ideas)
     return ideas
+
+
+# Without these, saved ideas open in another browser have no video to show.
+@app.get("/api/library", response_model=Optional[Library])
+def get_library():
+    return load("library")
+
+
+@app.put("/api/library", response_model=Library)
+def put_library(library: Library):
+    save("library", library)
+    return library
 
 
 budget_lock = threading.Lock()

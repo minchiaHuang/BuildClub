@@ -71,6 +71,13 @@ class SavedIdea(BaseModel):
     rejectReason: Optional[str] = None
 
 
+class Library(BaseModel):
+    """The real videos and formats (with their breakdowns) that saved ideas point to. The front
+    end owns their shape (Video and Format in src/types.ts), so they are stored as given."""
+    videos: list[dict]
+    formats: list[dict]
+
+
 class Why(BaseModel):
     hook: str
     first3s: str
