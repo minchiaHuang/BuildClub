@@ -4,7 +4,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { PlatformLogo } from './PlatformToggles'
@@ -67,7 +67,7 @@ export function ResultsScreen(p: Props) {
   const [draft, setDraft] = useState(p.interp.text)
   const best = shown.length ? [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))[0] : undefined
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformCounts = (['tiktok', 'instagram', 'youtube'] as Platform[])
+  const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
   const i = p.interp
@@ -216,9 +216,10 @@ export function ResultsScreen(p: Props) {
               <div className="best-body">
                 <strong className="best-hook">"{best.hook}"</strong>
                 <span className="small muted">
-                  {hasScore(best)
+                  {hasScore(best) && best.platform !== 'reddit'
                     ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
-                    : `${compact(best.views)} views`}{' '}
+                    : `${compact(best.views)} ${viewsWord(best)}`}
+                  {best.comments !== undefined && ` · ${compact(best.comments)} comments`}{' '}
                   ·{' '}
                   {best.handle} · {agoShort(best.daysAgo)} ago
                 </span>
@@ -228,7 +229,7 @@ export function ResultsScreen(p: Props) {
                     <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
                     <span className="cmp-arrow" aria-hidden="true">→</span>
                     <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
-                    <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
+                    <span className="cmp-cap">{best.medianViews === null ? 'followers' : `usual ${viewsWord(best)}`}</span>
                     <span />
                     <span className="cmp-cap">this video</span>
                     <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>

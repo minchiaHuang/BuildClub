@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
-import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times } from '../lib/metrics'
+import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { BestVideo } from './BestVideo'
 
 interface Props {
@@ -103,7 +103,7 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
             </>
           ) : (
             <div className="plan-ref-score">
-              <span className="cmp-to">{compact(video.views)}</span> <span className="small muted">views</span>
+              <span className="cmp-to">{compact(video.views)}</span> <span className="small muted">{viewsWord(video)}</span>
             </div>
           )}
           <span className="small muted">

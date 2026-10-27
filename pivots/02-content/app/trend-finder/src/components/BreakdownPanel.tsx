@@ -12,6 +12,7 @@ import {
   tierOf,
   times,
   viewsPerDay,
+  viewsWord,
 } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
@@ -37,14 +38,28 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
   const tier = tierOf(score)
   // The numbers are the point of this panel, so they get their own row of cards.
   const stats = [
-    { label: 'Views', value: compact(video.views), note: video.followers ? `${compact(video.followers)} followers` : 'Follower count not available' },
     {
-      label: 'Shares + saves',
-      value: `${shareSaveRate(video).toFixed(1)}`,
-      unit: 'per 100 views',
-      note: video.saves === null ? 'Instagram hides saves' : `${compact(video.shares)} shares · ${compact(video.saves)} saves`,
+      label: video.platform === 'reddit' ? 'Upvotes' : 'Views',
+      value: compact(video.views),
+      note:
+        video.comments !== undefined
+          ? `${compact(video.comments)} comments`
+          : video.followers
+            ? `${compact(video.followers)} followers`
+            : 'Follower count not available',
     },
-    { label: 'Growth', value: compact(viewsPerDay(video)), unit: 'views a day', note: `Posted ${ago(video.daysAgo)}` },
+    // Reddit has no shares or saves to show.
+    ...(video.platform === 'reddit'
+      ? []
+      : [
+          {
+            label: 'Shares + saves',
+            value: `${shareSaveRate(video).toFixed(1)}`,
+            unit: 'per 100 views',
+            note: video.saves === null ? 'Instagram hides saves' : `${compact(video.shares)} shares · ${compact(video.saves)} saves`,
+          },
+        ]),
+    { label: 'Growth', value: compact(viewsPerDay(video)), unit: `${viewsWord(video)} a day`, note: `Posted ${ago(video.daysAgo)}` },
     {
       label: 'Format used by',
       value: String(formatAccounts),

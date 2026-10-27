@@ -7,7 +7,8 @@ interface LiveItem {
   text: string
   url: string
   createTime: string | null
-  plays: number
+  // Null on Reddit, which shows no views.
+  plays: number | null
   likes: number
   comments: number
   shares: number
@@ -22,6 +23,10 @@ interface LiveItem {
   music: string
   musicOriginal: boolean
   hashtags: string[]
+  // Reddit only (backend/models.py): upvotes stand in for views, and medianUpvotes for medianViews.
+  upvotes?: number | null
+  community?: string | null
+  medianUpvotes?: number | null
 }
 
 export interface LiveSearch {
@@ -52,19 +57,20 @@ function hookFrom(text: string): string {
 const daysSince = (iso: string | null) =>
   iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 999
 
-const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt', x: 'x' }
-const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short', x: 'X video' }
+const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt', reddit: 'rd', x: 'x' }
+const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short', reddit: 'Reddit video', x: 'X video' }
 
 function toVideo(item: LiveItem, query: string, platform: Platform): Video {
   return {
     id: `${idPrefix[platform]}-${item.id}`,
     platform,
-    handle: `@${item.author}`,
+    handle: platform === 'reddit' && item.community ? `r/${item.community}` : `@${item.author}`,
     hook: hookFrom(item.text) || noCaption[platform],
-    views: item.plays,
+    // Reddit has no views: upvotes take their place, so the score maths and sorting stay as they are.
+    views: platform === 'reddit' ? (item.upvotes ?? 0) : (item.plays ?? 0),
     followers: item.followers ?? 0,
     // Without the account's usual views, the score falls back to followers.
-    medianViews: item.medianViews ?? null,
+    medianViews: (platform === 'reddit' ? item.medianUpvotes : item.medianViews) ?? null,
     daysAgo: daysSince(item.createTime),
     lengthSec: Math.round(item.duration),
     shares: item.shares,
@@ -77,6 +83,7 @@ function toVideo(item: LiveItem, query: string, platform: Platform): Video {
     caption: item.text,
     music: item.music,
     hashtags: item.hashtags,
+    comments: platform === 'reddit' ? item.comments : undefined,
   }
 }
 
@@ -94,7 +101,7 @@ function toFormat(item: LiveItem, v: Video): Format {
     why: {
       hook: v.hook === noCaption[v.platform] ? 'No caption hook.' : `Caption opens with "${v.hook}".`,
       first3s: 'Save or plan this video to get the AI breakdown of its shots.',
-      length: `${v.lengthSec} seconds.`,
+      length: v.lengthSec ? `${v.lengthSec} seconds.` : 'Length not given.',
       format: tags.length ? `Tagged ${tags.join(' ')}.` : 'No hashtags.',
       sound: item.music ? `${item.musicOriginal ? 'Original sound' : 'Uses the sound'} "${item.music}".` : 'Unknown sound.',
     },

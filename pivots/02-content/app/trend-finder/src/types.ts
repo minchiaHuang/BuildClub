@@ -1,4 +1,4 @@
-export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'x'
+export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'reddit' | 'x'
 
 export interface Video {
   id: string
@@ -24,6 +24,8 @@ export interface Video {
   caption?: string
   music?: string
   hashtags?: string[]
+  // Reddit only: it shows no views, so `views` holds the upvotes (and medianViews the subreddit's usual upvotes).
+  comments?: number
 }
 
 export interface Shot {

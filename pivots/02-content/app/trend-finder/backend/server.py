@@ -30,6 +30,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 import channels
+import reddit
 import x
 import youtube
 from analyze import Jobs, job_id_for
@@ -60,6 +61,8 @@ TOKEN = os.environ.get("APIFY_TOKEN", "").strip()
 ACTOR = os.environ.get("APIFY_TIKTOK_ACTOR", "clockworks~tiktok-scraper")
 IG_ACTOR = os.environ.get("APIFY_INSTAGRAM_ACTOR", "apify~instagram-hashtag-scraper")
 X_ACTOR = os.environ.get("APIFY_X_ACTOR", "kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest")
+REDDIT_ACTOR = os.environ.get("APIFY_REDDIT_ACTOR", "clearpath~reddit-search-scraper")
+REDDIT_SUB_ACTOR = os.environ.get("APIFY_REDDIT_SUB_ACTOR", "clearpath~reddit-subreddit-posts-scraper")
 RESULTS_PER_SEARCH = int(os.environ.get("RESULTS_PER_SEARCH", 30))
 CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$1.70/1,000 is about $0.05.
@@ -78,8 +81,11 @@ DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
 DAILY_JEV_USD = float(os.environ.get("DAILY_JEV_USD", 0.50))
 DAILY_SCRAPECREATORS_CREDITS = float(os.environ.get("DAILY_SCRAPECREATORS_CREDITS", 20))
 # X: 30 tweets at ~US$0.25-0.40 per 1,000 is about 0.01; 0.02 leaves room for the actor's minimum charge.
-SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03, "x": 0.02}
+# Reddit (clearpath actors) is ~US$1 per 1,000 posts: 30 search results about 0.03 (measured 0.031),
+# a subreddit's 10 top posts about 0.02 (measured: 8 subreddits in one run cost 0.16).
+SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03, "reddit": 0.03, "x": 0.02}
 X_USD_PER_TWEET = 0.0004  # the dearer of the two candidate actors; account medians cost this per tweet fetched
+REDDIT_USD_PER_SUB = 0.02
 APIFY_USD_PER_VIDEO = 0.0017  # TikTok actor; account medians cost this per video fetched
 ANALYZE_USD = 0.08  # one Claude breakdown
 
@@ -112,7 +118,7 @@ def error(status: int, message: str, detail: str = "") -> JSONResponse:
 
 
 def cache_name(query: str, platform: str = "tiktok") -> str:
-    actor = {"instagram": IG_ACTOR, "youtube": "yt-dlp", "x": X_ACTOR}.get(platform, ACTOR)  # TikTok keys stay as before, so pins still load
+    actor = {"instagram": IG_ACTOR, "youtube": "yt-dlp", "x": X_ACTOR, "reddit": REDDIT_ACTOR}.get(platform, ACTOR)  # TikTok keys stay as before, so pins still load
     return hashlib.sha1(f"{actor}|{RESULTS_PER_SEARCH}|{query}".encode()).hexdigest() + ".json"
 
 
@@ -385,10 +391,49 @@ def search_x(query: str):
     return {**payload, "cached": False}
 
 
+def search_reddit(query: str):
+    """The search itself is already paid for (counted by the caller). Up to SUBS_PER_SEARCH subreddit
+    medians are paid for and fetched in the background, the way TikTok's account medians are."""
+    try:
+        videos = reddit.search_posts(run_actor, query, REDDIT_ACTOR)
+        subs = list(dict.fromkeys(v["community"] for v in videos if v["community"]))
+        medians = reddit.saved(db, subs, MEDIAN_DAYS)
+        reddit.apply(videos, medians)
+    except Exception as e:
+        print(f"[search] failed: {e}", flush=True)
+        return error(502, "Reddit search failed. Check the API terminal for details.", str(e))
+    missing = [s for s in subs if s not in medians][:reddit.SUBS_PER_SEARCH]
+    payload = {"query": query, "platform": "reddit", "fetchedAt": int(time.time() * 1000), "videos": videos,
+               "mediansPending": bool(missing)}
+    write_cache(payload)
+    print(f'[search] reddit "{query}" → {len(videos)} videos', flush=True)
+    if missing:
+        filling.add(cache_name(query, "reddit"))
+        background = copy.deepcopy(payload)
+
+        def fill():
+            try:
+                found = {}
+                if spend("apify", round(len(missing) * REDDIT_USD_PER_SUB, 2), DAILY_APIFY_USD):
+                    found = reddit.fetch_subreddits(run_actor, missing, REDDIT_SUB_ACTOR)
+                    reddit.save(db, found)
+                else:
+                    print("[search] subreddit medians skipped: today's Apify budget is used up", flush=True)
+                reddit.apply(background["videos"], {**medians, **found})
+                background["mediansPending"] = False
+                write_cache(background)
+                print(f'[search] reddit "{query}" → scores for {len(found)} of {len(missing)} subreddits', flush=True)
+            finally:
+                filling.discard(cache_name(query, "reddit"))
+
+        in_background(fill)
+    return {**payload, "cached": False}
+
+
 @app.get("/api/health")
 def health():
-    # yt-dlp alone is enough for live YouTube search; TikTok and Instagram need the Apify token.
-    return {"live": bool(TOKEN) or bool(shutil.which("yt-dlp")), "platforms": ["tiktok", "instagram", "youtube", "x"],
+    # yt-dlp alone is enough for live YouTube search; TikTok, Instagram, Reddit and X need the Apify token.
+    return {"live": bool(TOKEN) or bool(shutil.which("yt-dlp")), "platforms": ["tiktok", "instagram", "youtube", "reddit", "x"],
             "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
@@ -397,8 +442,8 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
     query = q.strip()[:120]
     if not query:
         return error(400, "Type something to search.")
-    if platform not in ("tiktok", "instagram", "youtube", "x"):
-        return error(400, "Search TikTok, Instagram, YouTube or X.")
+    if platform not in ("tiktok", "instagram", "youtube", "reddit", "x"):
+        return error(400, "Search TikTok, Instagram, YouTube, Reddit or X.")
     if not TOKEN and platform != "youtube":
         return error(503, "Live search is off. Add APIFY_TOKEN to .env and restart the API.")
     if fresh != "1":
@@ -415,6 +460,8 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
         return search_x(query)
     medians, missing = {}, []
     try:
+        if platform == "reddit":
+            return search_reddit(query)  # subreddit medians are filled in the background
         if platform == "instagram":
             videos = search_instagram(query)  # account medians are TikTok only for now
         else:
@@ -533,8 +580,8 @@ X_STATUS = re.compile(r"https://(www\.|mobile\.)?(x|twitter)\.com/\w+/status/\d+
 def start_analyze(body: AnalyzeRequest):
     url = body.url.strip()
     if not (url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/", "https://www.youtube.com/shorts/",
-                            "https://youtube.com/shorts/")) or X_STATUS.match(url)):
-        return error(400, "Paste a TikTok, Instagram, YouTube Shorts or X link.")
+                            "https://youtube.com/shorts/", "https://www.reddit.com/r/", "https://v.redd.it/")) or X_STATUS.match(url)):
+        return error(400, "Paste a TikTok, Instagram, YouTube Shorts, Reddit video or X link.")
     current = jobs.get(job_id_for(url))
     if (not current or current.status == "failed") and not spend("claude", ANALYZE_USD, DAILY_CLAUDE_USD):
         return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")

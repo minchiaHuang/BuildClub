@@ -1,8 +1,13 @@
 import type { Client, Format, Platform, Video } from '../types'
 
-export const outlierScore = (v: Video) => v.views / Math.max(v.medianViews ?? v.followers, 1)
+// A Reddit post whose subreddit has no usual upvotes yet has no score (0), so it sorts after the scored ones
+// instead of beating them on raw upvotes.
+export const outlierScore = (v: Video) =>
+  v.platform === 'reddit' && v.medianViews === null ? 0 : v.views / Math.max(v.medianViews ?? v.followers, 1)
 // Live Instagram results have neither the account's usual views nor its followers, so there is
 // nothing to compare against: show views only, no × score. (outlierScore is then just views, which still sorts.)
+// Reddit shows no views, so its posts are compared by upvotes (stored in `views`).
+export const viewsWord = (v: Video) => (v.platform === 'reddit' ? 'upvotes' : 'views')
 export const hasScore = (v: Video) => v.medianViews !== null || v.followers > 0
 // Plain-English label for a score, so people don't have to read the number.
 export type Tier = 'breakout' | 'strong' | 'normal'
@@ -11,6 +16,12 @@ export const tierName: Record<Tier, string> = { breakout: 'Breakout', strong: 'S
 
 // The score in words, e.g. "77 times more views than followers".
 export function scoreLine(v: Video): string {
+  if (v.platform === 'reddit') {
+    if (!hasScore(v)) return `${compact(v.views)} upvotes. No usual upvotes for the subreddit yet`
+    const score = outlierScore(v)
+    if (score < 1.5) return 'About its subreddit’s usual upvotes'
+    return `${score >= 10 ? Math.round(score).toLocaleString() : score.toFixed(1).replace(/\.0$/, '')} times its subreddit’s usual upvotes`
+  }
   if (!hasScore(v)) return `${compact(v.views)} views. No follower count to compare with`
   const score = outlierScore(v)
   const byFollowers = v.medianViews === null
@@ -70,6 +81,7 @@ export function formatTrend(format: Format, pool: Video[]): FormatTrend {
     instagram: used.filter((v) => v.platform === 'instagram').length,
     youtube: used.filter((v) => v.platform === 'youtube').length, // sample data has none; live mode skips trends
     x: used.filter((v) => v.platform === 'x').length,
+    reddit: used.filter((v) => v.platform === 'reddit').length,
   }
   const newestDays = Math.min(...used.map((v) => v.daysAgo))
   const total = counts.tiktok + counts.instagram
@@ -94,7 +106,7 @@ export function stageText(t: FormatTrend): string {
 
 export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, everywhere: 2, 'one-off': 3 }
 
-export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', x: 'X' }
+export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', reddit: 'Reddit', x: 'X' }
 
 export function clientFit(format: Format, client: Client) {
   if (format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }

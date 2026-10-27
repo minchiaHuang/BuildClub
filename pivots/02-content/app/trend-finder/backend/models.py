@@ -12,7 +12,8 @@ class SearchVideo(BaseModel):
     text: str
     url: str
     createTime: Optional[str] = None
-    plays: int
+    # Null on Reddit, which shows no views: upvotes stand in for them.
+    plays: Optional[int] = None
     likes: int
     comments: int
     shares: int
@@ -33,15 +34,20 @@ class SearchVideo(BaseModel):
     outlier: Optional[float] = None
     # YouTube only: the channel, which the usual views are looked up by. Not shown in the app.
     channelId: Optional[str] = None
+    # Reddit only: upvotes, the subreddit (without "r/"), and the subreddit's median upvotes over its
+    # top posts of the month. outlier is upvotes ÷ medianUpvotes.
+    upvotes: Optional[int] = None
+    community: Optional[str] = None
+    medianUpvotes: Optional[float] = None
 
 
 class SearchResult(BaseModel):
     query: str
-    platform: Literal["tiktok", "instagram", "youtube", "x"]
+    platform: Literal["tiktok", "instagram", "youtube", "reddit", "x"]
     fetchedAt: int
     videos: list[SearchVideo]
     cached: bool
-    # True while account medians are still being fetched; search again (it's cached) for the scores.
+    # True while account (or subreddit) medians are still being fetched; search again (it's cached) for the scores.
     mediansPending: bool = False
 
 
