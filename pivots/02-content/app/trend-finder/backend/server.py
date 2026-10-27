@@ -68,7 +68,7 @@ CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$3.70/1,000 is about $0.11 (measured 0.112 on 2026-10-27).
 # The charge cap is a backstop only; Apify refuses anything below $0.50.
 MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
-# Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.26.
+# Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.56.
 AUTHORS_PER_SEARCH = int(os.environ.get("AUTHORS_PER_SEARCH", 15))
 VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 10))
 MIN_VIDEOS = 5  # fewer recent videos than this and the median says little
