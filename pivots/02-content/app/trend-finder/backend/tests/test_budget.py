@@ -16,7 +16,7 @@ def fake_search(calls):
 def test_live_searches_stop_at_the_daily_cap(client, monkeypatch):
     calls = []
     monkeypatch.setattr(server, "run_actor", fake_search(calls))
-    # The first search pays 0.12 + 0.04 for account a's videos; a is then cached, so the second pays 0.12.
+    # The first search pays 0.12 + 0.02 for account a's videos; a is then cached, so the second pays 0.12.
     monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.28)
     for _ in range(2):
         assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 200

@@ -2,6 +2,7 @@
 
 **一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台；2026-10-27 用 Apify 實際扣款校正 TikTok 單價，每日上限調到 US$2、中位數 run 另設 US$0.60 上限，全新 TikTok 搜尋實測估算 0.68 ≈ 實扣 0.668（已 push，PR #3）。
 
+- **2026-10-27 22:30（TikTok 省錢）：** 使用者選 1 + 3：`VIDEOS_PER_AUTHOR` 10 → **6**（中位數 15 個作者約 US$0.33，全新 TikTok 搜尋估約 **US$0.45**，原本 0.68）；`MEDIAN_DAYS` 7 → **30**（五個平台共用，X/Reddit 的中位數也會少抓）。風險：只抓 6 支、`MIN_VIDEOS` 仍是 5，近期影片少的帳號沒有分數的比例可能變高（10 支時 16/30 有分數）。驗證：`bash bin/verify.sh` 綠。**還沒真實實測**：今天 app 記 1.67/2.00，剩的不夠一次 0.45。
 - **2026-10-27 22:10（花費上限）：** 使用者決定：`DAILY_APIFY_USD` 預設 1.00 → **2.00**；新增 `MAX_USD_PER_MEDIANS`（預設 **0.60**），只用在 TikTok 作者中位數那個 run（15 × 10 支約 0.56，原本被 0.50 截在 134 支），搜尋本身仍是 `MAX_USD_PER_SEARCH` 0.50。`run_actor` 多一個 `max_usd` 參數，測試的假 actor 跟著改，加 1 個測試（共 159）。真實全新 TikTok 搜尋「miso soup recipe」：搜尋 49 秒回 30 支，中位數背景 48 秒，16/30 支有分數；app 估算 0.12 + 0.56 = **0.68**，Apify 實際扣款 **0.668**（搜尋 0.112、中位數 0.556，上限 0.6，沒有截斷）。app 今天記的 Apify 花費 1.67/2.00。驗證：`bash bin/verify.sh` 綠。
 
 - **2026-10-27 深夜（UI + 花費校正）：**
@@ -41,6 +42,7 @@
 - **下一步：**
   - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
   - IG hover 播放要後端提供影片檔網址才做得到。
+  0. 明天跑一次全新 TikTok 搜尋（約 US$0.45），確認實扣和有分數的比例。
   1. 等 Veralyn 審 PR #3，回應她的意見。
   2. 和 Veralyn 討論上面的前端已知問題（費用提示、拆解狀態顯示、自動搜尋客戶主題）。
   3. 前端 `lines` 顯示（Veralyn 的元件）。

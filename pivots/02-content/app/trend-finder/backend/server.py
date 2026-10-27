@@ -68,13 +68,13 @@ CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$3.70/1,000 is about $0.11 (measured 0.112 on 2026-10-27).
 # The charge cap is a backstop only; Apify refuses anything below $0.50.
 MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
-# Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.56,
-# over the search cap (at 0.50 the run stopped at 134 of 150 videos), so that run gets its own cap.
+# Each account's usual views come from its latest videos: 15 accounts x 6 videos is about $0.33.
+# At 10 videos (about $0.56) the 0.50 search cap stopped the run at 134 of 150, so that run has its own cap.
 MAX_USD_PER_MEDIANS = float(os.environ.get("MAX_USD_PER_MEDIANS", 0.60))
 AUTHORS_PER_SEARCH = int(os.environ.get("AUTHORS_PER_SEARCH", 15))
-VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 10))
+VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 6))
 MIN_VIDEOS = 5  # fewer recent videos than this and the median says little
-MEDIAN_DAYS = 7  # an account's usual views are reused this long before they are fetched again
+MEDIAN_DAYS = 30  # an account's usual views are reused this long before they are fetched again
 # Daily caps on estimated spend, so a loop or stray clicks can't run up the bill. Each paid call is
 # counted before it runs; cached searches and finished breakdowns are free and never counted.
 DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 2.00))
