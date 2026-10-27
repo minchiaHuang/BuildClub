@@ -1,6 +1,11 @@
 # STATUS
 
-**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台，新增 Channel 總結頁和 TikTok 滑鼠移上去播放；2026-10-27 晚修好 4 個 UI 小問題（已 push，PR #3）。
+**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台；2026-10-27 深夜再修 5 個 UI 小問題、X 第一次真實搜尋並 pin 住 tofu、用 Apify 實際扣款校正 TikTok 單價（已 push，PR #3）。
+
+- **2026-10-27 深夜（UI + 花費校正）：**
+  - UI（`e756179`）：YouTube 拆解面板不再顯示 Shares + saves（YouTube 搜尋沒有這兩個數字）；側邊欄「Live TikTok data」改成「Live data」；平台切換旁的說明不再多一個空的「· soon」；天數篩選保留沒有日期的 YouTube 影片（`App.tsx` 用 `hasDate`）；規劃頁 IG/X 參考影片只剩一個「Watch on <平台> ↗」文字連結，封面本身改成連到原影片（`BestVideo.tsx`）。改到 Veralyn 的元件：BestVideo、BreakdownPanel、Sidebar、PlatformToggles，加上 `App.tsx`。驗證：verify 綠、`npm run build` 過、eslint 乾淨；Playwright 隔離副本（無 `.env`、假 token、上限 0）5 項全過，TikTok/IG 拆解面板仍有 Shares + saves，TikTok 規劃頁仍是嵌入播放器。
+  - X 真實搜尋「tofu」：18 秒回 38 支，36 支有封面（`x.py` 猜的 media 結構讀得到），背景中位數 22 秒，8/38 支有分數。**實際扣款 US$0.0345**（搜尋 38 筆 0.0095 + 中位數 100 筆 0.025；估算 0.06，偏高、安全）。已 pin：`backend/pinned/47b2f044….json`。`server.py pin` 現在接受五個平台。Playwright 隔離副本實測 X 畫面 5 項全過：38 張卡片都有 × 分數（沒中位數的用觀看數 ÷ 粉絲數）、Best 卡片「Open to watch on X」點了開拆解抽屜、抽屜數字正常且有 x.com 連結、規劃頁只有一個「Watch on X ↗」。
+  - TikTok 單價校正（沒有另跑新搜尋：app 今天的每日估算已到 US$0.99/1.00 會被擋，而 Apify API 已有 14 筆今天的真實 TikTok run 可對照）：每次搜尋 30 支 **實際 US$0.112**、作者中位數 134 支 **實際 US$0.497**（每支 US$0.0037 + 啟動約 0.001）。原估算搜尋 0.05、每支 0.0017，低估約 2.2 倍 → 改成 `SEARCH_USD["tiktok"] = 0.12`、`APIFY_USD_PER_VIDEO = 0.0037`，`test_budget.py` 跟著改。一次全新 TikTok 搜尋（含 15 個作者中位數）現在估約 US$0.68。
 
 - **2026-10-27 晚（UI 小問題）：** pulse 文案改成「"Trending now" is from TikTok for …, whichever platforms you search」（仍只查 TikTok）；`times()` 10× 以上加千分位；BestVideo 對 YouTube 嵌入 `youtube.com/embed`，IG/X/Reddit 真實影片改顯示「Open to watch on <平台>」（規劃頁是「Watch on <平台> ↗」連結）；YouTube 封面放大 1.34 倍裁掉 hqdefault 的上下黑邊；沒有發布日期（`UNKNOWN_DAYS` = 999，YouTube 搜尋）時影片卡片和 Best 卡片不顯示日期，拆解面板 Growth 顯示「– / Posting date unknown」。改到 Veralyn 的元件：BestVideo、Thumb、ClientChips、VideoTile、ResultsScreen、BreakdownPanel、`index.css`，加上 `lib/metrics.ts`、`lib/live.ts`。驗證：`bash bin/verify.sh` 綠、`npm run build` 過、eslint 改動檔乾淨；Playwright 在隔離副本（無 `.env`、假 token、每日上限 0）實測：pulse 文案、千分位（2,730×、759,722×）、YouTube 嵌入、YouTube 無黑邊／無日期／Growth「–」、IG Best 卡片與規劃頁連結都通過，TikTok 日期與嵌入照舊。**X 沒實測**（沒有 X 快取；和 IG 走同一段程式）。
 
@@ -13,12 +18,12 @@
   - `npm run api` 指令改成 Python 後，在 8790 試跑：health、IG pin、TikTok pin 都正常。
 - **本次花費（2026-10-27，上限 Apify US$1 / Claude US$1）：** Apify 約 US$0.26（中位數 0.23 + IG 0.03，2/2 次 run），Claude 約 US$0.23（tofu 重跑 + IG 拆解，各約 0.08；瀏覽器實測拆解 1 支，in 6,018 / out 1,828，約 0.07）。Apify 依每支單價估算，實際扣款看 console.apify.com。
 - **進行中：** 分支 `feat/backend-api`（worktree `~/orca/workspaces/BuildClub/feat-backend-api`），已 push 到 fork `minchiaHuang/BuildClub`（remote 名 `fork`，upstream 已設），PR：https://github.com/veralynchong/BuildClub/pull/3 。origin 仍是 veralynchong/BuildClub，minchiaHuang 對 origin 沒有寫入權限；之後的 commit 一律 `git push`（推到 fork）。
-- **每日花費上限（2026-10-27 新增）：** 後端在每次付費呼叫之前先記一筆估算花費，記在 `data.db`，以這台電腦的當地日期計，午夜歸零。超過上限就回 429，並附上說明。快取、pin 住的搜尋和已經完成的拆解都免費，不會被擋。估算單價：TikTok 搜尋 US$0.31（含作者中位數）、IG 搜尋 US$0.03、拆解 US$0.08。新增的 env：
+- **每日花費上限（2026-10-27 新增）：** 後端在每次付費呼叫之前先記一筆估算花費，記在 `data.db`，以這台電腦的當地日期計，午夜歸零。超過上限就回 429，並附上說明。快取、pin 住的搜尋和已經完成的拆解都免費，不會被擋。估算單價（2026-10-27 深夜依實際扣款校正）：TikTok 搜尋 US$0.12 + 每個新作者 US$0.037（15 個約 0.56）、IG 搜尋 US$0.03、X 搜尋 US$0.02、拆解 US$0.08。**校正前估算偏低約 2.2 倍，所以 2026-10-27 這個 Apify 帳號真實的 TikTok 扣款約 US$3.9（14 次 run），遠超過 app 記的 US$1。**新增的 env：
   - `DAILY_APIFY_USD`（預設 1.00）
   - `DAILY_CLAUDE_USD`（預設 1.00）
 - **給 Daphne 用（2026-10-27 決定走選項 1：Mac mini + 通道 + 簡單密碼）：** 後端現在直接提供 `dist/` 的網頁，`npm run build` 之後只要開 8787 一個網址就能用。在 `.env` 設了 `APP_PASSWORD`，打開網頁或呼叫 API 時，瀏覽器都會跳出密碼框（帳號隨便填）；沒設就不檢查。設了密碼之後，本機開 vite 開發時也要輸入一次密碼。2026-10-27 已在 `.env` 設好密碼，用 curl 實測：沒帶密碼的話，網頁、JS 和 API 都回 401，帶對的密碼就回 200。通道已開（2026-10-27）：`tailscale funnel --bg 8787` → https://tommymac-mini.tail8e20a0.ts.net 。從公開網址實測：沒帶密碼或密碼錯都回 401，帶對的密碼網頁回 200，快取的 tofu 搜尋回 30 支。要關通道就跑 `tailscale funnel --https=443 off`。Daphne 要能用，Mac mini 必須開機，8787 後端也要在跑。
 - **已知問題：**
-  - X 搜尋（2026-10-27，分支 `feat/x-search`，離線測試 only，尚未實測）：用 Apify actor `kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest`（`APIFY_X_ACTOR` 可換），查詢加 `filter:native_video`、`queryType: Top`、30 筆。選它是因為官方文件的輸出明確有 `viewCount` 和 `author.followers`（apidojo/tweet-scraper 的 README 沒有 viewCount）。**輸出裡影片 media 的結構（`extendedEntities.media[].video_info`、`media_url_https`）文件沒寫**，`x.py` 防禦式讀取：找不到 media 就信任 `native_video` 查詢，封面可能是空的，要第一次真實搜尋後對照。分數：同一次 actor 執行用 `from:a OR from:b …`（最多 10 個作者）抓近期影片推文，作者至少 3 支才算中位數，存在 `x_medians` 表（7 天），不夠的作者退回觀看數 ÷ 粉絲數。花費估算：搜尋 US$0.02、中位數 10 個作者約 US$0.04，都算進 Apify 每日上限。**風險：X 服務條款禁止爬取**，只能用在內部研究，不要對外承諾這個來源。`/api/analyze` 接受 x.com / twitter.com 的 status 連結（yt-dlp 可抓公開影片，沒實測）。
+  - X 搜尋（2026-10-27，分支 `feat/x-search`；2026-10-27 深夜已真實搜尋 tofu 一次並 pin，見最上面）：用 Apify actor `kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest`（`APIFY_X_ACTOR` 可換），查詢加 `filter:native_video`、`queryType: Top`、30 筆。選它是因為官方文件的輸出明確有 `viewCount` 和 `author.followers`（apidojo/tweet-scraper 的 README 沒有 viewCount）。**輸出裡影片 media 的結構（`extendedEntities.media[].video_info`、`media_url_https`）文件沒寫**，`x.py` 防禦式讀取：找不到 media 就信任 `native_video` 查詢，封面可能是空的，要第一次真實搜尋後對照。分數：同一次 actor 執行用 `from:a OR from:b …`（最多 10 個作者）抓近期影片推文，作者至少 3 支才算中位數，存在 `x_medians` 表（7 天），不夠的作者退回觀看數 ÷ 粉絲數。花費估算：搜尋 US$0.02、中位數 10 個作者約 US$0.04，都算進 Apify 每日上限。**風險：X 服務條款禁止爬取**，只能用在內部研究，不要對外承諾這個來源。`/api/analyze` 接受 x.com / twitter.com 的 status 連結（yt-dlp 可抓公開影片，沒實測）。
   - Reddit 搜尋（2026-10-27，feat/reddit-search）：免費路線走不通——這台機器打 `reddit.com/*.json` 回 403、`.rss` 回 429 且沒有分數、`old.reddit.com` 轉去登入頁；Reddit 的 API 條款也限制商業使用，若以後改回直連要先確認。改用 Apify `clearpath/reddit-search-scraper`（`<關鍵字> site:v.redd.it` 只回 Reddit 託管影片，30 筆約 6 秒、約 US$0.03）；subreddit 中位數用 `clearpath/reddit-subreddit-posts-scraper`，一次 run 抓全部（8 個 sub 實測 US$0.16，每個 sub 約 US$0.02）。這個 actor 偶爾會悄悄少回某些 subreddit（實測 4 個 sub 只回 2 個），少於 5 筆的 sub 不存快取、下次搜尋再試。舊的 `trudax/reddit-scraper-lite` 每篇 15–25 秒、tofu 17 篇沒有任何影片，已棄用。
   - 搜尋加速（2026-10-27）：作者中位數存在 `data.db` 的 `medians` 表，7 天內重用（`MEDIAN_DAYS`），影片太少的作者也記一筆空值；只抓缺的作者，最多 `AUTHORS_PER_SEARCH`（15）個。TikTok 搜尋先回結果（`mediansPending: true`），中位數在背景抓（約 40 秒），抓完改寫快取檔；前端每 5 秒用 `cachedOnly=1` 重問（不會觸發付費搜尋），最多 3 分鐘，右下角顯示「Checking each account's usual views…」。分數補到之前，TikTok 卡片先用觀看數 ÷ 粉絲數。花費估算拆兩筆：搜尋 US$0.05，中位數每位實際抓的作者 US$0.017（10 支 × 0.0017）。「Trending now」不等中位數。背景抓的途中重啟後端，那次搜尋就不會有中位數，下次搜尋會再抓。
   - IG 搜尋結果沒有粉絲數 → `followers`/`ratio` 為 null，依觀看數排序；IG 不算作者中位數。前端（2026-10-27 經使用者同意改 Veralyn 元件）：沒有基準時（`hasScore` 為 false）只顯示觀看數，不顯示 × 分數與 tier；改到 `lib/metrics.ts`、VideoTile、ResultsScreen、BreakdownPanel、PlanScreen、ApprovalsScreen、ClientScreen、PlatformToggles，要給 Veralyn 看。`LikeThisCard` 沒改（只在範例模式的連結搜尋出現）。「Trending now」仍只查 TikTok。
@@ -32,10 +37,11 @@
   - 沒改到、但還寫著舊 Node API 的地方：`AGENTS.md` 第 24 行、`vite.config.ts` 註解（`npm run api` 仍然有效）。
   - repo 根目錄有個只有 `.git` 的 `BuildClub/` 資料夾，來源不明，未處理。
 - **下一步：**
-  - 小問題（2026-10-27 UI 實測新看到，未修）：YouTube 拆解面板 Shares + saves 顯示 0.0 且註記寫「Instagram hides saves」；選 YouTube 時側邊欄仍寫「Live TikTok data」；平台切換鈕 hover 仍寫「YouTube Shorts · soon」；設了天數篩選時沒有日期的 YouTube 影片會被濾掉（App.tsx `daysAgo <= query.days`）；規劃頁 IG 參考影片有兩個「Watch on Instagram ↗」（封面上和下方說明）。
   - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
   - IG hover 播放要後端提供影片檔網址才做得到。
-  0. 用一次真實的新 TikTok 搜尋實測搜尋加速（約 US$0.07–0.31，先問使用者），對照 Apify console 的實際扣款，校正 `APIFY_USD_PER_VIDEO`。
+  - TikTok 作者中位數 run 每次都是 134 支、US$0.497，貼著 `MAX_USD_PER_SEARCH`（0.50）上限，要的是 15 × 10 = 150 支，可能是被上限截斷；要中位數完整就得把那一個 run 的上限調高（Apify 最低 0.50），先問使用者。
+  - 每日上限 `DAILY_APIFY_USD` 預設 1.00，用新單價算一次全新 TikTok 搜尋約 0.68，一天只夠一次；要不要調高請使用者決定。
+  0. 用一次真實的新 TikTok 搜尋實測搜尋加速（現在估約 US$0.68，今天的每日上限已用完），確認新單價和實際扣款相符。
   1. 等 Veralyn 審 PR #3，回應她的意見。
   2. 和 Veralyn 討論上面的前端已知問題（費用提示、拆解狀態顯示、自動搜尋客戶主題）。
   3. 前端 `lines` 顯示（Veralyn 的元件）。

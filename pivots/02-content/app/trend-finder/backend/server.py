@@ -65,7 +65,7 @@ REDDIT_ACTOR = os.environ.get("APIFY_REDDIT_ACTOR", "clearpath~reddit-search-scr
 REDDIT_SUB_ACTOR = os.environ.get("APIFY_REDDIT_SUB_ACTOR", "clearpath~reddit-subreddit-posts-scraper")
 RESULTS_PER_SEARCH = int(os.environ.get("RESULTS_PER_SEARCH", 30))
 CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
-# Cost is held by maxItems: 30 results at ~$1.70/1,000 is about $0.05.
+# Cost is held by maxItems: 30 results at ~$3.70/1,000 is about $0.11 (measured 0.112 on 2026-10-27).
 # The charge cap is a backstop only; Apify refuses anything below $0.50.
 MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
 # Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.26.
@@ -83,10 +83,10 @@ DAILY_SCRAPECREATORS_CREDITS = float(os.environ.get("DAILY_SCRAPECREATORS_CREDIT
 # X: 30 tweets at ~US$0.25-0.40 per 1,000 is about 0.01; 0.02 leaves room for the actor's minimum charge.
 # Reddit (clearpath actors) is ~US$1 per 1,000 posts: 30 search results about 0.03 (measured 0.031),
 # a subreddit's 10 top posts about 0.02 (measured: 8 subreddits in one run cost 0.16).
-SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03, "reddit": 0.03, "x": 0.02}
+SEARCH_USD = {"tiktok": 0.12, "instagram": 0.03, "reddit": 0.03, "x": 0.02}
 X_USD_PER_TWEET = 0.0004  # the dearer of the two candidate actors; account medians cost this per tweet fetched
 REDDIT_USD_PER_SUB = 0.02
-APIFY_USD_PER_VIDEO = 0.0017  # TikTok actor; account medians cost this per video fetched
+APIFY_USD_PER_VIDEO = 0.0037  # TikTok actor; account medians cost this per video fetched (134 videos: 0.497)
 ANALYZE_USD = 0.08  # one Claude breakdown
 
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
@@ -662,7 +662,8 @@ def pin(query: str, platform: str = "tiktok") -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and sys.argv[3:] in ([], ["tiktok"], ["instagram"]):
+    platforms = ["tiktok", "instagram", "youtube", "reddit", "x"]
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and (sys.argv[3:] == [] or sys.argv[3] in platforms):
         pin(sys.argv[2].strip()[:120], *sys.argv[3:])
     else:
-        sys.exit('Usage: python backend/server.py pin "<search>" [tiktok|instagram]')
+        sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]')
