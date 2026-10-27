@@ -3,6 +3,7 @@ import type { Client, Format, Video } from '../types'
 import {
   ago,
   compact,
+  hasDate,
   hasScore,
   outlierScore,
   platformName,
@@ -59,7 +60,9 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             note: video.saves === null ? 'Instagram hides saves' : `${compact(video.shares)} shares · ${compact(video.saves)} saves`,
           },
         ]),
-    { label: 'Growth', value: compact(viewsPerDay(video)), unit: `${viewsWord(video)} a day`, note: `Posted ${ago(video.daysAgo)}` },
+    hasDate(video)
+      ? { label: 'Growth', value: compact(viewsPerDay(video)), unit: `${viewsWord(video)} a day`, note: `Posted ${ago(video.daysAgo)}` }
+      : { label: 'Growth', value: '–', unit: '', note: 'Posting date unknown' },
     {
       label: 'Format used by',
       value: String(formatAccounts),

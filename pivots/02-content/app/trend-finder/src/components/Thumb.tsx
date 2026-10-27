@@ -47,7 +47,14 @@ export function Thumb({ video, large = false, preview = false }: { video: Video;
       onPointerLeave={src ? stop : undefined}
     >
       {showImage && (
-        <img src={video.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+        <img
+          className={video.platform === 'youtube' ? 'thumb-yt' : undefined}
+          src={video.thumbnail}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
+        />
       )}
       {playing && src && (
         <iframe className="thumb-player" src={src} title="" allow="autoplay" referrerPolicy="origin" tabIndex={-1} aria-hidden="true" />

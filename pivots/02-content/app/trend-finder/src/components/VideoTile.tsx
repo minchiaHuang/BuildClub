@@ -1,5 +1,5 @@
 import type { IdeaStatus, Video } from '../types'
-import { agoShort, compact, hasScore, outlierScore, scoreLine, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { agoShort, compact, hasDate, hasScore, outlierScore, scoreLine, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -51,7 +51,8 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
           )}
           <span className="tile-hook">{video.hook}</span>
           <span className="tile-meta">
-            {video.handle} · {agoShort(video.daysAgo)}
+            {video.handle}
+            {hasDate(video) && ` · ${agoShort(video.daysAgo)}`}
             {video.comments !== undefined && ` · ${compact(video.comments)} comments`}
           </span>
         </div>

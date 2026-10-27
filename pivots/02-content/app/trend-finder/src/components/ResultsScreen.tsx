@@ -4,7 +4,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { agoShort, compact, hasDate, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { PlatformLogo } from './PlatformToggles'
@@ -221,7 +221,8 @@ export function ResultsScreen(p: Props) {
                     : `${compact(best.views)} ${viewsWord(best)}`}
                   {best.comments !== undefined && ` · ${compact(best.comments)} comments`}{' '}
                   ·{' '}
-                  {best.handle} · {agoShort(best.daysAgo)} ago
+                  {best.handle}
+                  {hasDate(best) && ` · ${agoShort(best.daysAgo)} ago`}
                 </span>
                 {/* Usual → this video, so the jump reads without decoding the × score. */}
                 {hasScore(best) && (

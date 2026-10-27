@@ -42,9 +42,13 @@ export function compact(n: number): string {
 }
 const trim = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1)).replace(/\.0$/, '')
 
-export const times = (n: number) => `${n >= 10 ? Math.round(n) : n.toFixed(1).replace(/\.0$/, '')}×`
+export const times = (n: number) => `${n >= 10 ? Math.round(n).toLocaleString() : n.toFixed(1).replace(/\.0$/, '')}×`
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+// daysAgo for a video whose posting date we don't know (YouTube search results have none).
+export const UNKNOWN_DAYS = 999
+export const hasDate = (v: Video) => v.daysAgo < UNKNOWN_DAYS
 
 export const ago = (days: number) => (days <= 1 ? 'today' : `${days} days ago`)
 // Short form for tight spaces: 5d, 3w, 4mo, 2y.

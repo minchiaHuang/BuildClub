@@ -1,5 +1,5 @@
 import type { Format, Platform, Shot, Video } from '../types'
-import { outlierScore } from './metrics'
+import { UNKNOWN_DAYS, outlierScore } from './metrics'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
 interface LiveItem {
@@ -55,7 +55,7 @@ function hookFrom(text: string): string {
 }
 
 const daysSince = (iso: string | null) =>
-  iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 999
+  iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)) : UNKNOWN_DAYS
 
 const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt', reddit: 'rd', x: 'x' }
 const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short', reddit: 'Reddit video', x: 'X video' }

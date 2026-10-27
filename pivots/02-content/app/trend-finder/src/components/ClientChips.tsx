@@ -42,7 +42,8 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
             <span className="pulse-error">Couldn't check trends: {pulse.error}</span>
           ) : pulse.fetchedAt ? (
             <span className="muted">
-              Trends from TikTok for "{pulse.topic}" · updated {updated(pulse.fetchedAt)}
+              "Trending now" is from TikTok for "{pulse.topic}", whichever platforms you search · updated{' '}
+              {updated(pulse.fetchedAt)}
             </span>
           ) : (
             <span className="muted">Trends for {clientName} haven't been checked yet.</span>

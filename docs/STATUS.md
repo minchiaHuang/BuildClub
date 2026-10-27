@@ -1,6 +1,8 @@
 # STATUS
 
-**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台，新增 Channel 總結頁和 TikTok 滑鼠移上去播放（2026-10-27 晚，`a691a7a`，已 push，PR #3）。
+**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台，新增 Channel 總結頁和 TikTok 滑鼠移上去播放；2026-10-27 晚修好 4 個 UI 小問題（已 push，PR #3）。
+
+- **2026-10-27 晚（UI 小問題）：** pulse 文案改成「"Trending now" is from TikTok for …, whichever platforms you search」（仍只查 TikTok）；`times()` 10× 以上加千分位；BestVideo 對 YouTube 嵌入 `youtube.com/embed`，IG/X/Reddit 真實影片改顯示「Open to watch on <平台>」（規劃頁是「Watch on <平台> ↗」連結）；YouTube 封面放大 1.34 倍裁掉 hqdefault 的上下黑邊；沒有發布日期（`UNKNOWN_DAYS` = 999，YouTube 搜尋）時影片卡片和 Best 卡片不顯示日期，拆解面板 Growth 顯示「– / Posting date unknown」。改到 Veralyn 的元件：BestVideo、Thumb、ClientChips、VideoTile、ResultsScreen、BreakdownPanel、`index.css`，加上 `lib/metrics.ts`、`lib/live.ts`。驗證：`bash bin/verify.sh` 綠、`npm run build` 過、eslint 改動檔乾淨；Playwright 在隔離副本（無 `.env`、假 token、每日上限 0）實測：pulse 文案、千分位（2,730×、759,722×）、YouTube 嵌入、YouTube 無黑邊／無日期／Growth「–」、IG Best 卡片與規劃頁連結都通過，TikTok 日期與嵌入照舊。**X 沒實測**（沒有 X 快取；和 IG 走同一段程式）。
 
 - **2026-10-27 晚（manager session）：** hover 播放（TikTok 會播；IG embed 不自動播，維持封面）；YouTube 用 yt-dlp 免費，一次約 13 支 Shorts；X 用 kaito actor，tofu 實測 38 支、估 US$0.06；Reddit 改用 clearpath actor 搜 `site:v.redd.it`，tofu 實測 5.4 秒 30 支影片、23 支有分數（免費 JSON 從這台被 403 擋）；Channel 總結呼叫 channel-decoder，@mkbhd 50 支實測：7 種格式、Claude 命名約 US$0.15、Jev US$0.005，結果已快取。驗證：`bash bin/verify.sh` 綠（158 測試）、`npm run build` 過、eslint 乾淨、8787 `/api/health` 列出 5 個平台。使用者授權：驗證過可自動 commit push，付費實測低於 US$1 不用先問。
 
@@ -30,7 +32,7 @@
   - 沒改到、但還寫著舊 Node API 的地方：`AGENTS.md` 第 24 行、`vite.config.ts` 註解（`npm run api` 仍然有效）。
   - repo 根目錄有個只有 `.git` 的 `BuildClub/` 資料夾，來源不明，未處理。
 - **下一步：**
-  - 小問題（2026-10-27 UI 檢查）：選 YouTube 時標題仍寫「Trends from TikTok」；hashtag chip 的平均倍數沒加千分位；X 影片拆解面板顯示「Sample video: no playback」；YouTube 封面有黑邊、日期顯示「3y ago」。
+  - 小問題（2026-10-27 UI 實測新看到，未修）：YouTube 拆解面板 Shares + saves 顯示 0.0 且註記寫「Instagram hides saves」；選 YouTube 時側邊欄仍寫「Live TikTok data」；平台切換鈕 hover 仍寫「YouTube Shorts · soon」；設了天數篩選時沒有日期的 YouTube 影片會被濾掉（App.tsx `daysAgo <= query.days`）；規劃頁 IG 參考影片有兩個「Watch on Instagram ↗」（封面上和下方說明）。
   - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
   - IG hover 播放要後端提供影片檔網址才做得到。
   0. 用一次真實的新 TikTok 搜尋實測搜尋加速（約 US$0.07–0.31，先問使用者），對照 Apify console 的實際扣款，校正 `APIFY_USD_PER_VIDEO`。
