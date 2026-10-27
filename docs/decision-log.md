@@ -2,6 +2,17 @@
 
 Newest first. Dates are when the decision was made (from the Miro board), except sync entries.
 
+## 27 Oct 2026
+
+### Decision
+Trend Finder (`pivots/02-content/app/trend-finder`) is the current product, built with design partner Daphne (Mercif). Recite is paused.
+
+### Why
+Daphne does viral-video research by hand every week and dislikes it; she agreed to try a tool at a meeting on 2 Nov. Earlier pivots were built before asking a customer, so this one starts from a real user and fixed success criteria (see the PRD).
+
+### Status
+Current.
+
 ## 4 Oct 2026
 
 ### Decision

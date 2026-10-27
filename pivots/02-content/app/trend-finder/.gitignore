@@ -26,3 +26,6 @@ dist-ssr
 # Live search
 .env
 server/cache/
+backend/.venv/
+backend/cache/
+__pycache__/

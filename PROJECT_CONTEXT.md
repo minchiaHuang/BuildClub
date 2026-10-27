@@ -1,5 +1,16 @@
 # Build Club Project Context
 
+## Current direction (27 Oct 2026)
+**Trend Finder** is the current product, code in `pivots/02-content/app/trend-finder`. It helps a social media agency go from "what is going viral now" to a plan the client has approved and the team can film. AI only explains why real videos went viral; it never writes scripts or generates content (every interviewee rejected AI-written content).
+
+- Design partner: Daphne at Mercif (agency, 10+ clients). Her rule: views ÷ followers; a 1,000-follower account with 1M views means the idea is good.
+- Deadlines: usable MVP for Daphne by Mon 2 Nov 2026; Project Society Demo Day on Sat 7 Nov 2026.
+- Team: Tommy builds the Python backend (FastAPI, port 8787); Veralyn builds the React front end.
+- Full PRD with scope, API and timeline: https://claude.ai/artifact/MoURLkE4hAGvKHWu3kZskD
+- Working rules for AI tools: `AGENTS.md`. Current state: `docs/STATUS.md`.
+
+Everything below describes **Recite**, the earlier product (snapshot from 4 Oct 2026), kept for history.
+
 _Snapshot synced from the Miro boards on 4 Oct 2026. Product status reflects the board as of 2 Oct 2026._
 
 ## Product
