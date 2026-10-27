@@ -318,6 +318,7 @@ class ChannelJobs:
                 return job_id
             stale = meta.get("status") == "done" or meta.get("maxVideos", 0) < max_videos
             fetched = bool(meta.get("fetched")) and not stale
+            self._check_keys(platform, fetched)
             self._check_budget(platform, work, fetched)
             if stale:  # an old or smaller run: keep the free downloads, redo the naming and labels
                 for name in ("analysis.json", "format-names.json", "formats.json"):
@@ -330,6 +331,13 @@ class ChannelJobs:
             self._live[job_id] = {"status": "queued", "index": 0, "error": None}
         self._q.put(job_id)
         return job_id
+
+    def _check_keys(self, platform: str, fetched: bool) -> None:
+        """Refuse up front when a key the decoder needs is missing, so no paid step runs first."""
+        need = ["TYPESAFE_API_KEY"] + (["SCRAPECREATORS_API_KEY"] if platform == "instagram" and not fetched else [])
+        missing = [k for k in need if not os.environ.get(k)]
+        if missing:
+            raise ValueError(f"Channel summaries need {' and '.join(missing)} in .env. Add it and restart the API.")
 
     def _check_budget(self, platform: str, work: Path, fetched: bool) -> None:
         need = {"jev": JEV_MIN_USD}

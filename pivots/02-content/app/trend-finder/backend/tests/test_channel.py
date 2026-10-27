@@ -169,6 +169,15 @@ def test_over_the_cap_is_429_before_any_subprocess(client, decoder, monkeypatch)
     assert decoder.calls == []
 
 
+@pytest.mark.parametrize("platform,key", [("youtube", "TYPESAFE_API_KEY"), ("instagram", "SCRAPECREATORS_API_KEY")])
+def test_a_missing_key_is_400_before_any_subprocess(client, decoder, monkeypatch, platform, key):
+    monkeypatch.delenv(key)
+    r = client.post("/api/channel", json={"platform": platform, "handle": "@chan"})
+    assert r.status_code == 400
+    assert key in r.json()["error"]
+    assert decoder.calls == []
+
+
 def test_jev_and_scrapecreators_have_their_own_caps(client, decoder, monkeypatch):
     monkeypatch.setattr(server, "channel_jobs", channels.ChannelJobs(
         lambda w, n: server.spend(w, n, server.CHANNEL_CAPS[w]), lambda w: server.budget_left(w, server.CHANNEL_CAPS[w])))

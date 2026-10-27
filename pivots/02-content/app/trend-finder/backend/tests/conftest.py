@@ -34,6 +34,8 @@ def offline(tmp_path, monkeypatch):
     monkeypatch.setattr(server, "DB_PATH", tmp_path / "data.db")
     monkeypatch.setattr(analyze, "JOBS_DIR", tmp_path / "jobs")
     monkeypatch.setattr(channels, "CHANNELS_DIR", tmp_path / "channels")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-jev-key")
+    monkeypatch.setenv("SCRAPECREATORS_API_KEY", "test-sc-key")
 
     # Channel summaries: no test may run channel-decoder, yt-dlp or Claude for real. A test that
     # wants them swaps in its own fake.
