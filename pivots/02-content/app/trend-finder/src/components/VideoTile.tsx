@@ -26,7 +26,7 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
   return (
     <article className="tile">
       <button className="tile-main" onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}`}>
-        <Thumb video={video} />
+        <Thumb video={video} preview />
         {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge[status]}</span>}
         <div className="tile-body">
           {hasScore(video) ? (
