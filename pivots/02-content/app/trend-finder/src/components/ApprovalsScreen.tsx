@@ -10,9 +10,10 @@ interface Props {
   setStatus: (ids: string[], status: IdeaStatus) => void
   onGoSaved: () => void
   onPlan: (ideaId: string) => void
+  onReview: () => void
 }
 
-export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById, onPlan }: Props) {
+export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById, onPlan, onReview }: Props) {
   const mine = ideas.filter((i) => i.clientId === client.id)
   const waiting = mine.filter((i) => i.status === 'waiting')
   const decided = mine.filter((i) => i.status === 'approved' || i.status === 'rejected')
@@ -25,7 +26,7 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
       <li key={idea.id} className="approval">
         <Thumb video={v} />
         <div className="idea-body">
-          {!actions && <span className={`status status-${idea.status}`}>{idea.status === 'approved' ? 'Approved' : 'Rejected'}</span>}
+          {!actions && <span className={`status status-${idea.status}`}>{idea.status === 'approved' ? 'Approved' : 'Not approved'}</span>}
           <strong>{f?.name}</strong>
           <span className="small muted">
             Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
@@ -50,7 +51,12 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
       <header className="page-head">
         <span className="eyebrow">{client.name} · Approvals</span>
         <h1>{waiting.length ? `${waiting.length} waiting for Annie` : 'Nothing waiting'}</h1>
-        <p className="muted">Ideas you've sent to Annie. Her answers will show up here.</p>
+        <p className="muted">Ideas you've sent to Annie. Annie's answers show up here.</p>
+        {waiting.length > 0 && (
+          <button className="btn btn-primary" onClick={onReview}>
+            Review as Annie
+          </button>
+        )}
       </header>
 
       {waiting.length === 0 ? (

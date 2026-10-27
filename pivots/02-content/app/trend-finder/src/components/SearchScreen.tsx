@@ -45,7 +45,7 @@ export function SearchScreen(props: Props) {
         <p className="lede">
           {live
             ? 'Type what this client is about. We search TikTok live, rank videos by how far they beat the account’s size, and show which sounds and hashtags keep coming up.'
-            : 'Type a niche or ask a question in plain words. We search Instagram and TikTok, rank videos from small accounts with big views, and show which formats are spreading.'}
+            : 'Type a niche or ask a question in plain words. We search TikTok, rank videos from small accounts with big views, and show which formats are spreading.'}
         </p>
       </div>
 
@@ -79,7 +79,7 @@ export function SearchScreen(props: Props) {
       <p className="hint">
         {live
           ? 'Live TikTok search. Each new search costs a few cents of Apify credit; repeats within 24 hours are free.'
-          : 'Sample data covers one niche for now: tofu. Add an Apify key to turn on live TikTok search (see README).'}
+          : 'Sample data covers one niche for now: tofu.'}
       </p>
     </section>
   )

@@ -1,0 +1,227 @@
+/* Video breakdown drawer, plan page (pitch → approval → brief) and the plans list.
+   Calm canvas, loud content: the score is the focal point, everything else is quiet. */
+
+/* ---------- Breakdown drawer ---------- */
+.drawer-wrap {
+  position: fixed; inset: 0; z-index: 40; display: flex; justify-content: flex-end;
+  background: var(--scrim);
+  animation: scrim-in var(--dur) var(--ease) both;
+}
+.drawer {
+  width: min(600px, 100%); height: 100%; background: var(--bg); box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: drawer-in var(--dur-slow) var(--ease) both;
+}
+/* Floating panel on wider screens, edge to edge on phones */
+@media (min-width: 640px) {
+  .drawer-wrap { padding: 12px; }
+  .drawer { height: 100%; border-radius: var(--radius-lg); border: 1px solid var(--line); }
+}
+.drawer-wrap.is-closing { animation: scrim-out var(--dur) var(--ease) both; }
+.drawer-wrap.is-closing .drawer { animation: drawer-out var(--dur) var(--ease) both; }
+@keyframes scrim-in { from { background-color: transparent; } }
+@keyframes scrim-out { to { background-color: transparent; } }
+@keyframes drawer-in { from { transform: translateX(28px); opacity: 0; } }
+@keyframes drawer-out { to { transform: translateX(28px); opacity: 0; } }
+
+.drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid var(--line); }
+.drawer-head > div { display: grid; gap: 6px; min-width: 0; }
+.drawer-head h2 { font-size: clamp(21px, 2.3vw, 25px); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 24px; display: grid; gap: 28px; align-content: start; }
+.drawer-foot {
+  display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; padding: 14px 24px;
+  border-top: 1px solid var(--line); background: var(--frost);
+  -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px);
+}
+.drawer-video { display: flex; justify-content: center; }
+.drawer-video .thumb { max-width: 200px; border-radius: var(--radius); box-shadow: var(--shadow-md); }
+
+/* Analytics: the score leads, the rest are clean tiles */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat-card {
+  display: grid; gap: 4px; align-content: start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+.stat-label { font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
+.stat-value {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px;
+  font-weight: 700; font-size: 24px; line-height: 1.15; letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums;
+}
+.stat-unit { font-size: var(--text-sm); font-weight: 500; letter-spacing: 0; color: var(--muted); white-space: nowrap; }
+.stat-note { font-size: var(--text-xs); color: var(--muted); }
+
+.stat-score { grid-column: 1 / -1; gap: 8px; padding: 20px 20px 18px; box-shadow: var(--shadow-md); position: relative; overflow: hidden; }
+/* A thin tier-coloured rule instead of a tinted card */
+.stat-score::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--line-strong); }
+.stat-score.stat-breakout::before { background: var(--hot); }
+.stat-score.stat-strong::before { background: var(--accent); }
+.stat-score-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stat-big { font-weight: 700; font-size: 52px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat-breakout .stat-big { color: var(--hot); }
+.stat-strong .stat-big { color: var(--accent); }
+.stat-score .stat-note { font-size: var(--text-base); font-weight: 500; color: var(--fg); }
+.stat-compare { font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat-compare strong { color: var(--fg); }
+
+/* Can they film this? (always paired with .block, which sets the gap) */
+.fit { border-radius: var(--radius); padding: 16px 18px; gap: 6px; }
+.fit p { margin: 0; line-height: 1.55; }
+.fit-ok { background: var(--early-soft); }
+.fit-ok strong { color: var(--early); }
+.fit-no { background: var(--no-soft); }
+.fit-no strong { color: var(--no); }
+
+/* Why it works */
+.why { margin: 0; display: grid; gap: 0; }
+.why div { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.why div:first-child { border-top: 0; padding-top: 4px; }
+.why dt { font-size: var(--text-sm); font-weight: 500; color: var(--muted); padding-top: 1px; }
+.why dd { margin: 0; line-height: 1.55; }
+@media (max-width: 520px) { .why div { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+
+.live-facts { gap: 10px; }
+.watch-link { justify-self: start; text-decoration: none; }
+.caption {
+  margin: 0; white-space: pre-line; font-size: 14px; line-height: 1.55;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px;
+  max-height: 140px; overflow-y: auto;
+}
+.shot-time { font-size: var(--text-xs); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); padding-top: 3px; }
+.shot-text { display: block; margin-top: 2px; font-size: var(--text-sm); color: var(--muted); }
+
+/* ---------- Plan page ---------- */
+.plan { display: grid; gap: 28px; padding-bottom: 112px; }
+.plan .link-btn { justify-self: start; }
+.plan-head { display: grid; gap: 10px; }
+.plan-head-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.plan-grid { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 48px; align-items: start; }
+.plan-ref { display: grid; gap: 12px; position: sticky; top: 24px; }
+.plan-ref .best-video, .plan-ref .best-video-sample { max-width: 240px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.plan-ref .best-video-sample .thumb { border-radius: var(--radius-lg); }
+.plan-ref-score { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: var(--tracking-tight); }
+.plan-ref-score .cmp-from { font-size: 18px; color: var(--muted); }
+.plan-ref-score .cmp-to { font-size: 30px; }
+.plan-ref .tier { justify-self: start; }
+.plan-main { display: grid; gap: 36px; min-width: 0; }
+.plan-main > .block > p { margin: 0; }
+@media (max-width: 760px) {
+  .plan-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .plan-ref { position: static; }
+  /* Shrink the whole frame (not just the cover) so the play button, note and shadow stay lined up, and centre it */
+  .plan-ref { justify-items: center; text-align: center; }
+  .plan-ref .best-video, .plan-ref .best-video-sample { max-width: 160px; }
+  .plan-ref-score { justify-content: center; }
+  .plan-ref .tier { justify-self: center; }
+  .plan-bar-text { flex-basis: 100%; }
+}
+/* Phone: buttons share one row at equal width; a status line without actions is kept for screen readers only */
+@media (max-width: 560px) {
+  .plan { padding-bottom: 128px; }
+  .plan-bar { gap: 8px; padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .plan-bar .btn { flex: 1 1 0; min-width: 0; white-space: normal; text-align: center; text-wrap: balance; line-height: 1.25; padding: 10px 12px; min-height: 44px; align-self: stretch; }
+  /* Three actions (waiting): a touch smaller so each label fits on two lines */
+  .plan-bar:has(> button:nth-of-type(3)) > .btn { font-size: 14px; padding: 8px; }
+  .plan-bar-text { font-size: var(--text-sm); margin: 0; }
+  .plan-bar-text:not(:has(button)) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+
+/* Shots: a clean list, fields only look like fields on hover or focus */
+.shot-edit {
+  list-style: none; margin: 4px 0 0; padding: 4px; display: grid; gap: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+}
+.shot-edit:empty { display: none; }
+.shot-edit li {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 8px; align-items: start;
+  padding: 8px; border-radius: var(--radius-sm); position: relative;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.shot-edit li + li::before { content: ''; position: absolute; top: 0; left: 12px; right: 12px; border-top: 1px solid var(--line); }
+.shot-edit li:hover, .shot-edit li:focus-within { background: var(--surface-2); }
+.shot-edit li:hover + li::before, .shot-edit li:focus-within + li::before,
+.shot-edit li:hover::before, .shot-edit li:focus-within::before { border-color: transparent; }
+.shot-edit li:has(.shot-time) { grid-template-columns: 64px minmax(0, 1fr); padding: 12px; }
+.shot-edit input { background: transparent; border-color: transparent; padding: 6px 8px; border-radius: var(--radius-xs); width: 100%; }
+.shot-edit input:hover:not(:disabled):not(:focus) { border-color: var(--line-strong); }
+.shot-edit input:focus { background: var(--surface); }
+.shot-time-input { font-size: var(--text-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
+.shot-fields { display: grid; gap: 0; }
+.shot-fields input:first-child { font-weight: 500; }
+.shot-fields input:last-child { font-size: var(--text-sm); color: var(--muted); }
+.shot-fields input:last-child:focus { color: var(--fg); }
+.shot-edit .icon-btn { margin-top: 2px; }
+@media (hover: hover) {
+  .shot-edit .icon-btn { opacity: 0; transition: opacity var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+  .shot-edit li:hover .icon-btn, .shot-edit li:focus-within .icon-btn { opacity: 1; }
+}
+.shot-edit li.shot-added { animation: shot-in var(--dur) var(--ease) both; }
+@keyframes shot-in { from { opacity: 0; transform: translateY(-4px); } }
+.shot-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 2px; }
+
+/* Note to Annie */
+.plan-main textarea { padding: 12px 14px; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+
+/* Sticky action bar at the bottom of the plan: frosted */
+.plan-bar {
+  position: fixed; left: 264px; right: 0; bottom: 0; z-index: 25;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px max(16px, 3vw);
+  background: var(--frost); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 860px) { .plan-bar { left: 0; padding-bottom: max(14px, env(safe-area-inset-bottom)); } }
+.plan-bar-text { margin-right: auto; font-size: 14px; color: var(--muted); }
+
+/* Copy brief: a copy icon that turns into a drawn check */
+.copy-btn { min-width: 0; }
+.copy-icon { width: 16px; height: 16px; flex: none; }
+.copy-icon path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.copy-btn.is-copied .copy-icon-check path { stroke-dasharray: 20; stroke-dashoffset: 0; animation: check-draw var(--dur-slow) var(--ease) both; }
+.copy-btn.is-copied { animation: pop var(--dur) var(--ease); }
+@keyframes check-draw { from { stroke-dashoffset: 20; } }
+@keyframes pop { 50% { transform: scale(1.03); } }
+
+/* Plan sent: clear confirmation at the top */
+.sent-banner {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--early-soft); border-radius: var(--radius); padding: 16px 18px;
+  animation: banner-in var(--dur-slow) var(--ease) both;
+}
+.sent-banner > div { display: grid; gap: 4px; }
+.sent-banner strong { font-size: var(--text-md); font-weight: 600; color: var(--early); }
+.sent-check { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--early); color: var(--early-fg); font-weight: 700; font-size: 14px; }
+@keyframes banner-in { from { opacity: 0; transform: translateY(-4px); } }
+
+/* Plan: after approval */
+.editor-brief {
+  display: grid; gap: 16px; padding: 20px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.editor-brief.is-copied { border-color: color-mix(in srgb, var(--early) 50%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--early) 18%, transparent); }
+.editor-brief .field { display: grid; gap: 6px; }
+.editor-brief input[type='date'] { justify-self: start; font-variant-numeric: tabular-nums; }
+.editor-brief textarea { box-shadow: none; border-radius: var(--radius-sm); }
+.props-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.props-list li { background: var(--surface-2); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--text-sm); }
+
+/* ---------- Plans list (base .idea-list / .idea from approvals.css) ---------- */
+.plans { display: grid; gap: 28px; }
+.plans .idea-list { gap: 12px; }
+.plans .idea {
+  border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px 14px 14px; gap: 18px;
+  transition: box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.plans .idea:hover { box-shadow: var(--shadow-md); border-color: var(--line-strong); }
+.plans .idea .thumb { border-radius: var(--radius-sm); }
+.plans .idea-body { gap: 4px; }
+.plans .idea-body > strong { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.01em; }
+.plans .plan-due { display: inline-flex; align-items: baseline; gap: 6px; font-size: var(--text-sm); color: var(--muted); }
+.plans .plan-due strong { font-size: var(--text-base); font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .drawer-wrap, .drawer, .drawer-wrap.is-closing, .drawer-wrap.is-closing .drawer,
+  .shot-edit li.shot-added, .sent-banner, .copy-btn.is-copied, .copy-btn.is-copied .copy-icon-check path { animation: none; }
+  .shot-edit li, .shot-edit .icon-btn, .editor-brief, .plans .idea { transition: none; }
+}

@@ -85,12 +85,13 @@ interface Props {
   selected: Platform[]
   onChange: (next: Platform[]) => void
   showSoon?: boolean
-  // Live search covers TikTok only for now, so Instagram shows as coming soon.
+  // Still passed by SearchBox; TikTok is the only searchable platform either way.
   live?: boolean
 }
 
-const order: LogoPlatform[] = ['instagram', 'tiktok', 'youtube', 'reddit', 'x']
-const searchable = (p: LogoPlatform): p is Platform => p === 'instagram' || p === 'tiktok'
+// TikTok only for now. Instagram is parked (shows as coming soon) until we pick a platform per client.
+const order: LogoPlatform[] = ['tiktok', 'instagram', 'youtube', 'reddit', 'x']
+const searchable = (p: LogoPlatform): p is Platform => p === 'tiktok'
 
 // Round, icon-only platform buttons. On = ring and a small tick; "Soon" = faded. At least one stays on.
 export function PlatformToggles({ selected, onChange, showSoon = false, live = false }: Props) {
@@ -99,9 +100,9 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
   return (
     <div className="platforms" role="group" aria-label="Platforms">
       {order.map((p) => {
-        // Live search is TikTok only; YouTube, Reddit and X aren't built yet.
-        const soon = !searchable(p) || (live && p === 'instagram')
-        if (soon && !showSoon && !searchable(p)) return null
+        // Instagram, YouTube, Reddit and X aren't built yet.
+        const soon = !searchable(p)
+        if (soon && !showSoon) return null
         if (soon) {
           return (
             <button

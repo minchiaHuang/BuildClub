@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { IdeaStatus, Video } from '../types'
 import { agoShort, compact, outlierScore, scoreLine, tierName, tierOf, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
@@ -23,9 +24,11 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
   const score = outlierScore(video)
   const tier = tierOf(score)
   const byFollowers = video.medianViews === null
+  // The star pops only when it's clicked, not when a tile shows up already saved.
+  const [pop, setPop] = useState(false)
   return (
     <article className="tile">
-      <button className="tile-main" onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}`}>
+      <button className="tile-main" data-video-id={video.id} onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}`}>
         <Thumb video={video} />
         {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge[status]}</span>}
         <div className="tile-body">
@@ -45,11 +48,15 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
         </div>
       </button>
       <button
-        className={`tile-save ${saved ? 'tile-save-on' : ''}`}
+        className={`tile-save ${saved ? 'tile-save-on' : ''} ${pop ? 'tile-save-pop' : ''}`}
         aria-pressed={saved}
         aria-label={saved ? 'Saved to client. Click to remove' : 'Save to client'}
         title={saved ? 'Saved' : 'Save to client'}
-        onClick={onToggleSave}
+        onClick={() => {
+          setPop(true)
+          onToggleSave()
+        }}
+        onAnimationEnd={() => setPop(false)}
       >
         {saved ? '★' : '☆'}
       </button>

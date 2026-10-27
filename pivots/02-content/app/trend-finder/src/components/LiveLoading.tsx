@@ -10,7 +10,17 @@ export function LiveLoading({ query }: { query: string }) {
 
   return (
     <div className="phone-wrap" role="status" aria-live="polite">
-      <div className="reading">
+      <div className="reading reading-live">
+        {/* Shimmer placeholders: the shape of the results that are on their way. */}
+        <div className="skeleton-grid" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton-tile">
+              <span className="skeleton skeleton-thumb" />
+              <span className="skeleton skeleton-line" />
+              <span className="skeleton skeleton-line skeleton-line-short" />
+            </div>
+          ))}
+        </div>
         <strong>Searching TikTok for "{query}"…</strong>
         <ol className="reading-steps">
           <li className={seconds < 3 ? 'now' : 'done'}>

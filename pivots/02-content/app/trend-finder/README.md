@@ -33,7 +33,8 @@ How it works:
 - Each search fetches up to 30 videos (`RESULTS_PER_SEARCH`). New searches take about 20–60 seconds. Results are cached in `server/cache/` for 24 hours (`CACHE_HOURS`), so repeats are instant and free. The cache is git-ignored.
 - **Cost:** Apify bills per result. The actor's page listed pricing "from $1.70 / 1,000 results" (checked 26 Oct 2026), so a 30-video search is roughly 5 cents. Check your Apify usage page.
 - **Score in live mode** = views ÷ followers. We don't fetch each account's usual views yet, so this replaces the outlier score.
-- **What's not live yet:** Instagram, link/screenshot search, the "Ask" answers and the AI shot lists. Live videos show what TikTok gives us (caption, sound, hashtags) and link to the video.
+- **TikTok only for now.** Instagram is parked: its sample rows stay in `src/data/sample.ts` but aren't shown.
+- **What's not live yet:** link/screenshot search, the "Ask" answers and the AI shot lists. Live videos show what TikTok gives us (caption, sound, hashtags) and link to the video.
 - Live results only use public TikTok data. Check TikTok's and Apify's terms before using this beyond internal testing.
 
 Clients for testing: **Evergreen Foods** and **MYST Nightclub Sydney**, each with starter searches (edit in Client settings, or `examples` in `src/data/sample.ts`).
@@ -45,7 +46,7 @@ Laid out like an agency platform (e.g. GoHighLevel):
 - **Sign-in (mock):** "Continue as demo agency" enters as **Sample Social Co.** (a made-up agency). No account or password is checked or stored. Sign out from the bottom of the sidebar.
 - **Left sidebar** with a **client switcher** at the top: "All clients" (agency view) or one client. "Add client" is a placeholder.
 - **All clients → Overview:** every client's videos approved vs monthly target, how many are waiting for approval, and the next due date.
-- **Inside a client:** Search, Saved ideas, Approvals, Recreate plans, Tracking (soon), Client settings. Saving, the "Can they film this?" check and plans all use the selected client.
+- **Inside a client:** Search, Saved ideas, Approvals, Plans, Client settings. Saving, the "Can they film this?" check and plans all use the selected client.
 - **Client settings:** name, what they sell, audience, videos per month, and what the client can't do (feeds the film check).
 - On phones the sidebar opens from a ☰ menu button.
 
@@ -53,11 +54,15 @@ Clients, saved ideas, the selected client and sign-in are kept in the browser (l
 
 ## Screens
 
-1. **Search**: one box for a niche, a sentence or a question, plus example searches. Platforms (Instagram, TikTok), date range, video length, client.
-2. **Results**: "Searching for" chips show what we understood from the text (keywords, format, audience, time, platform, length). Remove a chip to widen the search. Questions also get a short written answer built from the results. Then the "Formats that repeat" strip (Early / Rising / Everywhere / One-off), then one column per platform ranked by outlier score. Sort by outlier score, views ÷ followers, newest or fastest growing.
-3. **Video breakdown** (drawer): the five metrics, "Can this client film it?", why it worked, shot list. Save to client or create a recreate plan.
-4. **Client shortlist**: saved ideas, monthly target, send to Annie, and a phone view where Annie approves or rejects.
-5. **Recreate plan**: shot list, props, what you'll need, editor notes, due date, copy brief for the editor.
+1. **Search**: one box for a niche, a sentence or a question. Under it, "Trending now" chips (Early and Rising formats only), or the client's "Starter searches" when nothing is trending.
+2. **Results**: "Searching for" chips show what we understood from the text. Remove a chip to widen the search. Questions also get a short written answer. Then:
+   - **Best to copy**: the top-scoring video whose format is Early or Rising, not already sent or approved, and filmable by this client (falls back to the top score). Shows the format's stage as a badge.
+   - **Formats in these results**: filter chips with each format's stage and account count.
+   - **All videos**, sortable by outlier score, views ÷ followers, newest or fastest growing.
+3. **Video breakdown** (drawer): the metrics, "Can this client film it?", why it worked. Save to client or plan it.
+4. **Plan**: editable shots and a note to Annie, then "Send to Annie for approval". Back returns to the screen the plan was opened from.
+5. **Approvals**: what's waiting and what's decided. **Review as Annie** opens a phone-sized preview where Annie approves or sends back with a reason. Demo only: Annie has no separate login.
+6. **After approval**: the plan shows the due date, props and editor notes, and **Copy brief for editor** copies everything the editor needs. Approved plans are listed under **Plans**, soonest due first.
 
 Saved ideas are kept in the browser (localStorage), so the demo keeps its state between reloads. Clear site data to reset.
 
@@ -67,26 +72,26 @@ In `src/lib/metrics.ts`:
 
 - **Outlier score** = views ÷ the account's usual (median) views
 - **Views ÷ followers**: Daphne's "1-to-10" rule
-- **Shares + saves per 100 views**: Instagram hides saves, so shares only there
+- **Shares + saves per 100 views**
 - **Growth** = views ÷ days since posted
-- **Format stage**, from how many accounts used the format on each platform:
-  - Early: 3+ accounts on one platform, 0–1 on the other
-  - Everywhere: 4+ on both
-  - One-off: fewer than 3 accounts in total
-  - Rising: everything else
+- **Format stage**, from how many TikTok accounts used the format and how recently:
+  - One-off: fewer than 3 accounts
+  - Peaked: no new posts in the last 2 weeks
+  - Early: 3–4 accounts, all posted in the last 2 weeks
+  - Rising: 5+ accounts, still getting new posts
 
 ## How search understands sentences
 
 `src/lib/parseQuery.ts` uses simple rules for now (no AI call):
 
 - **Time:** "this week" → 7 days, "this month" / "lately" → 30, "3 months" → 90
-- **Platform:** "TikTok", "Instagram" / "Reels" / "IG"
+- **Platform:** "TikTok" (Instagram is parked for now)
 - **Length:** "short" → under 15 sec, "under 30 seconds", "under a minute"
 - **Audience:** mums, students, families, professionals, health / gym. Matched against each format's `audiences`
 - **Format:** words in each format's `tags` (e.g. "dessert", "taste test", "crispy")
 - **Question:** ends with "?" or starts with why / what / how / is / should… → shows an answer box
 
-- **Video link or screenshot:** paste a TikTok / Instagram link, or attach or paste a screenshot (paperclip button or Ctrl/Cmd+V). This switches to **"Find more like this"**: a short "Reading this video…" animation, then a card saying which format it matches, whether it's worth copying (Early / Rising / Everywhere), why it works, and a button to plan a version for the client. **This is a mock:** nothing is fetched or analysed. The format is guessed from words in the link or file name (e.g. "taste-test"), falling back to the crispy ASMR format.
+- **Video link or screenshot:** paste a TikTok link, or attach or paste a screenshot (paperclip button or Ctrl/Cmd+V). This switches to **"Find more like this"**: a short "Reading this video…" animation, then a card saying which format it matches, whether it's worth copying (Early / Rising / Peaked), why it works, and a button to plan a version for the client. **This is a mock:** nothing is fetched or analysed. The format is guessed from words in the link or file name (e.g. "taste-test"), falling back to the crispy ASMR format.
 
 Whatever's left (minus filler words) becomes the keywords.
 
