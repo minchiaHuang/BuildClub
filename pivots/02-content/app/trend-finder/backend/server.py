@@ -8,9 +8,11 @@ Pin a cached search so it never expires (offline demos):
     backend/.venv/bin/python backend/server.py pin "tofu"            (add "instagram" for an Instagram search)
 """
 
+import base64
 import hashlib
 import json
 import os
+import secrets
 import shutil
 import sqlite3
 import statistics
@@ -22,8 +24,8 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from analyze import Jobs, job_id_for
 from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, SavedIdea, SearchResult
@@ -32,6 +34,7 @@ HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
 PINNED_DIR = HERE / "pinned"  # searches saved for demos; never expire
 DB_PATH = HERE / "data.db"  # clients and saved ideas
+DIST_DIR = HERE.parent / "dist"  # the built front end (npm run build), so one address serves everything
 
 
 def load_env(path: Path) -> None:
@@ -66,7 +69,27 @@ DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
 SEARCH_USD = {"tiktok": 0.31, "instagram": 0.03}  # TikTok: search $0.05 + account medians $0.26
 ANALYZE_USD = 0.08  # one Claude breakdown
 
+# Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
+
 app = FastAPI(title="Trend Finder API")
+
+
+def password_ok(header: str) -> bool:
+    """Basic auth with any user name; only the password is checked."""
+    scheme, _, encoded = header.partition(" ")
+    try:
+        password = base64.b64decode(encoded, validate=True).decode().partition(":")[2]
+    except ValueError:
+        return False
+    return scheme.lower() == "basic" and secrets.compare_digest(password.encode(), APP_PASSWORD.encode())
+
+
+@app.middleware("http")
+async def require_password(request: Request, call_next):
+    if APP_PASSWORD and not password_ok(request.headers.get("authorization", "")):
+        return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Trend Finder"'})
+    return await call_next(request)
 
 
 def error(status: int, message: str, detail: str = "") -> JSONResponse:
@@ -340,6 +363,20 @@ def get_analyze(job_id: str):
     if not job:
         return error(404, "No breakdown with that id. Start one with POST /api/analyze.")
     return job
+
+
+# Last route, so it never shadows the API: built files by path, and the app for anything else.
+@app.get("/{path:path}", include_in_schema=False)
+def front_end(path: str):
+    if path.startswith("api/"):
+        return error(404, "No such API route. See /docs.")
+    target = (DIST_DIR / path).resolve()
+    if path and target.is_file() and target.is_relative_to(DIST_DIR.resolve()):
+        return FileResponse(target)
+    index = DIST_DIR / "index.html"
+    if not index.exists():
+        return error(404, "The app isn't built yet. Run npm run build in trend-finder/.")
+    return FileResponse(index)
 
 
 def pin(query: str, platform: str = "tiktok") -> None:

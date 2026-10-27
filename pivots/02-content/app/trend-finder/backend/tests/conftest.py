@@ -19,6 +19,7 @@ def offline(tmp_path, monkeypatch):
 
     monkeypatch.setattr(server, "run_actor", no_network)
     monkeypatch.setattr(server, "TOKEN", "test-token")
+    monkeypatch.setattr(server, "APP_PASSWORD", "")
     monkeypatch.setattr(server, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(server, "PINNED_DIR", tmp_path / "pinned")
     monkeypatch.setattr(server, "DB_PATH", tmp_path / "data.db")
