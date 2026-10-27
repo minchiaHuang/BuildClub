@@ -29,7 +29,7 @@ export interface LiveSearch {
   formats: Format[]
   cached: boolean
   fetchedAt: number
-  // TikTok account medians arrive after the results; poll with cachedOnly until this is false.
+  // TikTok and YouTube account medians arrive after the results; poll with cachedOnly until this is false.
   mediansPending: boolean
 }
 
@@ -52,12 +52,15 @@ function hookFrom(text: string): string {
 const daysSince = (iso: string | null) =>
   iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 999
 
+const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt' }
+const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short' }
+
 function toVideo(item: LiveItem, query: string, platform: Platform): Video {
   return {
-    id: `${platform === 'instagram' ? 'ig' : 'tt'}-${item.id}`,
+    id: `${idPrefix[platform]}-${item.id}`,
     platform,
     handle: `@${item.author}`,
-    hook: hookFrom(item.text) || (platform === 'instagram' ? 'Instagram reel' : 'TikTok video'),
+    hook: hookFrom(item.text) || noCaption[platform],
     views: item.plays,
     followers: item.followers ?? 0,
     // Without the account's usual views, the score falls back to followers.
@@ -89,7 +92,7 @@ function toFormat(item: LiveItem, v: Video): Format {
     audiences: [],
     summary: item.text,
     why: {
-      hook: v.hook === 'TikTok video' ? 'No caption hook.' : `Caption opens with "${v.hook}".`,
+      hook: v.hook === noCaption[v.platform] ? 'No caption hook.' : `Caption opens with "${v.hook}".`,
       first3s: 'Save or plan this video to get the AI breakdown of its shots.',
       length: `${v.lengthSec} seconds.`,
       format: tags.length ? `Tagged ${tags.join(' ')}.` : 'No hashtags.',

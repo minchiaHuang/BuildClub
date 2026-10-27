@@ -67,7 +67,7 @@ export function ResultsScreen(p: Props) {
   const [draft, setDraft] = useState(p.interp.text)
   const best = shown.length ? [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))[0] : undefined
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformCounts = (['tiktok', 'instagram'] as Platform[])
+  const platformCounts = (['tiktok', 'instagram', 'youtube'] as Platform[])
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
   const i = p.interp

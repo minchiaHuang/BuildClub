@@ -61,7 +61,7 @@ export default function App() {
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
-  // Live mode: real TikTok or Instagram search through the local API (npm run api). Without it, the app uses sample data.
+  // Live mode: real TikTok, Instagram or YouTube search through the local API (npm run api). Without it, the app uses sample data.
   const [live, setLive] = useState(false)
   const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
     videos: [],
@@ -74,7 +74,7 @@ export default function App() {
   // A search that finished after the user moved to another screen, waiting to be opened.
   const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
   const searchSeq = useRef(0)
-  // A search whose TikTok scores (each account's usual views) are still being fetched.
+  // A search whose TikTok or YouTube scores (each account's usual views) are still being fetched.
   const [scoring, setScoring] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [patternFilter, setPatternFilter] = useState<string | null>(null)

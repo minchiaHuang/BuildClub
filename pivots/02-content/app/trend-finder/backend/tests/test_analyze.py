@@ -39,6 +39,15 @@ def test_analyze_needs_a_tiktok_or_instagram_link(client, url):
     assert client.post("/api/analyze", json={"url": url}).status_code == 400
 
 
+@pytest.mark.parametrize("url", ["https://www.youtube.com/shorts/abc123", "https://youtube.com/shorts/abc123"])
+def test_analyze_takes_a_youtube_shorts_link(client, monkeypatch, url):
+    import server
+    queued = []
+    monkeypatch.setattr(server.jobs, "submit", lambda u: queued.append(u) or "job1")  # no real download
+    r = client.post("/api/analyze", json={"url": url})
+    assert (r.status_code, queued) == (200, [url])
+
+
 def test_unknown_job_is_404(client):
     assert client.get("/api/analyze/nope").status_code == 404
 
