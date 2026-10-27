@@ -12,7 +12,7 @@
 - **每日花費上限（2026-10-27 新增）：** 後端在每次付費呼叫之前先記一筆估算花費，記在 `data.db`，以這台電腦的當地日期計，午夜歸零。超過上限就回 429，並附上說明。快取、pin 住的搜尋和已經完成的拆解都免費，不會被擋。估算單價：TikTok 搜尋 US$0.31（含作者中位數）、IG 搜尋 US$0.03、拆解 US$0.08。新增的 env：
   - `DAILY_APIFY_USD`（預設 1.00）
   - `DAILY_CLAUDE_USD`（預設 1.00）
-- **給 Daphne 用（2026-10-27 決定走選項 1：Mac mini + 通道 + 簡單密碼）：** 後端現在直接提供 `dist/` 的網頁，`npm run build` 之後只要開 8787 一個網址就能用。在 `.env` 設了 `APP_PASSWORD`，打開網頁或呼叫 API 時，瀏覽器都會跳出密碼框（帳號隨便填）；沒設就不檢查。設了密碼之後，本機開 vite 開發時也要輸入一次密碼。通道還沒開。
+- **給 Daphne 用（2026-10-27 決定走選項 1：Mac mini + 通道 + 簡單密碼）：** 後端現在直接提供 `dist/` 的網頁，`npm run build` 之後只要開 8787 一個網址就能用。在 `.env` 設了 `APP_PASSWORD`，打開網頁或呼叫 API 時，瀏覽器都會跳出密碼框（帳號隨便填）；沒設就不檢查。設了密碼之後，本機開 vite 開發時也要輸入一次密碼。2026-10-27 已在 `.env` 設好密碼，用 curl 實測：沒帶密碼的話，網頁、JS 和 API 都回 401，帶對的密碼就回 200。通道：`tailscale funnel --bg 8787` 卡在 tailnet 還沒啟用 Funnel，要使用者到 Tailscale 網頁按同意。啟用後的網址會是 `https://tommymac-mini.<tailnet>.ts.net`，還要再從外網確認一次。
 - **已知問題：**
   - 每次新的 TikTok 搜尋多花約 US$0.26（作者中位數），時間也多約 40 秒；可用 `AUTHORS_PER_SEARCH`、`VIDEOS_PER_AUTHOR` 調整。
   - IG 搜尋結果沒有粉絲數 → `followers`/`ratio` 為 null，依觀看數排序；IG 不算作者中位數。前端還沒有選 IG 的 UI（要改元件，屬 Veralyn）。若在前端直接顯示 IG 結果，`outlierScore` 會退回 views÷1，需要先處理。
