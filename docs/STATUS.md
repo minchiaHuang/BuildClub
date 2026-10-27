@@ -1,6 +1,8 @@
 # STATUS
 
-**一句話：** Trend Finder 後端已做到 PRD 範圍，前端搜尋頁可切 TikTok / Instagram（2026-10-27 晚）：TikTok + IG 搜尋、每帳號中位數爆紅分數、clients/ideas、analyze（Claude 拆解），前端資料層已接線；已從 fork 開 PR #3 給 Veralyn 審（2026-10-27）。
+**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台，新增 Channel 總結頁和 TikTok 滑鼠移上去播放（2026-10-27 晚，`a691a7a`，已 push，PR #3）。
+
+- **2026-10-27 晚（manager session）：** hover 播放（TikTok 會播；IG embed 不自動播，維持封面）；YouTube 用 yt-dlp 免費，一次約 13 支 Shorts；X 用 kaito actor，tofu 實測 38 支、估 US$0.06；Reddit 改用 clearpath actor 搜 `site:v.redd.it`，tofu 實測 5.4 秒 30 支影片、23 支有分數（免費 JSON 從這台被 403 擋）；Channel 總結呼叫 channel-decoder，@mkbhd 50 支實測：7 種格式、Claude 命名約 US$0.15、Jev US$0.005，結果已快取。驗證：`bash bin/verify.sh` 綠（158 測試）、`npm run build` 過、eslint 乾淨、8787 `/api/health` 列出 5 個平台。使用者授權：驗證過可自動 commit push，付費實測低於 US$1 不用先問。
 
 - **上次驗證：** 2026-10-27 晚（搜尋加速）：`bash bin/verify.sh` 綠（49 個離線測試）、`npm run build` 過、eslint 乾淨；隔離副本用假的 Apify（`run_actor` 換成假資料，中位數延遲 15 秒，不花錢）以 curl 實測：新搜尋 0.03 秒回結果（`mediansPending: true`），15 秒後讀快取分數已補上；`cachedOnly=1` 對沒快取的字回 404。**真實新 TikTok 搜尋還沒實測**（約 US$0.07–0.31，要先問）。更早（IG 前端）：`bash bin/verify.sh` 綠、`npm run build` 過、eslint 改動檔乾淨；Playwright 在隔離副本（scratchpad 複製 backend+dist，無 `.env`、每日上限 0，不可能付費）只搜 tofu 快取，7 項全過：TikTok/IG 單選切換、IG 結果只顯示觀看數（無 × 分數、無 0 followers）、IG 拆解抽屜 Score 顯示「–」、切回 TikTok 分數照舊、「tofu instagram」自動搜 IG、未快取字回每日上限錯誤、IG 規劃頁只顯示觀看數。更早 2026-10-27 晚，`bash bin/verify.sh` 綠（32 個離線測試，含 5 個每日上限測試）；載入多餘 PUT 修好後在瀏覽器實測（vite 5191 → 8787）：載入只有 GET，改一次 client 設定就送一次 `PUT /api/clients`。更早：worktree 裡 `npm ci` 後 `npm run build` 通過（tsc 無錯誤），`eslint src/lib/live.ts src/App.tsx` 無警告；瀏覽器實測（Playwright，vite 5190 → API 8787）全部通過：demo 登入 → 搜尋 tofu（快取）→ 存 xingye0615（快取拆解，秒回）→ 規劃 → 存 thaotamto「Boil your tofu」（真實拆解約 1 分鐘，15 次輪詢）→ 重新整理後 clients/ideas 還在；console 只有 favicon 404 和 TikTok embed 503。本次實測：
   - 作者中位數：對 pin 住的 tofu 補抓 15 個作者 × 10 支，39 秒，134 支，16/30 支有分數。
@@ -28,6 +30,9 @@
   - 沒改到、但還寫著舊 Node API 的地方：`AGENTS.md` 第 24 行、`vite.config.ts` 註解（`npm run api` 仍然有效）。
   - repo 根目錄有個只有 `.git` 的 `BuildClub/` 資料夾，來源不明，未處理。
 - **下一步：**
+  - 小問題（2026-10-27 UI 檢查）：選 YouTube 時標題仍寫「Trends from TikTok」；hashtag chip 的平均倍數沒加千分位；X 影片拆解面板顯示「Sample video: no playback」；YouTube 封面有黑邊、日期顯示「3y ago」。
+  - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
+  - IG hover 播放要後端提供影片檔網址才做得到。
   0. 用一次真實的新 TikTok 搜尋實測搜尋加速（約 US$0.07–0.31，先問使用者），對照 Apify console 的實際扣款，校正 `APIFY_USD_PER_VIDEO`。
   1. 等 Veralyn 審 PR #3，回應她的意見。
   2. 和 Veralyn 討論上面的前端已知問題（費用提示、拆解狀態顯示、自動搜尋客戶主題）。
