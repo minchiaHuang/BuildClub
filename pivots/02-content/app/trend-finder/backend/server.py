@@ -13,6 +13,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import sqlite3
@@ -29,6 +30,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 import channels
+import x
 import youtube
 from analyze import Jobs, job_id_for
 from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
@@ -57,6 +59,7 @@ load_env(HERE.parent / ".env")
 TOKEN = os.environ.get("APIFY_TOKEN", "").strip()
 ACTOR = os.environ.get("APIFY_TIKTOK_ACTOR", "clockworks~tiktok-scraper")
 IG_ACTOR = os.environ.get("APIFY_INSTAGRAM_ACTOR", "apify~instagram-hashtag-scraper")
+X_ACTOR = os.environ.get("APIFY_X_ACTOR", "kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest")
 RESULTS_PER_SEARCH = int(os.environ.get("RESULTS_PER_SEARCH", 30))
 CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$1.70/1,000 is about $0.05.
@@ -74,7 +77,9 @@ DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
 # Channel summaries: Jev labelling in US$; ScrapeCreators (Instagram only) in credits, 1 per 12 reels.
 DAILY_JEV_USD = float(os.environ.get("DAILY_JEV_USD", 0.50))
 DAILY_SCRAPECREATORS_CREDITS = float(os.environ.get("DAILY_SCRAPECREATORS_CREDITS", 20))
-SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03}
+# X: 30 tweets at ~US$0.25-0.40 per 1,000 is about 0.01; 0.02 leaves room for the actor's minimum charge.
+SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03, "x": 0.02}
+X_USD_PER_TWEET = 0.0004  # the dearer of the two candidate actors; account medians cost this per tweet fetched
 APIFY_USD_PER_VIDEO = 0.0017  # TikTok actor; account medians cost this per video fetched
 ANALYZE_USD = 0.08  # one Claude breakdown
 
@@ -107,7 +112,7 @@ def error(status: int, message: str, detail: str = "") -> JSONResponse:
 
 
 def cache_name(query: str, platform: str = "tiktok") -> str:
-    actor = {"instagram": IG_ACTOR, "youtube": "yt-dlp"}.get(platform, ACTOR)  # TikTok keys stay as before, so pins still load
+    actor = {"instagram": IG_ACTOR, "youtube": "yt-dlp", "x": X_ACTOR}.get(platform, ACTOR)  # TikTok keys stay as before, so pins still load
     return hashlib.sha1(f"{actor}|{RESULTS_PER_SEARCH}|{query}".encode()).hexdigest() + ".json"
 
 
@@ -337,10 +342,53 @@ def search_youtube(query: str):
     return {**payload, "cached": False}
 
 
+def search_x(query: str):
+    """Video tweets for the keyword. Account medians (one batched run) are filled afterwards, like TikTok's."""
+    def run(payload, max_items):
+        return run_actor(payload, max_items, actor=X_ACTOR)
+
+    try:
+        videos = x.search_videos(query, run)
+        authors = list(dict.fromkeys(v["author"] for v in videos))
+        medians = x.saved(db, authors, MEDIAN_DAYS)
+        x.apply(videos, medians)
+    except Exception as e:
+        print(f"[search] failed: {e}", flush=True)
+        return error(502, "X search failed. Check the API terminal for details.", str(e))
+    missing = [a for a in authors if a.lower() not in medians][:x.AUTHORS_PER_FILL]
+    payload = {"query": query, "platform": "x", "fetchedAt": int(time.time() * 1000), "videos": videos,
+               "mediansPending": bool(missing)}
+    write_cache(payload)
+    print(f'[search] x "{query}" → {len(videos)} videos', flush=True)
+    if missing:
+        filling.add(cache_name(query, "x"))
+        background = copy.deepcopy(payload)
+
+        def fill():
+            try:
+                found = {}
+                if spend("apify", round(len(missing) * x.ITEMS_PER_AUTHOR * X_USD_PER_TWEET, 4), DAILY_APIFY_USD):
+                    try:
+                        found = x.fetch_medians(missing, run)
+                        x.save(db, found)
+                    except Exception as e:
+                        print(f"[search] x medians failed: {e}", flush=True)
+                else:
+                    print("[search] x medians skipped: today's Apify budget is used up", flush=True)
+                x.apply(background["videos"], {**medians, **found})
+                background["mediansPending"] = False
+                write_cache(background)
+            finally:
+                filling.discard(cache_name(query, "x"))
+
+        in_background(fill)
+    return {**payload, "cached": False}
+
+
 @app.get("/api/health")
 def health():
     # yt-dlp alone is enough for live YouTube search; TikTok and Instagram need the Apify token.
-    return {"live": bool(TOKEN) or bool(shutil.which("yt-dlp")), "platforms": ["tiktok", "instagram", "youtube"],
+    return {"live": bool(TOKEN) or bool(shutil.which("yt-dlp")), "platforms": ["tiktok", "instagram", "youtube", "x"],
             "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
@@ -349,8 +397,8 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
     query = q.strip()[:120]
     if not query:
         return error(400, "Type something to search.")
-    if platform not in ("tiktok", "instagram", "youtube"):
-        return error(400, "Search TikTok, Instagram or YouTube.")
+    if platform not in ("tiktok", "instagram", "youtube", "x"):
+        return error(400, "Search TikTok, Instagram, YouTube or X.")
     if not TOKEN and platform != "youtube":
         return error(503, "Live search is off. Add APIFY_TOKEN to .env and restart the API.")
     if fresh != "1":
@@ -363,6 +411,8 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
         return search_youtube(query)
     if not spend("apify", SEARCH_USD[platform], DAILY_APIFY_USD):
         return over_budget("Apify", DAILY_APIFY_USD, "DAILY_APIFY_USD")
+    if platform == "x":
+        return search_x(query)
     medians, missing = {}, []
     try:
         if platform == "instagram":
@@ -476,12 +526,15 @@ def over_budget(name: str, cap: float, env: str, unit: str = "US$") -> JSONRespo
 jobs = Jobs()
 
 
+X_STATUS = re.compile(r"https://(www\.|mobile\.)?(x|twitter)\.com/\w+/status/\d+")
+
+
 @app.post("/api/analyze", response_model=AnalyzeStarted)
 def start_analyze(body: AnalyzeRequest):
     url = body.url.strip()
-    if not url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/", "https://www.youtube.com/shorts/",
-                           "https://youtube.com/shorts/")):
-        return error(400, "Paste a TikTok, Instagram or YouTube Shorts link.")
+    if not (url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/", "https://www.youtube.com/shorts/",
+                            "https://youtube.com/shorts/")) or X_STATUS.match(url)):
+        return error(400, "Paste a TikTok, Instagram, YouTube Shorts or X link.")
     current = jobs.get(job_id_for(url))
     if (not current or current.status == "failed") and not spend("claude", ANALYZE_USD, DAILY_CLAUDE_USD):
         return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")

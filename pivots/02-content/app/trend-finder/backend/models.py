@@ -37,7 +37,7 @@ class SearchVideo(BaseModel):
 
 class SearchResult(BaseModel):
     query: str
-    platform: Literal["tiktok", "instagram", "youtube"]
+    platform: Literal["tiktok", "instagram", "youtube", "x"]
     fetchedAt: int
     videos: list[SearchVideo]
     cached: bool

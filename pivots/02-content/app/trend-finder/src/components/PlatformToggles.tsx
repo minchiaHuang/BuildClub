@@ -93,7 +93,7 @@ interface Props {
 const order: LogoPlatform[] = ['instagram', 'tiktok', 'youtube', 'reddit', 'x']
 // The sample data has no YouTube videos, so YouTube can only be picked in live mode.
 const searchable = (p: LogoPlatform, live: boolean): p is Platform =>
-  p === 'instagram' || p === 'tiktok' || (p === 'youtube' && live)
+  p === 'instagram' || p === 'tiktok' || ((p === 'youtube' || p === 'x') && live)
 
 // Round, icon-only platform buttons. On = ring and a small tick; "Soon" = faded. At least one stays on.
 export function PlatformToggles({ selected, onChange, showSoon = false, live = false }: Props) {
@@ -103,7 +103,7 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
   return (
     <div className="platforms" role="group" aria-label="Platforms">
       {order.map((p) => {
-        // Reddit and X aren't built yet.
+        // Reddit isn't built yet.
         const soon = !searchable(p, live)
         if (soon && !showSoon) return null
         if (soon) {

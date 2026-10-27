@@ -29,7 +29,7 @@ export interface LiveSearch {
   formats: Format[]
   cached: boolean
   fetchedAt: number
-  // TikTok and YouTube account medians arrive after the results; poll with cachedOnly until this is false.
+  // TikTok, YouTube and X account medians arrive after the results; poll with cachedOnly until this is false.
   mediansPending: boolean
 }
 
@@ -52,8 +52,8 @@ function hookFrom(text: string): string {
 const daysSince = (iso: string | null) =>
   iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 999
 
-const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt' }
-const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short' }
+const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt', x: 'x' }
+const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short', x: 'X video' }
 
 function toVideo(item: LiveItem, query: string, platform: Platform): Video {
   return {
