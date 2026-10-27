@@ -74,6 +74,8 @@ export default function App() {
   // A search that finished after the user moved to another screen, waiting to be opened.
   const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
   const searchSeq = useRef(0)
+  // A search whose TikTok scores (each account's usual views) are still being fetched.
+  const [scoring, setScoring] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
 
@@ -225,6 +227,7 @@ export default function App() {
       setPatternFilter(null)
       setFormatFilter(null)
       setLastSearch(text)
+      if (res.mediansPending) void fillScores(q, platform)
       // Only jump to the results if the user is still waiting on this client's search page.
       if (here.current.view === 'search' && here.current.workspace === clientId) setView('results')
       else setSearchDone({ text, clientId })
@@ -235,6 +238,27 @@ export default function App() {
       if (here.current.view !== 'search' || here.current.workspace !== clientId) setSearchDone({ text, clientId, error: message })
     } finally {
       if (seq === searchSeq.current) setSearching(null)
+    }
+  }
+
+  // Poll the saved (free) search until the account medians are in, then update the scores in place.
+  const fillScores = async (q: string, platform: Platform) => {
+    setScoring(q)
+    try {
+      for (let i = 0; i < 36; i++) {
+        await new Promise((r) => setTimeout(r, 5000))
+        const res = await searchLive(q, false, platform, true)
+        if (res.mediansPending) continue
+        const byId = new Map(res.videos.map((v) => [v.id, v.medianViews]))
+        const fill = (v: Video) => (byId.has(v.id) ? { ...v, medianViews: byId.get(v.id) ?? null } : v)
+        setLiveStore((prev) => ({ ...prev, videos: prev.videos.map(fill) }))
+        setLiveResults((prev) => prev.map(fill))
+        return
+      }
+    } catch {
+      // The results are still usable; they just keep the views ÷ followers score.
+    } finally {
+      setScoring((s) => (s === q ? null : s))
     }
   }
 
@@ -643,10 +667,11 @@ export default function App() {
       )}
 
       {reading && <ReadingOverlay source={reading} onDone={finishReading} />}
-      {(searching || searchDone) && (
+      {(searching || searchDone || scoring) && (
         <SearchStatus
           searching={searching}
           done={searchDone}
+          scoring={scoring}
           onView={() => {
             if (!searchDone) return
             setWorkspaceRaw(searchDone.clientId)
@@ -670,11 +695,13 @@ function libraryKey(library: { videos: { id: string }[]; formats: { id: string }
 function SearchStatus({
   searching,
   done,
+  scoring,
   onView,
   onDismiss,
 }: {
   searching: { q: string; platform: Platform } | null
   done: { text: string; error?: string } | null
+  scoring: string | null
   onView: () => void
   onDismiss: () => void
 }) {
@@ -730,6 +757,10 @@ function SearchStatus({
             ✕
           </button>
         </>
+      ) : scoring ? (
+        <span className="small">
+          Checking each account's usual views for "{scoring}"… <span className="muted">scores update in about a minute</span>
+        </span>
       ) : null}
     </div>
   )

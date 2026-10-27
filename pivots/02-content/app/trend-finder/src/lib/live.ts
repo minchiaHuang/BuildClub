@@ -29,6 +29,8 @@ export interface LiveSearch {
   formats: Format[]
   cached: boolean
   fetchedAt: number
+  // TikTok account medians arrive after the results; poll with cachedOnly until this is false.
+  mediansPending: boolean
 }
 
 export async function checkLive(): Promise<boolean> {
@@ -104,8 +106,15 @@ function toFormat(item: LiveItem, v: Video): Format {
 // The one platform a live search runs on: the only one picked, else TikTok.
 export const livePlatform = (selected: Platform[]): Platform => (selected.length === 1 ? selected[0] : 'tiktok')
 
-export async function searchLive(query: string, fresh = false, platform: Platform = 'tiktok'): Promise<LiveSearch> {
-  const r = await fetch(`/api/search?q=${encodeURIComponent(query)}&platform=${platform}${fresh ? '&fresh=1' : ''}`)
+export async function searchLive(
+  query: string,
+  fresh = false,
+  platform: Platform = 'tiktok',
+  cachedOnly = false,
+): Promise<LiveSearch> {
+  const r = await fetch(
+    `/api/search?q=${encodeURIComponent(query)}&platform=${platform}${fresh ? '&fresh=1' : ''}${cachedOnly ? '&cachedOnly=1' : ''}`,
+  )
   const body = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(body.error ?? 'Search failed. Is the API running (npm run api)?')
   const videos: Video[] = []
@@ -115,7 +124,7 @@ export async function searchLive(query: string, fresh = false, platform: Platfor
     videos.push(v)
     formats.push(toFormat(item, v))
   }
-  return { videos, formats, cached: Boolean(body.cached), fetchedAt: body.fetchedAt }
+  return { videos, formats, cached: Boolean(body.cached), fetchedAt: body.fetchedAt, mediansPending: Boolean(body.mediansPending) }
 }
 
 // The AI breakdown of one real video (Breakdown in backend/models.py).

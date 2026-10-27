@@ -9,6 +9,7 @@ Pin a cached search so it never expires (offline demos):
 """
 
 import base64
+import copy
 import hashlib
 import json
 import os
@@ -62,11 +63,13 @@ MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
 AUTHORS_PER_SEARCH = int(os.environ.get("AUTHORS_PER_SEARCH", 15))
 VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 10))
 MIN_VIDEOS = 5  # fewer recent videos than this and the median says little
+MEDIAN_DAYS = 7  # an account's usual views are reused this long before they are fetched again
 # Daily caps on estimated spend, so a loop or stray clicks can't run up the bill. Each paid call is
 # counted before it runs; cached searches and finished breakdowns are free and never counted.
 DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 1.00))
 DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
-SEARCH_USD = {"tiktok": 0.31, "instagram": 0.03}  # TikTok: search $0.05 + account medians $0.26
+SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03}
+APIFY_USD_PER_VIDEO = 0.0017  # TikTok actor; account medians cost this per video fetched
 ANALYZE_USD = 0.08  # one Claude breakdown
 
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
@@ -110,6 +113,9 @@ def read_cache(query: str, platform: str = "tiktok"):
         saved = json.loads((CACHE_DIR / cache_name(query, platform)).read_text())
     except (OSError, ValueError):
         return None
+    # A fill that died with a restart left the flag on; nothing will clear it, so stop waiting.
+    if saved.get("mediansPending") and cache_name(query, platform) not in filling:
+        saved["mediansPending"] = False
     age_hours = (time.time() * 1000 - saved["fetchedAt"]) / 3_600_000
     return saved if age_hours < CACHE_HOURS else None
 
@@ -217,22 +223,77 @@ def median_views(items: list) -> dict:
     return {name: statistics.median(v) for name, v in views.items() if len(v) >= MIN_VIDEOS}
 
 
-def add_medians(videos: list) -> None:
-    """Fill medianViews and outlier (views over the account's usual views) for the top accounts.
-    A failure only leaves them empty: the search result is still good without them."""
-    authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))[:AUTHORS_PER_SEARCH]
-    medians = {}
-    if authors:
-        try:
-            medians = median_views(run_actor({
-                "profiles": authors, "resultsPerPage": VIDEOS_PER_AUTHOR, "profileSorting": "latest",
-                "excludePinnedPosts": True, **NO_DOWNLOADS}, len(authors) * VIDEOS_PER_AUTHOR))
-        except Exception as e:
-            print(f"[search] account medians failed: {e}", flush=True)
+def saved_medians(authors: list) -> dict:
+    """Account medians fetched in the last MEDIAN_DAYS. None means the account had too few videos."""
+    if not authors:
+        return {}
+    since = time.time() - MEDIAN_DAYS * 86400
+    with db() as conn:
+        rows = conn.execute(f"SELECT author, median FROM medians WHERE fetched_at > ? AND author IN "
+                            f"({','.join('?' * len(authors))})", (since, *authors)).fetchall()
+    return dict(rows)
+
+
+def save_medians(medians: dict) -> None:
+    with db() as conn:
+        conn.executemany("INSERT OR REPLACE INTO medians (author, median, fetched_at) VALUES (?, ?, ?)",
+                         [(a, m, time.time()) for a, m in medians.items()])
+
+
+def apply_medians(videos: list, medians: dict) -> None:
+    """medianViews and outlier: views over the account's usual views."""
     for v in videos:
         median = medians.get(v["author"])
         v["medianViews"] = median
         v["outlier"] = round(v["plays"] / median, 2) if median else None
+
+
+def fetch_medians(missing: list) -> dict:
+    """Fetch and pay for accounts not seen in the last week. A failure only leaves them empty:
+    the search result is still good without them."""
+    if not spend("apify", round(len(missing) * VIDEOS_PER_AUTHOR * APIFY_USD_PER_VIDEO, 2), DAILY_APIFY_USD):
+        print("[search] account medians skipped: today's Apify budget is used up", flush=True)
+        return {}
+    try:
+        found = median_views(run_actor({
+            "profiles": missing, "resultsPerPage": VIDEOS_PER_AUTHOR, "profileSorting": "latest",
+            "excludePinnedPosts": True, **NO_DOWNLOADS}, len(missing) * VIDEOS_PER_AUTHOR))
+    except Exception as e:
+        print(f"[search] account medians failed: {e}", flush=True)
+        return {}
+    fresh = {a: found.get(a) for a in missing}
+    save_medians(fresh)
+    return fresh
+
+
+# Fetching account medians takes about 40 seconds, so the search returns first and the cache
+# file is rewritten with the medians when they arrive. The front end polls the (free) cached search.
+filling = set()  # cache file names still waiting for medians
+
+
+def in_background(fill) -> None:
+    threading.Thread(target=fill, daemon=True).start()
+
+
+def write_cache(payload: dict) -> None:
+    # Written whole and swapped in, so a poll never reads half a file and searches live (paid) instead.
+    CACHE_DIR.mkdir(exist_ok=True)
+    target = CACHE_DIR / cache_name(payload["query"], payload["platform"])
+    partial = target.with_suffix(f".{threading.get_ident()}.tmp")
+    partial.write_text(json.dumps(payload))
+    os.replace(partial, target)
+
+
+def fill_medians(payload: dict, medians: dict, missing: list) -> None:
+    try:
+        medians = {**medians, **fetch_medians(missing)}
+        apply_medians(payload["videos"], medians)
+        payload["mediansPending"] = False
+        write_cache(payload)
+        scored = sum(1 for v in payload["videos"] if v["outlier"] is not None)
+        print(f'[search] tiktok "{payload["query"]}" → medians for {scored} videos', flush=True)
+    finally:
+        filling.discard(cache_name(payload["query"], payload["platform"]))
 
 
 @app.get("/api/health")
@@ -241,7 +302,7 @@ def health():
 
 
 @app.get("/api/search", response_model=SearchResult)
-def search(q: str = "", fresh: str = "", platform: str = "tiktok"):
+def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: str = ""):
     query = q.strip()[:120]
     if not query:
         return error(400, "Type something to search.")
@@ -253,22 +314,33 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok"):
         cached = read_cache(query, platform)
         if cached:
             return {**cached, "cached": True}
+    if cachedOnly == "1":  # the front end's poll for scores must never start a paid search
+        return error(404, "No saved search for that. Search it first.")
     if not spend("apify", SEARCH_USD[platform], DAILY_APIFY_USD):
         return over_budget("Apify", DAILY_APIFY_USD, "DAILY_APIFY_USD")
+    medians, missing = {}, []
     try:
         if platform == "instagram":
             videos = search_instagram(query)  # account medians are TikTok only for now
         else:
             videos = search_tiktok(query)
-            add_medians(videos)
+            # Accounts seen in the last week are scored now; up to AUTHORS_PER_SEARCH others later.
+            authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
+            medians = saved_medians(authors)
+            missing = [a for a in authors if a not in medians][:AUTHORS_PER_SEARCH]
+            apply_medians(videos, medians)
     except Exception as e:
         name = "Instagram" if platform == "instagram" else "TikTok"
         print(f"[search] failed: {e}", flush=True)
         return error(502, f"{name} search failed. Check the API terminal for details.", str(e))
-    payload = {"query": query, "platform": platform, "fetchedAt": int(time.time() * 1000), "videos": videos}
-    CACHE_DIR.mkdir(exist_ok=True)
-    (CACHE_DIR / cache_name(query, platform)).write_text(json.dumps(payload))
+    payload = {"query": query, "platform": platform, "fetchedAt": int(time.time() * 1000), "videos": videos,
+               "mediansPending": bool(missing)}
+    write_cache(payload)
     print(f'[search] {platform} "{query}" → {len(videos)} videos', flush=True)
+    if missing:
+        filling.add(cache_name(query, platform))
+        background = copy.deepcopy(payload)  # the reply below must not change while it is filled
+        in_background(lambda: fill_medians(background, medians, missing))
     return {**payload, "cached": False}
 
 
@@ -277,6 +349,7 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok"):
 def db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
     return conn
 
 

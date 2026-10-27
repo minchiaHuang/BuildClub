@@ -24,6 +24,8 @@ def offline(tmp_path, monkeypatch):
     monkeypatch.setattr(server, "PINNED_DIR", tmp_path / "pinned")
     monkeypatch.setattr(server, "DB_PATH", tmp_path / "data.db")
     monkeypatch.setattr(analyze, "JOBS_DIR", tmp_path / "jobs")
+    # Account medians are filled after the search returns; run that inline so tests are deterministic.
+    monkeypatch.setattr(server, "in_background", lambda fill: fill())
     return tmp_path
 
 

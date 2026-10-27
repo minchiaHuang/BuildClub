@@ -39,6 +39,8 @@ class SearchResult(BaseModel):
     fetchedAt: int
     videos: list[SearchVideo]
     cached: bool
+    # True while account medians are still being fetched; search again (it's cached) for the scores.
+    mediansPending: bool = False
 
 
 class Client(BaseModel):

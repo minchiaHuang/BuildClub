@@ -16,7 +16,8 @@ def fake_search(calls):
 def test_live_searches_stop_at_the_daily_cap(client, monkeypatch):
     calls = []
     monkeypatch.setattr(server, "run_actor", fake_search(calls))
-    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.62)  # two TikTok searches at 0.31
+    # The first search pays 0.05 + 0.02 for account a's videos; a is then cached, so the second pays 0.05.
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.12)
     for _ in range(2):
         assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 200
     calls.clear()
@@ -35,14 +36,14 @@ def test_cached_searches_are_free_after_the_cap(client, monkeypatch):
 
 def test_instagram_costs_less_than_tiktok(client, monkeypatch):
     monkeypatch.setattr(server, "run_actor", lambda payload, max_items, actor=None: [])
-    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.10)
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.07)  # Instagram 0.03, then TikTok 0.05 goes over
     assert client.get("/api/search", params={"q": "tofu", "platform": "instagram"}).status_code == 200
     assert client.get("/api/search", params={"q": "tofu"}).status_code == 429
 
 
 def test_the_cap_resets_the_next_day(client, monkeypatch):
     monkeypatch.setattr(server, "run_actor", fake_search([]))
-    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.31)
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.07)  # one search with one new account
     monkeypatch.setattr(server, "today", lambda: "2026-10-27")
     assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 200
     assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 429
@@ -62,3 +63,20 @@ def test_breakdowns_stop_at_the_cap_but_finished_ones_stay_free(client, monkeypa
     r = client.post("/api/analyze", json={"url": "https://www.tiktok.com/@a/video/2"})
     assert r.status_code == 429
     assert "DAILY_CLAUDE_USD" in r.json()["detail"]
+
+
+def test_account_medians_are_skipped_when_they_would_go_over_the_cap(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(server, "run_actor", fake_search(calls))
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0.05)  # the search fits, its account medians don't
+    r = client.get("/api/search", params={"q": "tofu", "fresh": "1"})
+    assert r.status_code == 200
+    assert r.json()["videos"][0]["medianViews"] is None
+    assert [c for c in calls if "profiles" in c] == []
+
+
+def test_only_accounts_actually_fetched_are_paid_for(client, monkeypatch):
+    monkeypatch.setattr(server, "run_actor", fake_search([]))
+    server.save_medians({"a": 400})
+    assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 200
+    assert server.load(f"spend:{server.today()}") == {"apify": 0.05}
