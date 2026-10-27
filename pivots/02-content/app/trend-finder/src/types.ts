@@ -1,4 +1,4 @@
-export type Platform = 'instagram' | 'tiktok'
+export type Platform = 'instagram' | 'tiktok' | 'youtube'
 
 export interface Video {
   id: string

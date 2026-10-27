@@ -31,11 +31,13 @@ class SearchVideo(BaseModel):
     # Null when the account has too few videos, or for searches saved before this existed.
     medianViews: Optional[float] = None
     outlier: Optional[float] = None
+    # YouTube only: the channel, which the usual views are looked up by. Not shown in the app.
+    channelId: Optional[str] = None
 
 
 class SearchResult(BaseModel):
     query: str
-    platform: Literal["tiktok", "instagram"]
+    platform: Literal["tiktok", "instagram", "youtube"]
     fetchedAt: int
     videos: list[SearchVideo]
     cached: bool

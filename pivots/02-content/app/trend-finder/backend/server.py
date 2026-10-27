@@ -28,6 +28,7 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+import youtube
 from analyze import Jobs, job_id_for
 from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, Library, SavedIdea, SearchResult
 
@@ -101,7 +102,7 @@ def error(status: int, message: str, detail: str = "") -> JSONResponse:
 
 
 def cache_name(query: str, platform: str = "tiktok") -> str:
-    actor = IG_ACTOR if platform == "instagram" else ACTOR  # TikTok keys stay as before, so pins still load
+    actor = {"instagram": IG_ACTOR, "youtube": "yt-dlp"}.get(platform, ACTOR)  # TikTok keys stay as before, so pins still load
     return hashlib.sha1(f"{actor}|{RESULTS_PER_SEARCH}|{query}".encode()).hexdigest() + ".json"
 
 
@@ -296,9 +297,46 @@ def fill_medians(payload: dict, medians: dict, missing: list) -> None:
         filling.discard(cache_name(payload["query"], payload["platform"]))
 
 
+def search_youtube(query: str):
+    """Free (yt-dlp), so nothing is counted against the daily caps. Channel scores are filled afterwards,
+    the same way as TikTok's."""
+    try:
+        videos = youtube.search_shorts(query)
+        channels = list(dict.fromkeys(v["channelId"] for v in videos if v["channelId"]))
+        stats = youtube.saved(db, channels, MEDIAN_DAYS)
+        youtube.apply(videos, stats)
+    except Exception as e:
+        print(f"[search] failed: {e}", flush=True)
+        return error(502, "YouTube search failed. Check the API terminal for details.", str(e))
+    missing = [c for c in channels if c not in stats]
+    payload = {"query": query, "platform": "youtube", "fetchedAt": int(time.time() * 1000), "videos": videos,
+               "mediansPending": bool(missing)}
+    write_cache(payload)
+    print(f'[search] youtube "{query}" → {len(videos)} videos', flush=True)
+    if missing:
+        filling.add(cache_name(query, "youtube"))
+        background = copy.deepcopy(payload)
+
+        def fill():
+            try:
+                found = youtube.fetch_channels(missing)
+                youtube.save(db, found)
+                youtube.apply(background["videos"], {**stats, **found})
+                background["mediansPending"] = False
+                write_cache(background)
+                print(f'[search] youtube "{query}" → scores for {len(found)} of {len(missing)} channels', flush=True)
+            finally:
+                filling.discard(cache_name(query, "youtube"))
+
+        in_background(fill)
+    return {**payload, "cached": False}
+
+
 @app.get("/api/health")
 def health():
-    return {"live": bool(TOKEN), "platforms": ["tiktok", "instagram"], "resultsPerSearch": RESULTS_PER_SEARCH}
+    # yt-dlp alone is enough for live YouTube search; TikTok and Instagram need the Apify token.
+    return {"live": bool(TOKEN) or bool(shutil.which("yt-dlp")), "platforms": ["tiktok", "instagram", "youtube"],
+            "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
 @app.get("/api/search", response_model=SearchResult)
@@ -306,9 +344,9 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
     query = q.strip()[:120]
     if not query:
         return error(400, "Type something to search.")
-    if platform not in ("tiktok", "instagram"):
-        return error(400, "Search TikTok or Instagram.")
-    if not TOKEN:
+    if platform not in ("tiktok", "instagram", "youtube"):
+        return error(400, "Search TikTok, Instagram or YouTube.")
+    if not TOKEN and platform != "youtube":
         return error(503, "Live search is off. Add APIFY_TOKEN to .env and restart the API.")
     if fresh != "1":
         cached = read_cache(query, platform)
@@ -316,6 +354,8 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
             return {**cached, "cached": True}
     if cachedOnly == "1":  # the front end's poll for scores must never start a paid search
         return error(404, "No saved search for that. Search it first.")
+    if platform == "youtube":
+        return search_youtube(query)
     if not spend("apify", SEARCH_USD[platform], DAILY_APIFY_USD):
         return over_budget("Apify", DAILY_APIFY_USD, "DAILY_APIFY_USD")
     medians, missing = {}, []
@@ -434,8 +474,9 @@ jobs = Jobs()
 @app.post("/api/analyze", response_model=AnalyzeStarted)
 def start_analyze(body: AnalyzeRequest):
     url = body.url.strip()
-    if not url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/")):
-        return error(400, "Paste a TikTok or Instagram video link.")
+    if not url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/", "https://www.youtube.com/shorts/",
+                           "https://youtube.com/shorts/")):
+        return error(400, "Paste a TikTok, Instagram or YouTube Shorts link.")
     current = jobs.get(job_id_for(url))
     if (not current or current.status == "failed") and not spend("claude", ANALYZE_USD, DAILY_CLAUDE_USD):
         return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")

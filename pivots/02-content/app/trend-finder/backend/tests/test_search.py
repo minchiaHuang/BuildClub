@@ -127,7 +127,7 @@ def test_instagram_search_from_a_real_result(client, monkeypatch):
 
 
 def test_unknown_platform_is_rejected(client):
-    assert client.get("/api/search", params={"q": "tofu", "platform": "youtube"}).status_code == 400
+    assert client.get("/api/search", params={"q": "tofu", "platform": "reddit"}).status_code == 400
 
 
 def test_tiktok_cache_names_did_not_change():
