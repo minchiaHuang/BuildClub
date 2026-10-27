@@ -176,6 +176,11 @@ def breakdown(prepared: dict, work: Path) -> Breakdown:
     return response.parsed_output
 
 
+def job_id_for(url: str) -> str:
+    """The same link always gets the same job, so a finished breakdown is reused."""
+    return hashlib.sha1(url.encode()).hexdigest()[:12]
+
+
 class Jobs:
     """One worker thread runs jobs in order. State lives in memory; finished breakdowns are
     saved to jobs/<id>/breakdown.json, so they survive a restart."""
@@ -187,7 +192,7 @@ class Jobs:
         threading.Thread(target=self._work, name="analyze-worker", daemon=True).start()
 
     def submit(self, url: str) -> str:
-        job_id = hashlib.sha1(url.encode()).hexdigest()[:12]
+        job_id = job_id_for(url)
         with self._lock:
             current = self.get(job_id)
             if current and current.status != "failed":

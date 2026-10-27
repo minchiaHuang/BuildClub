@@ -15,6 +15,7 @@ import shutil
 import sqlite3
 import statistics
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -24,7 +25,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from analyze import Jobs
+from analyze import Jobs, job_id_for
 from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, SavedIdea, SearchResult
 
 HERE = Path(__file__).resolve().parent
@@ -58,6 +59,12 @@ MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
 AUTHORS_PER_SEARCH = int(os.environ.get("AUTHORS_PER_SEARCH", 15))
 VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 10))
 MIN_VIDEOS = 5  # fewer recent videos than this and the median says little
+# Daily caps on estimated spend, so a loop or stray clicks can't run up the bill. Each paid call is
+# counted before it runs; cached searches and finished breakdowns are free and never counted.
+DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 1.00))
+DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
+SEARCH_USD = {"tiktok": 0.31, "instagram": 0.03}  # TikTok: search $0.05 + account medians $0.26
+ANALYZE_USD = 0.08  # one Claude breakdown
 
 app = FastAPI(title="Trend Finder API")
 
@@ -223,6 +230,8 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok"):
         cached = read_cache(query, platform)
         if cached:
             return {**cached, "cached": True}
+    if not spend("apify", SEARCH_USD[platform], DAILY_APIFY_USD):
+        return over_budget("Apify", DAILY_APIFY_USD, "DAILY_APIFY_USD")
     try:
         if platform == "instagram":
             videos = search_instagram(query)  # account medians are TikTok only for now
@@ -282,6 +291,34 @@ def put_ideas(ideas: list[SavedIdea]):
     return ideas
 
 
+budget_lock = threading.Lock()
+
+
+def today() -> str:
+    return time.strftime("%Y-%m-%d")  # this machine's local day
+
+
+def spend(wallet: str, usd: float, cap: float) -> bool:
+    """Count a paid call against today's cap. Returns False, counting nothing, if it would go over."""
+    key = f"spend:{today()}"
+    with budget_lock:
+        spent = load(key) or {}
+        total = round(spent.get(wallet, 0) + usd, 2)
+        if total > cap:
+            return False
+        with db() as conn:
+            conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)",
+                         (key, json.dumps({**spent, wallet: total})))
+    print(f"[budget] {wallet} US${total:.2f} of US${cap:.2f} today", flush=True)
+    return True
+
+
+def over_budget(name: str, cap: float, env: str) -> JSONResponse:
+    return error(429, f"Today's {name} budget (US${cap:.2f}) is used up. Saved searches and finished "
+                      "breakdowns still work, and the budget resets at midnight.",
+                 f"To allow more, raise {env} in .env and restart the API.")
+
+
 # A breakdown takes minutes, so it runs in the background and the front end polls for progress.
 jobs = Jobs()
 
@@ -291,6 +328,9 @@ def start_analyze(body: AnalyzeRequest):
     url = body.url.strip()
     if not url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/")):
         return error(400, "Paste a TikTok or Instagram video link.")
+    current = jobs.get(job_id_for(url))
+    if (not current or current.status == "failed") and not spend("claude", ANALYZE_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
     return {"job": jobs.submit(url)}
 
 
