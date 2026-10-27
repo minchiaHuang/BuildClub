@@ -1,5 +1,5 @@
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
-import { compact, hasScore, times, outlierScore } from '../lib/metrics'
+import { compact, hasScore, times, outlierScore, viewsWord } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -90,7 +90,7 @@ export function ClientScreen(p: Props) {
                   <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">
-                    Reference: "{v.hook}" · {v.handle} · {compact(v.views)} views{hasScore(v) && ` · ${times(outlierScore(v))}`}
+                    Reference: "{v.hook}" · {v.handle} · {compact(v.views)} {viewsWord(v)}{hasScore(v) && ` · ${times(outlierScore(v))}`}
                   </span>
                   {idea.status === 'approved' && <span className="small">Due {idea.dueDate}</span>}
                 </div>

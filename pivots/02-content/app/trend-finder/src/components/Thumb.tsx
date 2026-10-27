@@ -57,9 +57,11 @@ export function Thumb({ video, large = false, preview = false }: { video: Video;
         {large && platformName[video.platform]}
       </span>
       {!showImage && <span className="thumb-hook">{video.hook}</span>}
-      <span className="thumb-len">
-        {Math.floor(video.lengthSec / 60)}:{String(video.lengthSec % 60).padStart(2, '0')}
-      </span>
+      {video.lengthSec > 0 && (
+        <span className="thumb-len">
+          {Math.floor(video.lengthSec / 60)}:{String(video.lengthSec % 60).padStart(2, '0')}
+        </span>
+      )}
     </div>
   )
 }
