@@ -23,7 +23,7 @@ import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Video } from './types'
-import { checkLive, findPatterns, searchLive } from './lib/live'
+import { analyzeVideo, applyBreakdown, checkLive, findPatterns, loadList, saveList, searchLive } from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
@@ -76,6 +76,26 @@ export default function App() {
       if (ok) setQuery((q) => ({ ...q, days: 3650 }))
     })
   }, [])
+
+  // In live mode the API keeps clients and saved ideas too. Its copy wins on load; after that,
+  // every change is saved back. If the API can't load them, this browser's copy is used.
+  const [synced, setSynced] = useState(false)
+  useEffect(() => {
+    if (!live) return
+    Promise.all([loadList<Client>('clients'), loadList<SavedIdea>('ideas')])
+      .then(([savedClients, savedIdeas]) => {
+        if (savedClients?.length) setClients(savedClients)
+        if (savedIdeas) setIdeas(savedIdeas)
+        setSynced(true)
+      })
+      .catch(() => {})
+  }, [live, setClients, setIdeas])
+  useEffect(() => {
+    if (synced) saveList('clients', clients).catch(() => {})
+  }, [synced, clients])
+  useEffect(() => {
+    if (synced) saveList('ideas', ideas).catch(() => {})
+  }, [synced, ideas])
 
   // Each screen starts at the top, like a new page.
   useEffect(() => {
@@ -283,7 +303,29 @@ export default function App() {
 
   const savedForClient = new Set(shownIdeas.filter((i) => i.clientId === client.id).map((i) => i.videoId))
 
+  // Saving or planning a real video asks the API for its AI breakdown (about a minute and
+  // US$0.08 the first time). It replaces the placeholder shot list and "why it works".
+  const analyzing = useRef(new Set<string>())
+  const breakDown = (videoId: string) => {
+    const v = videoById.get(videoId)
+    const f = v && formatById.get(v.formatId)
+    if (!v?.live || !v.url || !f || f.shotList.length || analyzing.current.has(videoId)) return
+    analyzing.current.add(videoId)
+    const patchFormat = (update: (x: Format) => Format) =>
+      setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? update(x) : x)) }))
+    const say = (text: string) => patchFormat((x) => ({ ...x, why: { ...x.why, first3s: text } }))
+    analyzeVideo(v.url, (step) => say(`Breaking down the video: ${step || 'waiting'}…`))
+      .then((b) => {
+        patchFormat((x) => applyBreakdown(x, b))
+        // Ideas saved before the breakdown still carry the placeholder editor notes.
+        setIdeas((prev) => prev.map((i) => (i.videoId === videoId && i.notes === f.editorNotes ? { ...i, notes: b.editorNotes } : i)))
+      })
+      .catch((e) => say(`Couldn't break down this video. ${e instanceof Error ? e.message : ''}`.trim()))
+      .finally(() => analyzing.current.delete(videoId))
+  }
+
   const saveIdea = (videoId: string): SavedIdea => {
+    breakDown(videoId)
     const existing = ideas.find((i) => i.videoId === videoId && i.clientId === client.id)
     if (existing) return existing
     const v = videoById.get(videoId)!

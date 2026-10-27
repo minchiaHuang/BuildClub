@@ -1,7 +1,7 @@
-import type { Format, Video } from '../types'
+import type { Format, Platform, Shot, Video } from '../types'
 import { outlierScore } from './metrics'
 
-// One TikTok video as the local API returns it (see server/index.mjs).
+// One video as the local API returns it (SearchVideo in backend/models.py).
 interface LiveItem {
   id: string
   text: string
@@ -15,7 +15,10 @@ interface LiveItem {
   duration: number
   cover: string
   author: string
-  followers: number
+  // Null on Instagram, which doesn't give follower counts.
+  followers: number | null
+  // The account's usual views. Null when the API couldn't work it out, and missing on older saved searches.
+  medianViews?: number | null
   music: string
   musicOriginal: boolean
   hashtags: string[]
@@ -47,16 +50,16 @@ function hookFrom(text: string): string {
 const daysSince = (iso: string | null) =>
   iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)) : 999
 
-function toVideo(item: LiveItem, query: string): Video {
+function toVideo(item: LiveItem, query: string, platform: Platform): Video {
   return {
-    id: `tt-${item.id}`,
-    platform: 'tiktok',
+    id: `${platform === 'instagram' ? 'ig' : 'tt'}-${item.id}`,
+    platform,
     handle: `@${item.author}`,
-    hook: hookFrom(item.text) || 'TikTok video',
+    hook: hookFrom(item.text) || (platform === 'instagram' ? 'Instagram reel' : 'TikTok video'),
     views: item.plays,
-    followers: item.followers,
-    // We don't fetch each account's usual views yet, so the score falls back to followers.
-    medianViews: null,
+    followers: item.followers ?? 0,
+    // Without the account's usual views, the score falls back to followers.
+    medianViews: item.medianViews ?? null,
     daysAgo: daysSince(item.createTime),
     lengthSec: Math.round(item.duration),
     shares: item.shares,
@@ -85,7 +88,7 @@ function toFormat(item: LiveItem, v: Video): Format {
     summary: item.text,
     why: {
       hook: v.hook === 'TikTok video' ? 'No caption hook.' : `Caption opens with "${v.hook}".`,
-      first3s: "Watch the video to see the opening shot. We can't read video frames yet.",
+      first3s: 'Save or plan this video to get the AI breakdown of its shots.',
       length: `${v.lengthSec} seconds.`,
       format: tags.length ? `Tagged ${tags.join(' ')}.` : 'No hashtags.',
       sound: item.music ? `${item.musicOriginal ? 'Original sound' : 'Uses the sound'} "${item.music}".` : 'Unknown sound.',
@@ -98,18 +101,83 @@ function toFormat(item: LiveItem, v: Video): Format {
   }
 }
 
-export async function searchLive(query: string, fresh = false): Promise<LiveSearch> {
-  const r = await fetch(`/api/search?q=${encodeURIComponent(query)}${fresh ? '&fresh=1' : ''}`)
+export async function searchLive(query: string, fresh = false, platform: Platform = 'tiktok'): Promise<LiveSearch> {
+  const r = await fetch(`/api/search?q=${encodeURIComponent(query)}&platform=${platform}${fresh ? '&fresh=1' : ''}`)
   const body = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(body.error ?? 'Search failed. Is the API running (npm run api)?')
   const videos: Video[] = []
   const formats: Format[] = []
   for (const item of body.videos as LiveItem[]) {
-    const v = toVideo(item, query)
+    const v = toVideo(item, query, platform)
     videos.push(v)
     formats.push(toFormat(item, v))
   }
   return { videos, formats, cached: Boolean(body.cached), fetchedAt: body.fetchedAt }
+}
+
+// The AI breakdown of one real video (Breakdown in backend/models.py).
+export interface Breakdown {
+  shotList: Shot[]
+  why: Format['why']
+  props: string[]
+  editorNotes: string
+  lines: { time: string; text: string; role: 'hook' | 'setup' | 'proof' | 'payoff' | 'cta' }[]
+}
+
+interface AnalyzeJob {
+  job: string
+  status: 'queued' | 'running' | 'done' | 'failed'
+  progress: number
+  step: string
+  result?: Breakdown
+  error?: string
+}
+
+// Starts a breakdown and polls until it's done. The first run of a video takes about a minute;
+// asking again for the same link returns the saved result.
+export async function analyzeVideo(url: string, onStep: (step: string) => void): Promise<Breakdown> {
+  const r = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  const started = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(started.error ?? 'Could not start the breakdown.')
+  for (;;) {
+    const res = await fetch(`/api/analyze/${started.job}`)
+    const job = (await res.json().catch(() => ({}))) as Partial<AnalyzeJob>
+    if (!res.ok) throw new Error(job.error ?? 'The breakdown was lost. Try again.')
+    if (job.status === 'done' && job.result) return job.result
+    if (job.status === 'failed') throw new Error(job.error ?? 'The breakdown failed.')
+    onStep(job.step ?? '')
+    await new Promise((done) => setTimeout(done, 2000))
+  }
+}
+
+// The breakdown fills the same Format fields the sample data has.
+export const applyBreakdown = (f: Format, b: Breakdown): Format => ({
+  ...f,
+  shotList: b.shotList,
+  why: b.why,
+  props: b.props,
+  editorNotes: b.editorNotes,
+})
+
+// Clients and saved ideas are also kept by the API, so they survive a new browser.
+// null means nothing has been saved there yet.
+export async function loadList<T>(name: 'clients' | 'ideas'): Promise<T[] | null> {
+  const r = await fetch(`/api/${name}`)
+  if (!r.ok) throw new Error(`Could not load ${name}.`)
+  return r.json()
+}
+
+export async function saveList<T>(name: 'clients' | 'ideas', items: T[]): Promise<void> {
+  const r = await fetch(`/api/${name}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+  })
+  if (!r.ok) throw new Error(`Could not save ${name}.`)
 }
 
 // Sounds and hashtags shared by several accounts in the results: the live version of "formats that repeat".
