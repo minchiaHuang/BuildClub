@@ -14,10 +14,10 @@ import server  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def offline(tmp_path, monkeypatch):
-    def no_network(query):
-        raise AssertionError(f"live search called for {query!r}")
+    def no_network(payload, max_items):
+        raise AssertionError(f"Apify called with {payload!r}")
 
-    monkeypatch.setattr(server, "search_tiktok", no_network)
+    monkeypatch.setattr(server, "run_actor", no_network)
     monkeypatch.setattr(server, "TOKEN", "test-token")
     monkeypatch.setattr(server, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(server, "PINNED_DIR", tmp_path / "pinned")

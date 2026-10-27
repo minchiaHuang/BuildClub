@@ -6,6 +6,40 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
+class SearchVideo(BaseModel):
+    """One video in a search result, as trimmed from the Apify item."""
+    id: str
+    text: str
+    url: str
+    createTime: Optional[str] = None
+    plays: int
+    likes: int
+    comments: int
+    shares: int
+    saves: Optional[int] = None
+    duration: float
+    cover: str
+    author: str
+    followers: int
+    music: str
+    musicOriginal: bool
+    hashtags: list[str]
+    # Views ÷ followers, the sort order (Daphne's rule).
+    ratio: float
+    # The account's usual views (median of its latest videos) and views ÷ that.
+    # Null when the account has too few videos, or for searches saved before this existed.
+    medianViews: Optional[float] = None
+    outlier: Optional[float] = None
+
+
+class SearchResult(BaseModel):
+    query: str
+    platform: Literal["tiktok", "instagram"]
+    fetchedAt: int
+    videos: list[SearchVideo]
+    cached: bool
+
+
 class Client(BaseModel):
     id: str
     name: str

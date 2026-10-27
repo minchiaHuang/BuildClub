@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import sqlite3
+import statistics
 import sys
 import time
 import urllib.error
@@ -24,7 +25,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from analyze import Jobs
-from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, SavedIdea
+from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, SavedIdea, SearchResult
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -52,6 +53,10 @@ CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$1.70/1,000 is about $0.05.
 # The charge cap is a backstop only; Apify refuses anything below $0.50.
 MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
+# Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.26.
+AUTHORS_PER_SEARCH = int(os.environ.get("AUTHORS_PER_SEARCH", 15))
+VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 10))
+MIN_VIDEOS = 5  # fewer recent videos than this and the median says little
 
 app = FastAPI(title="Trend Finder API")
 
@@ -109,26 +114,60 @@ def trim(item: dict) -> dict:
     }
 
 
-def search_tiktok(query: str) -> list:
+NO_DOWNLOADS = {
+    "shouldDownloadVideos": False,
+    "shouldDownloadCovers": False,
+    "shouldDownloadSubtitles": False,
+    "shouldDownloadSlideshowImages": False,
+}
+
+
+def run_actor(payload: dict, max_items: int) -> list:
     url = (f"https://api.apify.com/v2/acts/{ACTOR}/run-sync-get-dataset-items"
-           f"?timeout=240&maxItems={RESULTS_PER_SEARCH}&maxTotalChargeUsd={MAX_USD_PER_SEARCH}")
-    payload = {
-        "searchQueries": [query],
-        "resultsPerPage": RESULTS_PER_SEARCH,
-        "shouldDownloadVideos": False,
-        "shouldDownloadCovers": False,
-        "shouldDownloadSubtitles": False,
-        "shouldDownloadSlideshowImages": False,
-    }
+           f"?timeout=240&maxItems={max_items}&maxTotalChargeUsd={MAX_USD_PER_SEARCH}")
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={
         "Content-Type": "application/json", "Authorization": f"Bearer {TOKEN}"})
     try:
         with urllib.request.urlopen(req, timeout=300) as resp:
-            items = json.loads(resp.read())
+            return json.loads(resp.read())
     except urllib.error.HTTPError as e:  # never echo the URL or headers
         raise RuntimeError(f"Apify returned {e.code}: {e.read()[:300].decode(errors='replace')}")
+
+
+def search_tiktok(query: str) -> list:
+    items = run_actor({"searchQueries": [query], "resultsPerPage": RESULTS_PER_SEARCH, **NO_DOWNLOADS},
+                      RESULTS_PER_SEARCH)
     videos = [trim(i) for i in items if i and i.get("playCount") is not None and i.get("webVideoUrl")]
     return sorted(videos, key=lambda v: v["ratio"], reverse=True)
+
+
+def median_views(items: list) -> dict:
+    """Each account's usual views: the median over its recent videos (from reel-studio's
+    research.py score()). Accounts with fewer than MIN_VIDEOS videos are left out."""
+    views = {}
+    for i in items:
+        name = (i.get("authorMeta") or {}).get("name")
+        if name and i.get("playCount") is not None:
+            views.setdefault(name, []).append(i["playCount"])
+    return {name: statistics.median(v) for name, v in views.items() if len(v) >= MIN_VIDEOS}
+
+
+def add_medians(videos: list) -> None:
+    """Fill medianViews and outlier (views over the account's usual views) for the top accounts.
+    A failure only leaves them empty: the search result is still good without them."""
+    authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))[:AUTHORS_PER_SEARCH]
+    medians = {}
+    if authors:
+        try:
+            medians = median_views(run_actor({
+                "profiles": authors, "resultsPerPage": VIDEOS_PER_AUTHOR, "profileSorting": "latest",
+                "excludePinnedPosts": True, **NO_DOWNLOADS}, len(authors) * VIDEOS_PER_AUTHOR))
+        except Exception as e:
+            print(f"[search] account medians failed: {e}", flush=True)
+    for v in videos:
+        median = medians.get(v["author"])
+        v["medianViews"] = median
+        v["outlier"] = round(v["plays"] / median, 2) if median else None
 
 
 @app.get("/api/health")
@@ -136,7 +175,7 @@ def health():
     return {"live": bool(TOKEN), "platforms": ["tiktok"], "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
-@app.get("/api/search")
+@app.get("/api/search", response_model=SearchResult)
 def search(q: str = "", fresh: str = ""):
     query = q.strip()[:120]
     if not query:
@@ -149,6 +188,7 @@ def search(q: str = "", fresh: str = ""):
             return {**cached, "cached": True}
     try:
         videos = search_tiktok(query)
+        add_medians(videos)
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
         return error(502, "TikTok search failed. Check the API terminal for details.", str(e))
