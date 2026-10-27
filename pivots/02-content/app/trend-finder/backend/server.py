@@ -5,7 +5,7 @@ disk, so repeating a search costs nothing.
 Run (from trend-finder/):
     backend/.venv/bin/uvicorn server:app --app-dir backend --port 8787 --reload
 Pin a cached search so it never expires (offline demos):
-    backend/.venv/bin/python backend/server.py pin "tofu"
+    backend/.venv/bin/python backend/server.py pin "tofu"            (add "instagram" for an Instagram search)
 """
 
 import hashlib
@@ -48,6 +48,7 @@ load_env(HERE.parent / ".env")
 
 TOKEN = os.environ.get("APIFY_TOKEN", "").strip()
 ACTOR = os.environ.get("APIFY_TIKTOK_ACTOR", "clockworks~tiktok-scraper")
+IG_ACTOR = os.environ.get("APIFY_INSTAGRAM_ACTOR", "apify~instagram-hashtag-scraper")
 RESULTS_PER_SEARCH = int(os.environ.get("RESULTS_PER_SEARCH", 30))
 CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$1.70/1,000 is about $0.05.
@@ -66,16 +67,17 @@ def error(status: int, message: str, detail: str = "") -> JSONResponse:
     return JSONResponse(body, status_code=status)
 
 
-def cache_name(query: str) -> str:
-    return hashlib.sha1(f"{ACTOR}|{RESULTS_PER_SEARCH}|{query}".encode()).hexdigest() + ".json"
+def cache_name(query: str, platform: str = "tiktok") -> str:
+    actor = IG_ACTOR if platform == "instagram" else ACTOR  # TikTok keys stay as before, so pins still load
+    return hashlib.sha1(f"{actor}|{RESULTS_PER_SEARCH}|{query}".encode()).hexdigest() + ".json"
 
 
-def read_cache(query: str):
-    pinned = PINNED_DIR / cache_name(query)
+def read_cache(query: str, platform: str = "tiktok"):
+    pinned = PINNED_DIR / cache_name(query, platform)
     if pinned.exists():
         return json.loads(pinned.read_text())
     try:
-        saved = json.loads((CACHE_DIR / cache_name(query)).read_text())
+        saved = json.loads((CACHE_DIR / cache_name(query, platform)).read_text())
     except (OSError, ValueError):
         return None
     age_hours = (time.time() * 1000 - saved["fetchedAt"]) / 3_600_000
@@ -122,8 +124,8 @@ NO_DOWNLOADS = {
 }
 
 
-def run_actor(payload: dict, max_items: int) -> list:
-    url = (f"https://api.apify.com/v2/acts/{ACTOR}/run-sync-get-dataset-items"
+def run_actor(payload: dict, max_items: int, actor: str = ACTOR) -> list:
+    url = (f"https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items"
            f"?timeout=240&maxItems={max_items}&maxTotalChargeUsd={MAX_USD_PER_SEARCH}")
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={
         "Content-Type": "application/json", "Authorization": f"Bearer {TOKEN}"})
@@ -139,6 +141,39 @@ def search_tiktok(query: str) -> list:
                       RESULTS_PER_SEARCH)
     videos = [trim(i) for i in items if i and i.get("playCount") is not None and i.get("webVideoUrl")]
     return sorted(videos, key=lambda v: v["ratio"], reverse=True)
+
+
+def trim_instagram(item: dict) -> dict:
+    """The same shape as trim(). The Instagram actor gives no follower counts, so followers
+    and ratio stay empty and results are sorted by views."""
+    music = item.get("musicInfo") or {}
+    return {
+        "id": str(item.get("id") or item.get("shortCode") or ""),
+        "text": item.get("caption") or "",
+        "url": item.get("url") or "",
+        "createTime": item.get("timestamp"),
+        "plays": item.get("videoPlayCount") or item.get("videoViewCount") or 0,
+        "likes": max(item.get("likesCount") or 0, 0),  # -1 when the owner hides likes
+        "comments": item.get("commentsCount") or 0,
+        "shares": item.get("sharesCount") or 0,
+        "saves": None,
+        "duration": item.get("videoDuration") or 0,
+        "cover": item.get("displayUrl") or "",
+        "author": item.get("ownerUsername") or "",
+        "followers": None,
+        "music": f"{music.get('song_name') or ''} · {music.get('artist_name') or ''}".strip(" ·"),
+        "musicOriginal": bool(music.get("uses_original_audio")),
+        "hashtags": item.get("hashtags") or [],
+        "ratio": None,
+    }
+
+
+def search_instagram(query: str) -> list:
+    items = run_actor({"hashtags": [query], "keywordSearch": True, "resultsType": "reels",
+                       "resultsLimit": RESULTS_PER_SEARCH}, RESULTS_PER_SEARCH, actor=IG_ACTOR)
+    videos = [trim_instagram(i) for i in items if i and not i.get("error") and i.get("url")
+              and (i.get("videoPlayCount") or i.get("videoViewCount")) is not None]
+    return sorted(videos, key=lambda v: v["plays"], reverse=True)
 
 
 def median_views(items: list) -> dict:
@@ -172,30 +207,36 @@ def add_medians(videos: list) -> None:
 
 @app.get("/api/health")
 def health():
-    return {"live": bool(TOKEN), "platforms": ["tiktok"], "resultsPerSearch": RESULTS_PER_SEARCH}
+    return {"live": bool(TOKEN), "platforms": ["tiktok", "instagram"], "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
 @app.get("/api/search", response_model=SearchResult)
-def search(q: str = "", fresh: str = ""):
+def search(q: str = "", fresh: str = "", platform: str = "tiktok"):
     query = q.strip()[:120]
     if not query:
         return error(400, "Type something to search.")
+    if platform not in ("tiktok", "instagram"):
+        return error(400, "Search TikTok or Instagram.")
     if not TOKEN:
         return error(503, "Live search is off. Add APIFY_TOKEN to .env and restart the API.")
     if fresh != "1":
-        cached = read_cache(query)
+        cached = read_cache(query, platform)
         if cached:
             return {**cached, "cached": True}
     try:
-        videos = search_tiktok(query)
-        add_medians(videos)
+        if platform == "instagram":
+            videos = search_instagram(query)  # account medians are TikTok only for now
+        else:
+            videos = search_tiktok(query)
+            add_medians(videos)
     except Exception as e:
+        name = "Instagram" if platform == "instagram" else "TikTok"
         print(f"[search] failed: {e}", flush=True)
-        return error(502, "TikTok search failed. Check the API terminal for details.", str(e))
-    payload = {"query": query, "platform": "tiktok", "fetchedAt": int(time.time() * 1000), "videos": videos}
+        return error(502, f"{name} search failed. Check the API terminal for details.", str(e))
+    payload = {"query": query, "platform": platform, "fetchedAt": int(time.time() * 1000), "videos": videos}
     CACHE_DIR.mkdir(exist_ok=True)
-    (CACHE_DIR / cache_name(query)).write_text(json.dumps(payload))
-    print(f'[search] "{query}" → {len(videos)} videos', flush=True)
+    (CACHE_DIR / cache_name(query, platform)).write_text(json.dumps(payload))
+    print(f'[search] {platform} "{query}" → {len(videos)} videos', flush=True)
     return {**payload, "cached": False}
 
 
@@ -261,8 +302,8 @@ def get_analyze(job_id: str):
     return job
 
 
-def pin(query: str) -> None:
-    src = CACHE_DIR / cache_name(query)
+def pin(query: str, platform: str = "tiktok") -> None:
+    src = CACHE_DIR / cache_name(query, platform)
     if not src.exists():
         sys.exit(f'No cached search for "{query}". Search it in the app first.')
     PINNED_DIR.mkdir(exist_ok=True)
@@ -271,7 +312,7 @@ def pin(query: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "pin":
-        pin(sys.argv[2].strip()[:120])
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and sys.argv[3:] in ([], ["tiktok"], ["instagram"]):
+        pin(sys.argv[2].strip()[:120], *sys.argv[3:])
     else:
-        sys.exit('Usage: python backend/server.py pin "<search>"')
+        sys.exit('Usage: python backend/server.py pin "<search>" [tiktok|instagram]')

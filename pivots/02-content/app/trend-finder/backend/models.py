@@ -20,12 +20,13 @@ class SearchVideo(BaseModel):
     duration: float
     cover: str
     author: str
-    followers: int
+    # Null on Instagram: its search results carry no follower counts.
+    followers: Optional[int] = None
     music: str
     musicOriginal: bool
     hashtags: list[str]
-    # Views ÷ followers, the sort order (Daphne's rule).
-    ratio: float
+    # Views ÷ followers, the TikTok sort order (Daphne's rule). Null when followers is.
+    ratio: Optional[float] = None
     # The account's usual views (median of its latest videos) and views ÷ that.
     # Null when the account has too few videos, or for searches saved before this existed.
     medianViews: Optional[float] = None

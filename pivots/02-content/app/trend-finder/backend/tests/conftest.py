@@ -14,7 +14,7 @@ import server  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def offline(tmp_path, monkeypatch):
-    def no_network(payload, max_items):
+    def no_network(payload, max_items, actor=None):
         raise AssertionError(f"Apify called with {payload!r}")
 
     monkeypatch.setattr(server, "run_actor", no_network)

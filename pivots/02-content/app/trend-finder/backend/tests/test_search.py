@@ -45,7 +45,7 @@ def test_search_without_token_is_off(client, monkeypatch):
 def test_live_search_adds_account_medians(client, monkeypatch):
     calls = []
 
-    def fake_actor(payload, max_items):
+    def fake_actor(payload, max_items, actor=None):
         calls.append((payload, max_items))
         if "searchQueries" in payload:
             return [item(1, "small", 9000, fans=10), item(2, "big", 1000, fans=1000), {"id": 3}]
@@ -66,7 +66,7 @@ def test_live_search_adds_account_medians(client, monkeypatch):
 
 
 def test_failed_medians_keep_the_search(client, monkeypatch):
-    def fake_actor(payload, max_items):
+    def fake_actor(payload, max_items, actor=None):
         if "profiles" in payload:
             raise RuntimeError("Apify returned 402")
         return [item(1, "a", 500)]
@@ -92,3 +92,40 @@ def test_trim_keeps_the_ratio():
     assert video["id"] == "7"
     assert video["ratio"] == 100
     assert video["createTime"] == "2025-10-27T00:00:00.000Z"
+
+
+FIXTURE = Path(__file__).parent / "fixtures" / "instagram_tofu.json"  # a real search, 2026-10-27
+
+
+def test_instagram_search_from_a_real_result(client, monkeypatch):
+    calls = []
+
+    def fake_actor(payload, max_items, actor=None):
+        calls.append((payload, actor))
+        return json.loads(FIXTURE.read_text())
+
+    monkeypatch.setattr(server, "run_actor", fake_actor)
+    r = client.get("/api/search", params={"q": "tofu", "platform": "instagram"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["platform"] == "instagram" and len(body["videos"]) == 12
+    plays = [v["plays"] for v in body["videos"]]
+    assert plays == sorted(plays, reverse=True) and plays[0] == 6492169
+    top = body["videos"][0]
+    assert top["author"] == "thaotamto" and top["url"].startswith("https://www.instagram.com/")
+    assert top["followers"] is None and top["ratio"] is None and top["medianViews"] is None
+    assert [actor for _, actor in calls] == [server.IG_ACTOR]  # no TikTok account lookups
+    assert calls[0][0]["keywordSearch"] is True
+
+    # the second search comes from the cache, kept apart from TikTok's
+    assert client.get("/api/search", params={"q": "tofu", "platform": "instagram"}).json()["cached"] is True
+    client.get("/api/search", params={"q": "tofu"})
+    assert "searchQueries" in calls[-1][0]  # TikTok went to its own actor, not the Instagram cache
+
+
+def test_unknown_platform_is_rejected(client):
+    assert client.get("/api/search", params={"q": "tofu", "platform": "youtube"}).status_code == 400
+
+
+def test_tiktok_cache_names_did_not_change():
+    assert server.cache_name("tofu") == server.cache_name("tofu", "tiktok") != server.cache_name("tofu", "instagram")
