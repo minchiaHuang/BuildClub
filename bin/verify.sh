@@ -16,6 +16,7 @@ run_step() {
 
 TF=pivots/02-content/app/trend-finder
 run_step "trend-finder backend compiles" "$TF/backend/.venv/bin/python" -m py_compile "$TF/backend/server.py"
+run_step "trend-finder backend loads" "$TF/backend/.venv/bin/python" -c "import sys; sys.path.insert(0, '$TF/backend'); import server"
 
 [ "$fail" -eq 0 ] && echo "verify: GREEN" || echo "verify: RED"
 exit "$fail"

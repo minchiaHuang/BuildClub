@@ -12,18 +12,23 @@ import hashlib
 import json
 import os
 import shutil
+import sqlite3
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from models import Client, SavedIdea
+
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
 PINNED_DIR = HERE / "pinned"  # searches saved for demos; never expire
+DB_PATH = HERE / "data.db"  # clients and saved ideas
 
 
 def load_env(path: Path) -> None:
@@ -151,6 +156,48 @@ def search(q: str = "", fresh: str = ""):
     (CACHE_DIR / cache_name(query)).write_text(json.dumps(payload))
     print(f'[search] "{query}" → {len(videos)} videos', flush=True)
     return {**payload, "cached": False}
+
+
+# Clients and ideas are saved as whole lists, the way the front end already holds them.
+# GET returns null until something is saved, so the front end keeps its sample data.
+def db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    return conn
+
+
+def load(key: str):
+    with db() as conn:
+        row = conn.execute("SELECT value FROM store WHERE key = ?", (key,)).fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def save(key: str, items: list) -> None:
+    value = json.dumps([i.model_dump(exclude_none=True) for i in items])
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, value))
+
+
+@app.get("/api/clients", response_model=Optional[list[Client]], response_model_exclude_none=True)
+def get_clients():
+    return load("clients")
+
+
+@app.put("/api/clients", response_model=list[Client], response_model_exclude_none=True)
+def put_clients(clients: list[Client]):
+    save("clients", clients)
+    return clients
+
+
+@app.get("/api/ideas", response_model=Optional[list[SavedIdea]], response_model_exclude_none=True)
+def get_ideas():
+    return load("ideas")
+
+
+@app.put("/api/ideas", response_model=list[SavedIdea], response_model_exclude_none=True)
+def put_ideas(ideas: list[SavedIdea]):
+    save("ideas", ideas)
+    return ideas
 
 
 def pin(query: str) -> None:
