@@ -4,7 +4,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { PlatformLogo } from './PlatformToggles'
@@ -216,21 +216,26 @@ export function ResultsScreen(p: Props) {
               <div className="best-body">
                 <strong className="best-hook">"{best.hook}"</strong>
                 <span className="small muted">
-                  {compact(best.views)} views from an account with {compact(best.followers)} followers ·{' '}
+                  {hasScore(best)
+                    ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
+                    : `${compact(best.views)} views`}{' '}
+                  ·{' '}
                   {best.handle} · {agoShort(best.daysAgo)} ago
                 </span>
                 {/* Usual → this video, so the jump reads without decoding the × score. */}
-                <div className="best-compare" aria-label={scoreLine(best)}>
-                  <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
-                  <span className="cmp-arrow" aria-hidden="true">→</span>
-                  <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
-                  <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
-                  <span />
-                  <span className="cmp-cap">this video</span>
-                  <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>
-                    {tierName[tierOf(outlierScore(best))]} · {times(outlierScore(best))}
-                  </span>
-                </div>
+                {hasScore(best) && (
+                  <div className="best-compare" aria-label={scoreLine(best)}>
+                    <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
+                    <span className="cmp-arrow" aria-hidden="true">→</span>
+                    <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
+                    <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
+                    <span />
+                    <span className="cmp-cap">this video</span>
+                    <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>
+                      {tierName[tierOf(outlierScore(best))]} · {times(outlierScore(best))}
+                    </span>
+                  </div>
+                )}
                 <div className="best-actions">
                   <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
                     {bestStatus && bestStatus !== 'saved'

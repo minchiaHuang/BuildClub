@@ -101,6 +101,9 @@ function toFormat(item: LiveItem, v: Video): Format {
   }
 }
 
+// The one platform a live search runs on: the only one picked, else TikTok.
+export const livePlatform = (selected: Platform[]): Platform => (selected.length === 1 ? selected[0] : 'tiktok')
+
 export async function searchLive(query: string, fresh = false, platform: Platform = 'tiktok'): Promise<LiveSearch> {
   const r = await fetch(`/api/search?q=${encodeURIComponent(query)}&platform=${platform}${fresh ? '&fresh=1' : ''}`)
   const body = await r.json().catch(() => ({}))

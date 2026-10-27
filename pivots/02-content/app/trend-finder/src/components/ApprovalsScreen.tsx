@@ -1,5 +1,5 @@
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
-import { compact, outlierScore, times } from '../lib/metrics'
+import { compact, hasScore, outlierScore, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -28,7 +28,7 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
           {!actions && <span className={`status status-${idea.status}`}>{idea.status === 'approved' ? 'Approved' : 'Rejected'}</span>}
           <strong>{f?.name}</strong>
           <span className="small muted">
-            Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
+            Reference: "{v.hook}" · {compact(v.views)} views{hasScore(v) && ` · ${times(outlierScore(v))} usual`}
           </span>
         </div>
         <div className="idea-actions">

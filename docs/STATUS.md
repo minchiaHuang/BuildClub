@@ -1,8 +1,8 @@
 # STATUS
 
-**一句話：** Trend Finder 後端已做到 PRD 範圍：TikTok + IG 搜尋、每帳號中位數爆紅分數、clients/ideas、analyze（Claude 拆解），前端資料層已接線；已從 fork 開 PR #3 給 Veralyn 審（2026-10-27）。
+**一句話：** Trend Finder 後端已做到 PRD 範圍，前端搜尋頁可切 TikTok / Instagram（2026-10-27 晚）：TikTok + IG 搜尋、每帳號中位數爆紅分數、clients/ideas、analyze（Claude 拆解），前端資料層已接線；已從 fork 開 PR #3 給 Veralyn 審（2026-10-27）。
 
-- **上次驗證：** 2026-10-27 晚，`bash bin/verify.sh` 綠（32 個離線測試，含 5 個每日上限測試）；載入多餘 PUT 修好後在瀏覽器實測（vite 5191 → 8787）：載入只有 GET，改一次 client 設定就送一次 `PUT /api/clients`。更早：worktree 裡 `npm ci` 後 `npm run build` 通過（tsc 無錯誤），`eslint src/lib/live.ts src/App.tsx` 無警告；瀏覽器實測（Playwright，vite 5190 → API 8787）全部通過：demo 登入 → 搜尋 tofu（快取）→ 存 xingye0615（快取拆解，秒回）→ 規劃 → 存 thaotamto「Boil your tofu」（真實拆解約 1 分鐘，15 次輪詢）→ 重新整理後 clients/ideas 還在；console 只有 favicon 404 和 TikTok embed 503。本次實測：
+- **上次驗證：** 2026-10-27 晚（IG 前端）：`bash bin/verify.sh` 綠、`npm run build` 過、eslint 改動檔乾淨；Playwright 在隔離副本（scratchpad 複製 backend+dist，無 `.env`、每日上限 0，不可能付費）只搜 tofu 快取，7 項全過：TikTok/IG 單選切換、IG 結果只顯示觀看數（無 × 分數、無 0 followers）、IG 拆解抽屜 Score 顯示「–」、切回 TikTok 分數照舊、「tofu instagram」自動搜 IG、未快取字回每日上限錯誤、IG 規劃頁只顯示觀看數。更早 2026-10-27 晚，`bash bin/verify.sh` 綠（32 個離線測試，含 5 個每日上限測試）；載入多餘 PUT 修好後在瀏覽器實測（vite 5191 → 8787）：載入只有 GET，改一次 client 設定就送一次 `PUT /api/clients`。更早：worktree 裡 `npm ci` 後 `npm run build` 通過（tsc 無錯誤），`eslint src/lib/live.ts src/App.tsx` 無警告；瀏覽器實測（Playwright，vite 5190 → API 8787）全部通過：demo 登入 → 搜尋 tofu（快取）→ 存 xingye0615（快取拆解，秒回）→ 規劃 → 存 thaotamto「Boil your tofu」（真實拆解約 1 分鐘，15 次輪詢）→ 重新整理後 clients/ideas 還在；console 只有 favicon 404 和 TikTok embed 503。本次實測：
   - 作者中位數：對 pin 住的 tofu 補抓 15 個作者 × 10 支，39 秒，134 支，16/30 支有分數。
   - Prompt 修正後重跑 tofu 拆解：28 秒，in 6,530 / out 2,609；shotList/lines 不再有括號註解。舊結果備份在 `backend/jobs/01f97bb23401/breakdown.before-prompt-fix.json`。
   - IG 真實搜尋「tofu」：18 秒，回 12 支 reels（不是 30，actor 說免費方案只抓第一頁）；IG 第一名影片 analyze 全流程 39 秒，yt-dlp 不需登入。
@@ -15,7 +15,7 @@
 - **給 Daphne 用（2026-10-27 決定走選項 1：Mac mini + 通道 + 簡單密碼）：** 後端現在直接提供 `dist/` 的網頁，`npm run build` 之後只要開 8787 一個網址就能用。在 `.env` 設了 `APP_PASSWORD`，打開網頁或呼叫 API 時，瀏覽器都會跳出密碼框（帳號隨便填）；沒設就不檢查。設了密碼之後，本機開 vite 開發時也要輸入一次密碼。2026-10-27 已在 `.env` 設好密碼，用 curl 實測：沒帶密碼的話，網頁、JS 和 API 都回 401，帶對的密碼就回 200。通道已開（2026-10-27）：`tailscale funnel --bg 8787` → https://tommymac-mini.tail8e20a0.ts.net 。從公開網址實測：沒帶密碼或密碼錯都回 401，帶對的密碼網頁回 200，快取的 tofu 搜尋回 30 支。要關通道就跑 `tailscale funnel --https=443 off`。Daphne 要能用，Mac mini 必須開機，8787 後端也要在跑。
 - **已知問題：**
   - 每次新的 TikTok 搜尋多花約 US$0.26（作者中位數），時間也多約 40 秒；可用 `AUTHORS_PER_SEARCH`、`VIDEOS_PER_AUTHOR` 調整。
-  - IG 搜尋結果沒有粉絲數 → `followers`/`ratio` 為 null，依觀看數排序；IG 不算作者中位數。前端還沒有選 IG 的 UI（要改元件，屬 Veralyn）。若在前端直接顯示 IG 結果，`outlierScore` 會退回 views÷1，需要先處理。
+  - IG 搜尋結果沒有粉絲數 → `followers`/`ratio` 為 null，依觀看數排序；IG 不算作者中位數。前端（2026-10-27 經使用者同意改 Veralyn 元件）：沒有基準時（`hasScore` 為 false）只顯示觀看數，不顯示 × 分數與 tier；改到 `lib/metrics.ts`、VideoTile、ResultsScreen、BreakdownPanel、PlanScreen、ApprovalsScreen、ClientScreen、PlatformToggles，要給 Veralyn 看。`LikeThisCard` 沒改（只在範例模式的連結搜尋出現）。「Trending now」仍只查 TikTok。
   - 前端存/規劃一支真實影片就自動跑拆解（首次約 US$0.08，同一連結之後免費）。
   - 前端開啟時會自動搜尋客戶主題（demo 客戶是「tofu recipe」）；目前有快取所以免費，但換客戶主題就會觸發付費搜尋。
   - 頁面文案寫「Live TikTok data」「Each new search costs a few cents」，即使結果來自快取（Veralyn 的元件）。
@@ -26,9 +26,12 @@
   - 沒改到、但還寫著舊 Node API 的地方：`AGENTS.md` 第 24 行、`vite.config.ts` 註解（`npm run api` 仍然有效）。
   - repo 根目錄有個只有 `.git` 的 `BuildClub/` 資料夾，來源不明，未處理。
 - **下一步：**
+  0. 搜尋加速（使用者 2026-10-27 決定，IG 做完後做）：
+     - B. 作者中位數快取在 `data.db`，7 天內重用，只抓缺的或過期的作者；先寫離線測試；每日花費估算盡量只算實際抓的作者。
+     - A. `/api/search` 在 `search_tiktok` 後先回結果（medianViews/outlier 為 null），中位數在背景補；前端先顯示、補到後更新分數；快取檔最後要含中位數。新 TikTok 搜尋實測約 US$0.31，跑之前先問。
   1. 等 Veralyn 審 PR #3，回應她的意見。
   2. 和 Veralyn 討論上面的前端已知問題（費用提示、拆解狀態顯示、自動搜尋客戶主題）。
-  3. 前端 IG UI 和 `lines` 顯示（Veralyn 的元件）。
+  3. 前端 `lines` 顯示（Veralyn 的元件）。
 
 ## PR 說明（已用於 PR #3）
 

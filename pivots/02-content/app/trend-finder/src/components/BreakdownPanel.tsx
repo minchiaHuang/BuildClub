@@ -3,6 +3,7 @@ import type { Client, Format, Video } from '../types'
 import {
   ago,
   compact,
+  hasScore,
   outlierScore,
   platformName,
   scoreLine,
@@ -36,7 +37,7 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
   const tier = tierOf(score)
   // The numbers are the point of this panel, so they get their own row of cards.
   const stats = [
-    { label: 'Views', value: compact(video.views), note: `${compact(video.followers)} followers` },
+    { label: 'Views', value: compact(video.views), note: video.followers ? `${compact(video.followers)} followers` : 'Follower count not available' },
     {
       label: 'Shares + saves',
       value: `${shareSaveRate(video).toFixed(1)}`,
@@ -79,17 +80,25 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
           </div>
 
           <section className="stats" aria-label="Video analytics">
-            <div className={`stat-card stat-score stat-${tier}`}>
-              <span className="stat-label">Score</span>
-              <div className="stat-score-row">
-                <span className="stat-big">{times(score)}</span>
-                <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
+            {hasScore(video) ? (
+              <div className={`stat-card stat-score stat-${tier}`}>
+                <span className="stat-label">Score</span>
+                <div className="stat-score-row">
+                  <span className="stat-big">{times(score)}</span>
+                  <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
+                </div>
+                <span className="stat-note">{scoreLine(video)}</span>
+                <span className="stat-compare">
+                  {compact(video.medianViews ?? video.followers)} → <strong>{compact(video.views)}</strong>
+                </span>
               </div>
-              <span className="stat-note">{scoreLine(video)}</span>
-              <span className="stat-compare">
-                {compact(video.medianViews ?? video.followers)} → <strong>{compact(video.views)}</strong>
-              </span>
-            </div>
+            ) : (
+              <div className="stat-card stat-score">
+                <span className="stat-label">Score</span>
+                <span className="stat-big">–</span>
+                <span className="stat-note">{scoreLine(video)}</span>
+              </div>
+            )}
             {stats.map((m) => (
               <div key={m.label} className="stat-card">
                 <span className="stat-label">{m.label}</span>
@@ -106,7 +115,7 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             <section className="block live-facts">
               {video.url && (
                 <a className="btn btn-ghost watch-link" href={video.url} target="_blank" rel="noreferrer">
-                  Watch on TikTok ↗
+                  Watch on {platformName[video.platform]} ↗
                 </a>
               )}
               {video.caption && <p className="caption">{video.caption}</p>}
@@ -117,7 +126,7 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
           <section className="block">
             <h3>
               {video.live ? 'What we know' : 'Why it worked'}{' '}
-              <span className="ai-tag">{video.live ? 'From TikTok data' : 'Sample · written by hand'}</span>
+              <span className="ai-tag">{video.live ? `From ${platformName[video.platform]} data` : 'Sample · written by hand'}</span>
             </h3>
             <dl className="why">
               <div>

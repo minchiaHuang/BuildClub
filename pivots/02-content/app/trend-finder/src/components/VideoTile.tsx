@@ -1,5 +1,5 @@
 import type { IdeaStatus, Video } from '../types'
-import { agoShort, compact, outlierScore, scoreLine, tierName, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, hasScore, outlierScore, scoreLine, tierName, tierOf, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -29,15 +29,26 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
         <Thumb video={video} />
         {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge[status]}</span>}
         <div className="tile-body">
-          <div className="tile-compare">
-            <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
-            <span className="cmp-arrow" aria-hidden="true">→</span>
-            <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
-          </div>
-          <span className="tile-cap">{byFollowers ? 'followers → views' : 'usual views → this video'}</span>
-          <span className={`tier tier-${tier} tile-tier`}>
-            {tierName[tier]} · {times(score)}
-          </span>
+          {hasScore(video) ? (
+            <>
+              <div className="tile-compare">
+                <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
+                <span className="cmp-arrow" aria-hidden="true">→</span>
+                <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
+              </div>
+              <span className="tile-cap">{byFollowers ? 'followers → views' : 'usual views → this video'}</span>
+              <span className={`tier tier-${tier} tile-tier`}>
+                {tierName[tier]} · {times(score)}
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="tile-compare">
+                <span className="cmp-to">{compact(video.views)}</span>
+              </div>
+              <span className="tile-cap">views</span>
+            </>
+          )}
           <span className="tile-hook">{video.hook}</span>
           <span className="tile-meta">
             {video.handle} · {agoShort(video.daysAgo)}

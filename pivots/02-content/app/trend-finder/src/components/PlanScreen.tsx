@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
-import { clientFit, compact, outlierScore, tierName, tierOf, times } from '../lib/metrics'
+import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times } from '../lib/metrics'
 import { BestVideo } from './BestVideo'
 
 interface Props {
@@ -88,23 +88,31 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
       <div className="plan-grid">
         <aside className="plan-ref">
           <BestVideo video={video} />
-          <div className="plan-ref-score">
-            <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
-            <span className="cmp-arrow" aria-hidden="true">
-              →
-            </span>
-            <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
-          </div>
-          <span className={`tier tier-${tier}`}>
-            {tierName[tier]} · {times(score)}
-          </span>
+          {hasScore(video) ? (
+            <>
+              <div className="plan-ref-score">
+                <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
+                <span className="cmp-arrow" aria-hidden="true">
+                  →
+                </span>
+                <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
+              </div>
+              <span className={`tier tier-${tier}`}>
+                {tierName[tier]} · {times(score)}
+              </span>
+            </>
+          ) : (
+            <div className="plan-ref-score">
+              <span className="cmp-to">{compact(video.views)}</span> <span className="small muted">views</span>
+            </div>
+          )}
           <span className="small muted">
             Reference: {video.handle}
             {video.url && (
               <>
                 {' · '}
                 <a href={video.url} target="_blank" rel="noreferrer">
-                  Watch on TikTok ↗
+                  Watch on {platformName[video.platform]} ↗
                 </a>
               </>
             )}

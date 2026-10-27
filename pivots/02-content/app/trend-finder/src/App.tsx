@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { IdeaStatus, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
-import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
+import { formatTrend, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
@@ -22,7 +22,7 @@ import { ApprovalsScreen } from './components/ApprovalsScreen'
 import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
-import type { Client, Format, Video } from './types'
+import type { Client, Format, Platform, Video } from './types'
 import {
   analyzeVideo,
   applyBreakdown,
@@ -32,6 +32,7 @@ import {
   loadList,
   saveLibrary,
   saveList,
+  livePlatform,
   searchLive,
 } from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
@@ -60,7 +61,7 @@ export default function App() {
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
-  // Live mode: real TikTok search through the local API (npm run api). Without it, the app uses sample data.
+  // Live mode: real TikTok or Instagram search through the local API (npm run api). Without it, the app uses sample data.
   const [live, setLive] = useState(false)
   const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
     videos: [],
@@ -69,7 +70,7 @@ export default function App() {
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
   // Live searches run in the background, so the rest of the app stays usable meanwhile.
-  const [searching, setSearching] = useState<string | null>(null)
+  const [searching, setSearching] = useState<{ q: string; platform: Platform } | null>(null)
   // A search that finished after the user moved to another screen, waiting to be opened.
   const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
   const searchSeq = useRef(0)
@@ -196,16 +197,18 @@ export default function App() {
       return
     }
     const parsed = parseQuery(text, formats)
-    // Send TikTok the meaningful words; time and length words become filters instead.
+    // Send the platform the meaningful words; time, platform and length words become filters instead.
     const q = ([...parsed.keywords, ...parsed.topics.map((t) => t.word)].join(' ') || text).trim()
-    if (!q || q === searching) return
+    // A platform named in the text ("on instagram") wins over the toggles.
+    const platform = livePlatform(parsed.platforms?.length === 1 ? parsed.platforms : query.platforms)
+    if (!q || (q === searching?.q && platform === searching.platform)) return
     const seq = ++searchSeq.current
     const clientId = workspace
     setSearchError(null)
     setSearchDone(null)
-    setSearching(q)
+    setSearching({ q, platform })
     try {
-      const res = await searchLive(q)
+      const res = await searchLive(q, false, platform)
       // A newer search has started since; its results win.
       if (seq !== searchSeq.current) return
       setLiveStore((prev) => {
@@ -218,7 +221,7 @@ export default function App() {
       setLiveResults(res.videos)
       setLiveQuery(q)
       setInterp({ ...parsed, text, keywords: [q], topics: [], audience: null, isQuestion: false, source: null })
-      setQuery((qq) => ({ ...qq, keyword: text, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
+      setQuery((qq) => ({ ...qq, keyword: text, platforms: [platform], days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
       setLastSearch(text)
@@ -670,7 +673,7 @@ function SearchStatus({
   onView,
   onDismiss,
 }: {
-  searching: string | null
+  searching: { q: string; platform: Platform } | null
   done: { text: string; error?: string } | null
   onView: () => void
   onDismiss: () => void
@@ -705,7 +708,7 @@ function SearchStatus({
     >
       {searching ? (
         <span className="small">
-          Searching TikTok for "{searching}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+          Searching {platformName[searching.platform]} for "{searching.q}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
         </span>
       ) : done?.error ? (
         <>

@@ -1,6 +1,9 @@
 import type { Client, Format, Platform, Video } from '../types'
 
 export const outlierScore = (v: Video) => v.views / Math.max(v.medianViews ?? v.followers, 1)
+// Live Instagram results have neither the account's usual views nor its followers, so there is
+// nothing to compare against: show views only, no × score. (outlierScore is then just views, which still sorts.)
+export const hasScore = (v: Video) => v.medianViews !== null || v.followers > 0
 // Plain-English label for a score, so people don't have to read the number.
 export type Tier = 'breakout' | 'strong' | 'normal'
 export const tierOf = (score: number): Tier => (score >= 100 ? 'breakout' : score >= 10 ? 'strong' : 'normal')
@@ -8,6 +11,7 @@ export const tierName: Record<Tier, string> = { breakout: 'Breakout', strong: 'S
 
 // The score in words, e.g. "77 times more views than followers".
 export function scoreLine(v: Video): string {
+  if (!hasScore(v)) return `${compact(v.views)} views. No follower count to compare with`
   const score = outlierScore(v)
   const byFollowers = v.medianViews === null
   if (score < 1.5) return byFollowers ? 'About as many views as followers' : 'About its usual views'
