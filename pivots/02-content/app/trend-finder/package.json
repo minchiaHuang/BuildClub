@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "api": "node --env-file-if-exists=.env server/index.mjs"
+    "api": "backend/.venv/bin/uvicorn server:app --app-dir backend --port 8787 --reload"
   },
   "dependencies": {
     "react": "^19.1.0",

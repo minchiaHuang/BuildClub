@@ -25,14 +25,14 @@ Without a key the app runs on sample tofu data. With an Apify key it searches re
    npm run api
    ```
 
-   It should print `live search ON`. Reload the app: the sidebar label changes to **Live TikTok data**.
+   It runs the Python API in `backend/` (set up its `.venv` from `backend/requirements.txt`). `http://localhost:8787/docs` shows its routes. Reload the app: the sidebar label changes to **Live TikTok data**.
 
 How it works:
 
-- The browser calls `/api/search`, which Vite forwards to the local API (`server/index.mjs`, port 8787). The API calls the Apify actor `clockworks/tiktok-scraper` with your token, so the token never reaches the browser.
-- Each search fetches up to 30 videos (`RESULTS_PER_SEARCH`). New searches take about 20–60 seconds. Results are cached in `server/cache/` for 24 hours (`CACHE_HOURS`), so repeats are instant and free. The cache is git-ignored.
+- The browser calls `/api/search`, which Vite forwards to the local API (`backend/server.py`, port 8787). The API calls the Apify actor `clockworks/tiktok-scraper` with your token, so the token never reaches the browser.
+- Each search fetches up to 30 videos (`RESULTS_PER_SEARCH`). New searches take about 3–4 minutes. Results are cached in `backend/cache/` for 24 hours (`CACHE_HOURS`), so repeats are instant and free. The cache is git-ignored.
 - **Cost:** Apify bills per result. The actor's page listed pricing "from $1.70 / 1,000 results" (checked 26 Oct 2026), so a 30-video search is roughly 5 cents. Check your Apify usage page.
-- **Score in live mode** = views ÷ followers. We don't fetch each account's usual views yet, so this replaces the outlier score.
+- **Score in live mode** = views ÷ the account's usual views (median of its latest 10 videos), for the top 15 accounts of each TikTok search; about US$0.26 more per search. Accounts with fewer than 5 videos fall back to views ÷ followers.
 - **What's not live yet:** Instagram, link/screenshot search, the "Ask" answers and the AI shot lists. Live videos show what TikTok gives us (caption, sound, hashtags) and link to the video.
 - Live results only use public TikTok data. Check TikTok's and Apify's terms before using this beyond internal testing.
 
