@@ -69,6 +69,7 @@ export function formatTrend(format: Format, pool: Video[]): FormatTrend {
     tiktok: used.filter((v) => v.platform === 'tiktok').length,
     instagram: used.filter((v) => v.platform === 'instagram').length,
     youtube: used.filter((v) => v.platform === 'youtube').length, // sample data has none; live mode skips trends
+    x: used.filter((v) => v.platform === 'x').length,
   }
   const newestDays = Math.min(...used.map((v) => v.daysAgo))
   const total = counts.tiktok + counts.instagram
@@ -93,7 +94,7 @@ export function stageText(t: FormatTrend): string {
 
 export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, everywhere: 2, 'one-off': 3 }
 
-export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }
+export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', x: 'X' }
 
 export function clientFit(format: Format, client: Client) {
   if (format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }
