@@ -7,7 +7,7 @@ URL = "https://www.tiktok.com/@a/video/1"
 
 
 def fake_search(calls):
-    def fake_actor(payload, max_items, actor=None):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
         calls.append(payload)
         return [item(1, "a", 500)] if "searchQueries" in payload else []
     return fake_actor

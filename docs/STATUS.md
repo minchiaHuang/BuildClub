@@ -1,6 +1,8 @@
 # STATUS
 
-**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台；2026-10-27 深夜再修 5 個 UI 小問題、X 第一次真實搜尋並 pin 住 tofu、用 Apify 實際扣款校正 TikTok 單價（已 push，PR #3）。
+**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台；2026-10-27 用 Apify 實際扣款校正 TikTok 單價，每日上限調到 US$2、中位數 run 另設 US$0.60 上限，全新 TikTok 搜尋實測估算 0.68 ≈ 實扣 0.668（已 push，PR #3）。
+
+- **2026-10-27 22:10（花費上限）：** 使用者決定：`DAILY_APIFY_USD` 預設 1.00 → **2.00**；新增 `MAX_USD_PER_MEDIANS`（預設 **0.60**），只用在 TikTok 作者中位數那個 run（15 × 10 支約 0.56，原本被 0.50 截在 134 支），搜尋本身仍是 `MAX_USD_PER_SEARCH` 0.50。`run_actor` 多一個 `max_usd` 參數，測試的假 actor 跟著改，加 1 個測試（共 159）。真實全新 TikTok 搜尋「miso soup recipe」：搜尋 49 秒回 30 支，中位數背景 48 秒，16/30 支有分數；app 估算 0.12 + 0.56 = **0.68**，Apify 實際扣款 **0.668**（搜尋 0.112、中位數 0.556，上限 0.6，沒有截斷）。app 今天記的 Apify 花費 1.67/2.00。驗證：`bash bin/verify.sh` 綠。
 
 - **2026-10-27 深夜（UI + 花費校正）：**
   - UI（`e756179`）：YouTube 拆解面板不再顯示 Shares + saves（YouTube 搜尋沒有這兩個數字）；側邊欄「Live TikTok data」改成「Live data」；平台切換旁的說明不再多一個空的「· soon」；天數篩選保留沒有日期的 YouTube 影片（`App.tsx` 用 `hasDate`）；規劃頁 IG/X 參考影片只剩一個「Watch on <平台> ↗」文字連結，封面本身改成連到原影片（`BestVideo.tsx`）。改到 Veralyn 的元件：BestVideo、BreakdownPanel、Sidebar、PlatformToggles，加上 `App.tsx`。驗證：verify 綠、`npm run build` 過、eslint 乾淨；Playwright 隔離副本（無 `.env`、假 token、上限 0）5 項全過，TikTok/IG 拆解面板仍有 Shares + saves，TikTok 規劃頁仍是嵌入播放器。
@@ -19,7 +21,7 @@
 - **本次花費（2026-10-27，上限 Apify US$1 / Claude US$1）：** Apify 約 US$0.26（中位數 0.23 + IG 0.03，2/2 次 run），Claude 約 US$0.23（tofu 重跑 + IG 拆解，各約 0.08；瀏覽器實測拆解 1 支，in 6,018 / out 1,828，約 0.07）。Apify 依每支單價估算，實際扣款看 console.apify.com。
 - **進行中：** 分支 `feat/backend-api`（worktree `~/orca/workspaces/BuildClub/feat-backend-api`），已 push 到 fork `minchiaHuang/BuildClub`（remote 名 `fork`，upstream 已設），PR：https://github.com/veralynchong/BuildClub/pull/3 。origin 仍是 veralynchong/BuildClub，minchiaHuang 對 origin 沒有寫入權限；之後的 commit 一律 `git push`（推到 fork）。
 - **每日花費上限（2026-10-27 新增）：** 後端在每次付費呼叫之前先記一筆估算花費，記在 `data.db`，以這台電腦的當地日期計，午夜歸零。超過上限就回 429，並附上說明。快取、pin 住的搜尋和已經完成的拆解都免費，不會被擋。估算單價（2026-10-27 深夜依實際扣款校正）：TikTok 搜尋 US$0.12 + 每個新作者 US$0.037（15 個約 0.56）、IG 搜尋 US$0.03、X 搜尋 US$0.02、拆解 US$0.08。**校正前估算偏低約 2.2 倍，所以 2026-10-27 這個 Apify 帳號真實的 TikTok 扣款約 US$3.9（14 次 run），遠超過 app 記的 US$1。**新增的 env：
-  - `DAILY_APIFY_USD`（預設 1.00）
+  - `DAILY_APIFY_USD`（預設 2.00，2026-10-27 從 1.00 調高）
   - `DAILY_CLAUDE_USD`（預設 1.00）
 - **給 Daphne 用（2026-10-27 決定走選項 1：Mac mini + 通道 + 簡單密碼）：** 後端現在直接提供 `dist/` 的網頁，`npm run build` 之後只要開 8787 一個網址就能用。在 `.env` 設了 `APP_PASSWORD`，打開網頁或呼叫 API 時，瀏覽器都會跳出密碼框（帳號隨便填）；沒設就不檢查。設了密碼之後，本機開 vite 開發時也要輸入一次密碼。2026-10-27 已在 `.env` 設好密碼，用 curl 實測：沒帶密碼的話，網頁、JS 和 API 都回 401，帶對的密碼就回 200。通道已開（2026-10-27）：`tailscale funnel --bg 8787` → https://tommymac-mini.tail8e20a0.ts.net 。從公開網址實測：沒帶密碼或密碼錯都回 401，帶對的密碼網頁回 200，快取的 tofu 搜尋回 30 支。要關通道就跑 `tailscale funnel --https=443 off`。Daphne 要能用，Mac mini 必須開機，8787 後端也要在跑。
 - **已知問題：**
@@ -39,9 +41,6 @@
 - **下一步：**
   - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
   - IG hover 播放要後端提供影片檔網址才做得到。
-  - TikTok 作者中位數 run 每次都是 134 支、US$0.497，貼著 `MAX_USD_PER_SEARCH`（0.50）上限，要的是 15 × 10 = 150 支，可能是被上限截斷；要中位數完整就得把那一個 run 的上限調高（Apify 最低 0.50），先問使用者。
-  - 每日上限 `DAILY_APIFY_USD` 預設 1.00，用新單價算一次全新 TikTok 搜尋約 0.68，一天只夠一次；要不要調高請使用者決定。
-  0. 用一次真實的新 TikTok 搜尋實測搜尋加速（現在估約 US$0.68，今天的每日上限已用完），確認新單價和實際扣款相符。
   1. 等 Veralyn 審 PR #3，回應她的意見。
   2. 和 Veralyn 討論上面的前端已知問題（費用提示、拆解狀態顯示、自動搜尋客戶主題）。
   3. 前端 `lines` 顯示（Veralyn 的元件）。

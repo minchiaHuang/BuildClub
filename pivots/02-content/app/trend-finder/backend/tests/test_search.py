@@ -45,7 +45,7 @@ def test_search_without_token_is_off(client, monkeypatch):
 def test_live_search_adds_account_medians(client, monkeypatch):
     calls = []
 
-    def fake_actor(payload, max_items, actor=None):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
         calls.append((payload, max_items))
         if "searchQueries" in payload:
             return [item(1, "small", 9000, fans=10), item(2, "big", 1000, fans=1000), {"id": 3}]
@@ -69,7 +69,7 @@ def test_live_search_adds_account_medians(client, monkeypatch):
 
 
 def test_failed_medians_keep_the_search(client, monkeypatch):
-    def fake_actor(payload, max_items, actor=None):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
         if "profiles" in payload:
             raise RuntimeError("Apify returned 402")
         return [item(1, "a", 500)]
@@ -103,7 +103,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "instagram_tofu.json"  # a real s
 def test_instagram_search_from_a_real_result(client, monkeypatch):
     calls = []
 
-    def fake_actor(payload, max_items, actor=None):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
         calls.append((payload, actor))
         return json.loads(FIXTURE.read_text())
 
@@ -136,7 +136,7 @@ def test_tiktok_cache_names_did_not_change():
 
 def median_search(calls, authors):
     """Search returns one video per author; each account's latest videos all have 100 views."""
-    def fake_actor(payload, max_items, actor=None):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
         calls.append(payload)
         if "searchQueries" in payload:
             return [item(n, a, 1000) for n, a in enumerate(authors)]
@@ -146,6 +146,19 @@ def median_search(calls, authors):
 
 def fetched(calls):
     return [c["profiles"] for c in calls if "profiles" in c]
+
+
+def test_account_medians_run_gets_its_own_charge_cap(client, monkeypatch):
+    caps = []
+    search = median_search([], ["a"])
+
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
+        caps.append(("profiles" in payload, max_usd))
+        return search(payload, max_items)
+    monkeypatch.setattr(server, "run_actor", fake_actor)
+    client.get("/api/search", params={"q": "tofu"})
+    assert caps == [(False, None), (True, server.MAX_USD_PER_MEDIANS)]  # the search keeps the default cap
+    assert server.MAX_USD_PER_MEDIANS > server.AUTHORS_PER_SEARCH * server.VIDEOS_PER_AUTHOR * server.APIFY_USD_PER_VIDEO
 
 
 def test_account_medians_are_reused_for_a_week(client, monkeypatch):
@@ -167,7 +180,7 @@ def test_account_medians_are_reused_for_a_week(client, monkeypatch):
 def test_accounts_with_few_videos_are_not_fetched_again(client, monkeypatch):
     calls = []
 
-    def fake_actor(payload, max_items, actor=None):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
         calls.append(payload)
         return [item(1, "new", 1000)] if "searchQueries" in payload else [item(2, "new", 10)]
 
@@ -180,7 +193,7 @@ def test_accounts_with_few_videos_are_not_fetched_again(client, monkeypatch):
 def test_failed_medians_are_not_saved(client, monkeypatch):
     calls = []
 
-    def failing(payload, max_items, actor=None):
+    def failing(payload, max_items, actor=None, max_usd=None):
         calls.append(payload)
         if "profiles" in payload:
             raise RuntimeError("Apify returned 402")
@@ -196,7 +209,7 @@ def test_results_come_back_before_account_medians(client, monkeypatch):
     import threading
     release, filled = threading.Event(), threading.Event()
 
-    def slow_actor(payload, max_items, actor=None):
+    def slow_actor(payload, max_items, actor=None, max_usd=None):
         if "searchQueries" in payload:
             return [item(1, "a", 1000)]
         release.wait(5)

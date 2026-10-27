@@ -119,7 +119,7 @@ def test_saved_medians_expire(client, actor, monkeypatch):
 def test_failed_median_run_still_keeps_the_search(client, actor, monkeypatch):
     actor.search = [tweet(1)]
 
-    def boom(payload, max_items, actor=None):
+    def boom(payload, max_items, actor=None, max_usd=None):
         if " OR " in payload["searchTerms"][0]:
             raise RuntimeError("Apify returned 500")
         return [tweet(1)]

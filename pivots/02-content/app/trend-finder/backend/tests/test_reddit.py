@@ -24,7 +24,7 @@ def actor(monkeypatch):
         def __init__(self):
             self.search, self.subs, self.calls = [], {}, []
 
-        def __call__(self, payload, max_items, actor=None):
+        def __call__(self, payload, max_items, actor=None, max_usd=None):
             self.calls.append((payload, max_items, actor))
             if "query" in payload:
                 return self.search
@@ -132,7 +132,7 @@ def test_cached_only_never_calls_the_actor(client, actor):
 
 
 def test_a_failed_search_is_a_502(client, monkeypatch):
-    def boom(payload, max_items, actor=None):
+    def boom(payload, max_items, actor=None, max_usd=None):
         raise RuntimeError("Apify returned 500")
 
     monkeypatch.setattr(server, "run_actor", boom)

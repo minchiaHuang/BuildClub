@@ -68,14 +68,16 @@ CACHE_HOURS = float(os.environ.get("CACHE_HOURS", 24))
 # Cost is held by maxItems: 30 results at ~$3.70/1,000 is about $0.11 (measured 0.112 on 2026-10-27).
 # The charge cap is a backstop only; Apify refuses anything below $0.50.
 MAX_USD_PER_SEARCH = float(os.environ.get("MAX_USD_PER_SEARCH", 0.50))
-# Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.56.
+# Each account's usual views come from its latest videos: 15 accounts x 10 videos is about $0.56,
+# over the search cap (at 0.50 the run stopped at 134 of 150 videos), so that run gets its own cap.
+MAX_USD_PER_MEDIANS = float(os.environ.get("MAX_USD_PER_MEDIANS", 0.60))
 AUTHORS_PER_SEARCH = int(os.environ.get("AUTHORS_PER_SEARCH", 15))
 VIDEOS_PER_AUTHOR = int(os.environ.get("VIDEOS_PER_AUTHOR", 10))
 MIN_VIDEOS = 5  # fewer recent videos than this and the median says little
 MEDIAN_DAYS = 7  # an account's usual views are reused this long before they are fetched again
 # Daily caps on estimated spend, so a loop or stray clicks can't run up the bill. Each paid call is
 # counted before it runs; cached searches and finished breakdowns are free and never counted.
-DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 1.00))
+DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 2.00))
 DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
 # Channel summaries: Jev labelling in US$; ScrapeCreators (Instagram only) in credits, 1 per 12 reels.
 DAILY_JEV_USD = float(os.environ.get("DAILY_JEV_USD", 0.50))
@@ -177,9 +179,9 @@ NO_DOWNLOADS = {
 }
 
 
-def run_actor(payload: dict, max_items: int, actor: str = ACTOR) -> list:
+def run_actor(payload: dict, max_items: int, actor: str = ACTOR, max_usd: float = MAX_USD_PER_SEARCH) -> list:
     url = (f"https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items"
-           f"?timeout=240&maxItems={max_items}&maxTotalChargeUsd={MAX_USD_PER_SEARCH}")
+           f"?timeout=240&maxItems={max_items}&maxTotalChargeUsd={max_usd}")
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={
         "Content-Type": "application/json", "Authorization": f"Bearer {TOKEN}"})
     try:
@@ -274,7 +276,7 @@ def fetch_medians(missing: list) -> dict:
     try:
         found = median_views(run_actor({
             "profiles": missing, "resultsPerPage": VIDEOS_PER_AUTHOR, "profileSorting": "latest",
-            "excludePinnedPosts": True, **NO_DOWNLOADS}, len(missing) * VIDEOS_PER_AUTHOR))
+            "excludePinnedPosts": True, **NO_DOWNLOADS}, len(missing) * VIDEOS_PER_AUTHOR, max_usd=MAX_USD_PER_MEDIANS))
     except Exception as e:
         print(f"[search] account medians failed: {e}", flush=True)
         return {}
