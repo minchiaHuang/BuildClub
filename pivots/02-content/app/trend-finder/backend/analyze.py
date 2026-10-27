@@ -45,8 +45,12 @@ any quoted speech or on-screen text.
 - editorNotes: 2-3 short instructions for an editor matching this style.
 - lines: the key spoken or on-screen lines in order, each with the job it does.
 
-Only describe what the frames and transcript show. If something is unclear, say so briefly
-rather than guessing. Keep each sentence short and simple."""
+shotList text and lines text hold only the words themselves, translated: no quote marks, no
+notes in brackets, no comments on the language or the subtitles. Leave shotList text empty when
+there is no on-screen text.
+
+Only describe what the frames and transcript show. If something is unclear, say so briefly in
+editorNotes rather than guessing. Keep each sentence short and simple."""
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
