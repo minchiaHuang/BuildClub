@@ -22,6 +22,7 @@ import { ApprovalsScreen } from './components/ApprovalsScreen'
 import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
+import { ChannelScreen } from './components/ChannelScreen'
 import type { Client, Format, Platform, Video } from './types'
 import {
   analyzeVideo,
@@ -501,7 +502,7 @@ export default function App() {
         </header>
 
         <main className="main">
-          {(!inClient || view === 'overview') && (
+          {view !== 'channel' && (!inClient || view === 'overview') && (
             <OverviewScreen
               clients={clients}
               ideas={shownIdeas}
@@ -634,6 +635,8 @@ export default function App() {
               onGoApprovals={() => setView('approvals')}
             />
           )}
+
+          {view === 'channel' && <ChannelScreen />}
 
           {inClient && view === 'settings' && <SettingsScreen client={client} onChange={updateClient} />}
 

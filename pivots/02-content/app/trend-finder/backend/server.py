@@ -28,8 +28,10 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+import channels
 from analyze import Jobs, job_id_for
-from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, Library, SavedIdea, SearchResult
+from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
+                    Library, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -68,6 +70,9 @@ MEDIAN_DAYS = 7  # an account's usual views are reused this long before they are
 # counted before it runs; cached searches and finished breakdowns are free and never counted.
 DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 1.00))
 DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
+# Channel summaries: Jev labelling in US$; ScrapeCreators (Instagram only) in credits, 1 per 12 reels.
+DAILY_JEV_USD = float(os.environ.get("DAILY_JEV_USD", 0.50))
+DAILY_SCRAPECREATORS_CREDITS = float(os.environ.get("DAILY_SCRAPECREATORS_CREDITS", 20))
 SEARCH_USD = {"tiktok": 0.05, "instagram": 0.03}
 APIFY_USD_PER_VIDEO = 0.0017  # TikTok actor; account medians cost this per video fetched
 ANALYZE_USD = 0.08  # one Claude breakdown
@@ -411,18 +416,18 @@ def spend(wallet: str, usd: float, cap: float) -> bool:
     key = f"spend:{today()}"
     with budget_lock:
         spent = load(key) or {}
-        total = round(spent.get(wallet, 0) + usd, 2)
+        total = round(spent.get(wallet, 0) + usd, 4)  # 4 places: a Jev label costs less than a cent
         if total > cap:
             return False
         with db() as conn:
             conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)",
                          (key, json.dumps({**spent, wallet: total})))
-    print(f"[budget] {wallet} US${total:.2f} of US${cap:.2f} today", flush=True)
+    print(f"[budget] {wallet} US${total:.4f} of US${cap:.2f} today", flush=True)
     return True
 
 
-def over_budget(name: str, cap: float, env: str) -> JSONResponse:
-    return error(429, f"Today's {name} budget (US${cap:.2f}) is used up. Saved searches and finished "
+def over_budget(name: str, cap: float, env: str, unit: str = "US$") -> JSONResponse:
+    return error(429, f"Today's {name} budget ({unit}{cap:.2f}) is used up. Saved searches and finished "
                       "breakdowns still work, and the budget resets at midnight.",
                  f"To allow more, raise {env} in .env and restart the API.")
 
@@ -448,6 +453,48 @@ def get_analyze(job_id: str):
     if not job:
         return error(404, "No breakdown with that id. Start one with POST /api/analyze.")
     return job
+
+
+# A channel summary takes minutes to an hour, so it also runs in the background and is polled.
+CHANNEL_CAPS = {"claude": DAILY_CLAUDE_USD, "jev": DAILY_JEV_USD, "scrapecreators": DAILY_SCRAPECREATORS_CREDITS}
+
+
+def budget_left(wallet: str, cap: float) -> float:
+    return cap - (load(f"spend:{today()}") or {}).get(wallet, 0)
+
+
+channel_jobs = channels.ChannelJobs(lambda w, n: spend(w, n, CHANNEL_CAPS[w]),
+                                    lambda w: budget_left(w, CHANNEL_CAPS[w]))
+
+
+@app.post("/api/channel", response_model=ChannelStarted)
+def start_channel(body: ChannelRequest):
+    if not 1 <= body.maxVideos <= channels.MAX_VIDEOS:
+        return error(400, f"Decode between 1 and {channels.MAX_VIDEOS} videos.")
+    try:
+        handle = channels.normalise(body.platform, body.handle)
+        return {"job": channel_jobs.submit(body.platform, handle, body.maxVideos)}
+    except ValueError as e:
+        return error(400, str(e))
+    except channels.OverBudget as e:
+        name, env = channels.WALLETS[e.wallet]
+        return over_budget(name, CHANNEL_CAPS[e.wallet], env, "" if e.wallet == "scrapecreators" else "US$")
+
+
+@app.get("/api/channel/{job_id}", response_model=ChannelJob, response_model_exclude_none=True)
+def get_channel(job_id: str):
+    job = channel_jobs.get(job_id)
+    if not job:
+        return error(404, "No channel summary with that id. Start one with POST /api/channel.")
+    return job
+
+
+@app.get("/api/channel/{job_id}/thumb/{name}")
+def get_channel_thumb(job_id: str, name: str):
+    path = channels.thumb_path(job_id, name)
+    if not path:
+        return error(404, "No such thumbnail.")
+    return FileResponse(path, media_type="image/jpeg")
 
 
 # Last route, so it never shadows the API: built files by path, and the app for anything else.

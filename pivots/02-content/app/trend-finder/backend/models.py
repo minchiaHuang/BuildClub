@@ -112,6 +112,34 @@ class AnalyzeStarted(BaseModel):
     job: str
 
 
+class ChannelRequest(BaseModel):
+    platform: Literal["youtube", "tiktok", "instagram"]
+    # A handle ("@name") or a channel / profile link.
+    handle: str
+    # Newest N videos to decode. 50 by default; 100 only when asked for.
+    maxVideos: int = 50
+
+
+class ChannelStarted(BaseModel):
+    job: str
+
+
+class ChannelJob(BaseModel):
+    job: str
+    status: Literal["queued", "running", "done", "failed"]
+    # What the job is doing now, e.g. "Transcribing speech".
+    step: str = ""
+    # All the steps this job goes through, in order, and the index of the current one.
+    steps: list[str] = []
+    stepIndex: int = 0
+    # Videos finished in the current step (details and transcripts); 0 of 0 when the step is not counted.
+    done: int = 0
+    total: int = 0
+    # channel-decoder's analysis.json: {summary, videos, formats}. Thumbnails point at this API.
+    result: Optional[dict] = None
+    error: Optional[str] = None
+
+
 class AnalyzeJob(BaseModel):
     job: str
     status: Literal["queued", "running", "done", "failed"]

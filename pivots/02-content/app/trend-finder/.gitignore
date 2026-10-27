@@ -30,3 +30,4 @@ backend/cache/
 __pycache__/
 backend/data.db
 backend/jobs/
+backend/channels/
