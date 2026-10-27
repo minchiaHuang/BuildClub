@@ -23,7 +23,8 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from models import Client, SavedIdea
+from analyze import Jobs
+from models import AnalyzeJob, AnalyzeRequest, AnalyzeStarted, Client, SavedIdea
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -198,6 +199,26 @@ def get_ideas():
 def put_ideas(ideas: list[SavedIdea]):
     save("ideas", ideas)
     return ideas
+
+
+# A breakdown takes minutes, so it runs in the background and the front end polls for progress.
+jobs = Jobs()
+
+
+@app.post("/api/analyze", response_model=AnalyzeStarted)
+def start_analyze(body: AnalyzeRequest):
+    url = body.url.strip()
+    if not url.startswith(("https://www.tiktok.com/", "https://www.instagram.com/")):
+        return error(400, "Paste a TikTok or Instagram video link.")
+    return {"job": jobs.submit(url)}
+
+
+@app.get("/api/analyze/{job_id}", response_model=AnalyzeJob, response_model_exclude_none=True)
+def get_analyze(job_id: str):
+    job = jobs.get(job_id)
+    if not job:
+        return error(404, "No breakdown with that id. Start one with POST /api/analyze.")
+    return job
 
 
 def pin(query: str) -> None:
