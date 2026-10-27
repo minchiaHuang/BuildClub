@@ -80,21 +80,33 @@ export default function App() {
   // In live mode the API keeps clients and saved ideas too. Its copy wins on load; after that,
   // every change is saved back. If the API can't load them, this browser's copy is used.
   const [synced, setSynced] = useState(false)
+  // What the API already holds, so the copy just loaded from it isn't written straight back.
+  const onServer = useRef<{ clients: Client[] | null; ideas: SavedIdea[] | null }>({ clients: null, ideas: null })
   useEffect(() => {
     if (!live) return
     Promise.all([loadList<Client>('clients'), loadList<SavedIdea>('ideas')])
       .then(([savedClients, savedIdeas]) => {
-        if (savedClients?.length) setClients(savedClients)
-        if (savedIdeas) setIdeas(savedIdeas)
+        if (savedClients?.length) {
+          setClients(savedClients)
+          onServer.current.clients = savedClients
+        }
+        if (savedIdeas) {
+          setIdeas(savedIdeas)
+          onServer.current.ideas = savedIdeas
+        }
         setSynced(true)
       })
       .catch(() => {})
   }, [live, setClients, setIdeas])
   useEffect(() => {
-    if (synced) saveList('clients', clients).catch(() => {})
+    if (!synced || clients === onServer.current.clients) return
+    onServer.current.clients = clients
+    saveList('clients', clients).catch(() => {})
   }, [synced, clients])
   useEffect(() => {
-    if (synced) saveList('ideas', ideas).catch(() => {})
+    if (!synced || ideas === onServer.current.ideas) return
+    onServer.current.ideas = ideas
+    saveList('ideas', ideas).catch(() => {})
   }, [synced, ideas])
 
   // Each screen starts at the top, like a new page.
