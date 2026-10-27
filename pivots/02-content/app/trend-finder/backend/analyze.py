@@ -1,12 +1,13 @@
 """Video breakdown jobs. A job downloads one video, finds its shots, saves a frame per shot and
-transcribes the speech, all locally and free (yt-dlp, ffmpeg, whisper.cpp). The AI step that turns
-this into a Breakdown is not connected yet.
+transcribes the speech, all locally and free (yt-dlp, ffmpeg, whisper.cpp). Claude then reads the
+frames and transcript and explains why the video works, as a Breakdown.
 
 Adapted from brand-studio/brand_studio/style_analysis.py and clipkit's single-worker queue.
 Jobs run one at a time. A job's id comes from its URL, so asking for the same video again
 reuses the work in jobs/<id>/.
 """
 
+import base64
 import hashlib
 import json
 import queue
@@ -14,6 +15,8 @@ import re
 import subprocess
 import threading
 from pathlib import Path
+
+import anthropic
 
 from models import AnalyzeJob, Breakdown
 
@@ -24,6 +27,26 @@ MODEL = Path.home() / "models" / "ggml-large-v3-turbo-q5_0.bin"
 CUT_THRESHOLD = 0.15  # ffmpeg scene score; 0.3 missed 4 of 13 cuts on a real episode (2026-10-18)
 MIN_SHOT = 0.25       # seconds; closer cuts are flashes, not shots
 MAX_FRAMES = 12       # frames sent to the AI step, which is billed per image
+AI_MODEL = "claude-opus-5-5"
+AI_MAX_TOKENS = 16000  # caps one breakdown at about US$0.36 (2026-10-27 prices)
+
+PROMPT = """You are helping a social media manager understand why a short video went viral, so
+their client can film something similar. Explain what the video does; do not write a new script.
+
+Below are frames from the video (each labelled with its time) and the speech transcript with
+timestamps. The video may not be in English: write everything in plain English, and translate
+any quoted speech or on-screen text.
+
+- why.hook: what makes people stop scrolling.
+- why.first3s: what happens in the first 3 seconds and why it holds attention.
+- why.length, why.format, why.sound: how the length, filming style and sound help it.
+- shotList: the shots in order, time as "0-2s"; text is on-screen text, if any.
+- props: things the client would need to film it.
+- editorNotes: 2-3 short instructions for an editor matching this style.
+- lines: the key spoken or on-screen lines in order, each with the job it does.
+
+Only describe what the frames and transcript show. If something is unclear, say so briefly
+rather than guessing. Keep each sentence short and simple."""
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
@@ -118,7 +141,35 @@ def prepare(url: str, work: Path, step) -> dict:
 
 
 def breakdown(prepared: dict, work: Path) -> Breakdown:
-    raise RuntimeError("The AI step is not connected yet. Frames and transcript are ready.")
+    content = [{"type": "text", "text": f"Video length: {prepared['lengthSec']} seconds, "
+                                        f"{len(prepared['shots'])} shots."}]
+    for f in prepared["frames"]:
+        data = base64.standard_b64encode((work / f["file"]).read_bytes()).decode()
+        content.append({"type": "text", "text": f"Frame at {f['t']}s:"})
+        content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": data}})
+    speech = "\n".join(f"[{s['start']:.1f}-{s['end']:.1f}s] {s['text']}" for s in prepared["speech"])
+    content.append({"type": "text", "text": f"Transcript:\n{speech or '(no speech)'}\n\n{PROMPT}"})
+
+    response = anthropic.Anthropic().beta.messages.parse(
+        model=AI_MODEL,
+        max_tokens=AI_MAX_TOKENS,
+        thinking={"type": "adaptive"},
+        output_config={"effort": "high"},
+        output_format=Breakdown,
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+        messages=[{"role": "user", "content": content}],
+    )
+    u = response.usage
+    print(f"[analyze] {work.name} {response.model} in={u.input_tokens} out={u.output_tokens} "
+          f"stop={response.stop_reason}", flush=True)
+    (work / "usage.json").write_text(json.dumps({"model": response.model, "input": u.input_tokens,
+                                                 "output": u.output_tokens}), encoding="utf-8")
+    if response.stop_reason == "refusal":
+        raise RuntimeError("The AI declined to analyse this video.")
+    if response.stop_reason == "max_tokens" or response.parsed_output is None:
+        raise RuntimeError(f"The AI answer was incomplete ({response.stop_reason}).")
+    return response.parsed_output
 
 
 class Jobs:
