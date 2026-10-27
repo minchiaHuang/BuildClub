@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { IdeaStatus, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
-import { formatTrend, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
+import { formatTrend, hasDate, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
@@ -367,7 +367,8 @@ export default function App() {
     const pattern = patterns.find((x) => x.label === patternFilter)
     return keywordPool
       .filter((v) => live || query.platforms.includes(v.platform))
-      .filter((v) => v.daysAgo <= query.days)
+      // Videos with no posting date (YouTube search) can't be judged by age, so the day filter keeps them.
+      .filter((v) => !hasDate(v) || v.daysAgo <= query.days)
       .filter((v) => !query.maxLength || v.lengthSec <= query.maxLength)
       .filter((v) => live || !interp.topics.length || interp.topics.some((t) => t.formatId === v.formatId))
       .filter((v) => live || !interp.audience || formatById.get(v.formatId)!.audiences.includes(interp.audience))

@@ -44,21 +44,20 @@ export function BestVideo({ video, onOpen }: { video: Video; onOpen?: () => void
       </span>
       {!video.live ? (
         <span className="best-video-note">Sample video: no playback</span>
-      ) : onOpen ? (
-        <span className="best-video-note">Open to watch on {platformName[video.platform]}</span>
       ) : (
-        video.url && (
-          <a className="best-video-note" href={video.url} target="_blank" rel="noreferrer">
-            Watch on {platformName[video.platform]} ↗
-          </a>
-        )
+        onOpen && <span className="best-video-note">Open to watch on {platformName[video.platform]}</span>
       )}
     </>
   )
+  // Without onOpen (plan page) the cover links straight to the video; the page's own "Watch on" link is the text label.
   return onOpen ? (
     <button className="best-video best-video-sample" onClick={onOpen} aria-label={`Open breakdown: ${video.hook}`}>
       {inner}
     </button>
+  ) : video.live && video.url ? (
+    <a className="best-video best-video-sample" href={video.url} target="_blank" rel="noreferrer" aria-label={`Watch on ${platformName[video.platform]}`}>
+      {inner}
+    </a>
   ) : (
     <div className="best-video best-video-sample">{inner}</div>
   )

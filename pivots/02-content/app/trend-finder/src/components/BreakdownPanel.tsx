@@ -49,8 +49,8 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             ? `${compact(video.followers)} followers`
             : 'Follower count not available',
     },
-    // Reddit has no shares or saves to show.
-    ...(video.platform === 'reddit'
+    // Reddit and YouTube search results have no shares or saves to show.
+    ...(video.platform === 'reddit' || video.platform === 'youtube'
       ? []
       : [
           {

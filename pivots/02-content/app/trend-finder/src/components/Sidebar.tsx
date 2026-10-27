@@ -178,8 +178,8 @@ export function Sidebar(p: Props) {
 
         <div className="side-foot">
           {p.live ? (
-            <span className="live-pill" title="Search results are real TikTok videos">
-              Live TikTok data
+            <span className="live-pill" title="Search results are real videos">
+              Live data
             </span>
           ) : (
             <span className="sample-pill" title="All accounts and numbers are made up for this demo">

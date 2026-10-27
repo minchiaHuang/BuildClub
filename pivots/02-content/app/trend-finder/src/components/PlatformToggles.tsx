@@ -146,7 +146,7 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
       })}
       <span className="platforms-note">
         {onNames.join(' + ')}
-        {showSoon && <span className="muted"> · {soonNames.join(', ')} soon</span>}
+        {showSoon && soonNames.length > 0 && <span className="muted"> · {soonNames.join(', ')} soon</span>}
       </span>
     </div>
   )
