@@ -1,6 +1,6 @@
 # STATUS
 
-**一句話：** Trend Finder 後端已做到 PRD 範圍：TikTok + IG 搜尋、每帳號中位數爆紅分數、clients/ideas、analyze（Claude 拆解），前端資料層已接線；分支只在本機，等 push 權限。
+**一句話：** Trend Finder 後端已做到 PRD 範圍：TikTok + IG 搜尋、每帳號中位數爆紅分數、clients/ideas、analyze（Claude 拆解），前端資料層已接線；已從 fork 開 PR #3 給 Veralyn 審（2026-10-27）。
 
 - **上次驗證：** 2026-10-27，`bash bin/verify.sh` 綠（可編譯、可載入、27 個離線測試）。本次實測：
   - 作者中位數：對 pin 住的 tofu 補抓 15 個作者 × 10 支，39 秒，134 支，16/30 支有分數。
@@ -8,7 +8,7 @@
   - IG 真實搜尋「tofu」：18 秒，回 12 支 reels（不是 30，actor 說免費方案只抓第一頁）；IG 第一名影片 analyze 全流程 39 秒，yt-dlp 不需登入。
   - `npm run api` 指令改成 Python 後，在 8790 試跑：health、IG pin、TikTok pin 都正常。
 - **本次花費（2026-10-27，上限 Apify US$1 / Claude US$1）：** Apify 約 US$0.26（中位數 0.23 + IG 0.03，2/2 次 run），Claude 約 US$0.16（tofu 重跑 + IG 拆解，各約 0.08）。Apify 依每支單價估算，實際扣款看 console.apify.com。
-- **進行中：** 分支 `feat/backend-api`（worktree `~/orca/workspaces/BuildClub/feat-backend-api`），本機 commit 到 7d7c4e2，**未推送**（origin 是 veralynchong/BuildClub，minchiaHuang 回 403）。
+- **進行中：** 分支 `feat/backend-api`（worktree `~/orca/workspaces/BuildClub/feat-backend-api`），已 push 到 fork `minchiaHuang/BuildClub`（remote 名 `fork`，upstream 已設），PR：https://github.com/veralynchong/BuildClub/pull/3 。origin 仍是 veralynchong/BuildClub，minchiaHuang 對 origin 沒有寫入權限；之後的 commit 一律 `git push`（推到 fork）。
 - **已知問題：**
   - 前端沒有 build 過：worktree 和主 checkout 都沒有 `node_modules`，`live.ts`、`App.tsx` 只做了人工型別檢查。先 `npm install` 再 `npm run build`。
   - 每次新的 TikTok 搜尋多花約 US$0.26（作者中位數），時間也多約 40 秒；可用 `AUTHORS_PER_SEARCH`、`VIDEOS_PER_AUTHOR` 調整。
@@ -20,11 +20,11 @@
   - 沒改到、但還寫著舊 Node API 的地方：`AGENTS.md` 第 24 行、`vite.config.ts` 註解（`npm run api` 仍然有效）。
   - repo 根目錄有個只有 `.git` 的 `BuildClub/` 資料夾，來源不明，未處理。
 - **下一步：**
-  1. 決定 push 方式（fork、換帳號或請 Veralyn 給權限），push `feat/backend-api`，用下面的草稿開 PR 給 Veralyn 審。
+  1. 等 Veralyn 審 PR #3，回應她的意見。
   2. `npm install` 後跑 `npm run build`，在瀏覽器實際點一次：搜尋 tofu → 存一支 → 等拆解完成 → 規劃。
   3. 前端 IG UI 和 `lines` 顯示（Veralyn 的元件）。
 
-## PR 說明草稿（push 權限處理好後用）
+## PR 說明（已用於 PR #3）
 
 **Title:** Python backend for Trend Finder: search, scores, clients/ideas, AI breakdown
 
