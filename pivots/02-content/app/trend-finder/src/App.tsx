@@ -341,6 +341,10 @@ export default function App() {
   // Inside a client, everything (saving, fit checks, plans) is for that client.
   // A live API with no clients yet has an empty list until the first one is added (see below).
   const client = clients.find((c) => c.id === workspace) ?? clients[0] ?? noClient
+  // A remembered client that no longer exists (the API's list replaced this browser's): settle on the one shown.
+  useEffect(() => {
+    if (clients.length && workspace !== 'all' && workspace !== client.id) setWorkspaceRaw(client.id)
+  }, [clients.length, workspace, client.id, setWorkspaceRaw])
 
   const setWorkspace = (w: Workspace) => {
     setWorkspaceRaw(w)
