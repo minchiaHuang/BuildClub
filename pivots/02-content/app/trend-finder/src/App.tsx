@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { IdeaStatus, SavedIdea } from './types'
-import { clients as sampleClients, formats, videos } from './data/sample'
+import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
 import { formatTrend, hasDate, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
@@ -77,7 +77,7 @@ export default function App() {
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
-  // Live mode: real TikTok, Instagram, YouTube or X search through the local API (npm run api). Without it, the app uses sample data.
+  // Live mode: real TikTok, Instagram, YouTube or X search through the local API (npm run api). Live mode keeps clients, saved ideas and videos on the API; without the API the app falls back to sample data stored in this browser.
   const [live, setLive] = useState(false)
   const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
     videos: [],
@@ -140,6 +140,10 @@ export default function App() {
         if (savedIdeas) {
           setIdeas(savedIdeas)
           onServer.current.ideas = savedIdeas
+        } else {
+          // Nothing saved on the API yet: start empty, not from the sample ideas this browser began with.
+          const sampleIds = new Set(sampleIdeas.map((i) => i.id))
+          setIdeas((prev) => prev.filter((i) => !sampleIds.has(i.id)))
         }
         setSynced(true)
       })

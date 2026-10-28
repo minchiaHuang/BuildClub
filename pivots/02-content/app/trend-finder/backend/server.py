@@ -442,6 +442,30 @@ def health():
             "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
+STATS_SECONDS = 60
+stats_cache: dict = {}
+
+
+@app.get("/api/stats")
+def stats():
+    """How many real videos this server has searched: saved and pinned searches, each search and each video once."""
+    now = time.time()
+    if stats_cache.get("at", 0) > now - STATS_SECONDS:
+        return stats_cache["value"]
+    searches: dict = {}
+    for folder in (CACHE_DIR, PINNED_DIR):
+        for f in sorted(folder.glob("*.json")):
+            try:
+                saved = json.loads(f.read_text())
+            except (OSError, ValueError):
+                continue
+            searches[f.name] = saved  # the same search in both folders has the same file name
+    seen = {(s.get("platform"), v.get("id")) for s in searches.values() for v in s.get("videos", []) if v.get("id")}
+    value = {"videosScanned": len(seen), "searches": len(searches)}
+    stats_cache.update(at=now, value=value)
+    return value
+
+
 @app.get("/api/search", response_model=SearchResult)
 def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: str = ""):
     query = q.strip()[:120]

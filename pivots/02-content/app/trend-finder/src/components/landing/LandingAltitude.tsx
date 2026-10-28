@@ -1,4 +1,5 @@
 import { TypingSearch } from './TypingSearch'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 import { Pill, type PillSpec } from './midnight/Pills'
 import { PlatformLogo } from '../PlatformToggles'
 import type { LogoPlatform } from '../PlatformToggles'
@@ -43,10 +44,17 @@ function StepIcon({ kind }: { kind: 'search' | 'plan' }) {
 }
 
 export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
+  const { live } = useLiveInfo()
   return (
     <main className="landing landing-alt">
       <a className="la-strip" href="#what">
-        Now searching TikTok live <span aria-hidden="true">·</span> Instagram coming soon <span aria-hidden="true">→</span>
+        Now searching TikTok live{' '}
+        {!live && (
+          <>
+            <span aria-hidden="true">·</span> Instagram coming soon{' '}
+          </>
+        )}
+        <span aria-hidden="true">→</span>
       </a>
       <nav className="la-nav" aria-label="Main">
         <a className="la-logo" href="#top">
@@ -98,7 +106,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
             <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Register free</button>
             <button type="button" className="la-pill la-outline la-big" onClick={onLogIn}>Log in to dashboard</button>
           </div>
-          <p className="la-note">Demo: both buttons open the sample agency.</p>
+          {!live && <p className="la-note">Demo: both buttons open the sample agency.</p>}
         </div>
       </header>
 

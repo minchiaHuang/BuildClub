@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { SlotCounter } from '../themes/unify/SlotCounter'
 import { usePrefersReducedMotion } from '../../lib/motion'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 
 // Public landing page for the Unify direction: website hero + "how it works" section, with Log in and Register.
 // Sign-in is a demo for now, so both buttons enter the sample agency.
@@ -57,6 +58,7 @@ function StepVisual({ i }: { i: number }) {
 
 export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
   const reduced = usePrefersReducedMotion()
+  const { live, stats } = useLiveInfo()
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -89,9 +91,13 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
               <button type="button" className="lu-black lu-lg" onClick={onRegister}>Register free</button>
               <button type="button" className="lu-under" onClick={onLogIn}>Log in to your dashboard</button>
             </div>
-            <p className="lu-note">Demo: both buttons open the sample agency.</p>
+            {!live && <p className="lu-note">Demo: both buttons open the sample agency.</p>}
             <ul className="lu-pills"><li>TikTok live search</li><li>Outlier scores</li><li>Client approvals</li><li>Editor briefs</li></ul>
-            <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>
+            {live ? (
+              stats && <p className="lu-count">Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos</p>
+            ) : (
+              <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>
+            )}
           </div>
 
           <div className="lu-preview" aria-label="Product preview">
@@ -130,6 +136,8 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             </div>
           </div>
 
+          {!live && (
+          <>
           <div className="lu-stats">
             <div className="lu-stat"><b>153×</b><span>best outlier this week</span></div>
             <div className="lu-stat"><b>12</b><span>clients in one dashboard</span></div>
@@ -137,6 +145,8 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             <div className="lu-stat"><b>1 tap</b><span>for your client to approve</span></div>
           </div>
           <p className="lu-note">Sample numbers.</p>
+          </>
+          )}
         </section>
 
         <section className="lu-strip">

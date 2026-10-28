@@ -1,6 +1,7 @@
 // Public landing page for the Midnight direction. Sign-in is a demo for now, so both buttons enter the sample agency.
 import { Pill, type PillSpec } from './midnight/Pills'
 import { TypingSearch } from './TypingSearch'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 import { useParallax } from './midnight/useParallax'
 
 const PILLS: PillSpec[] = [
@@ -40,6 +41,7 @@ const Arrow = () => (
 )
 
 export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
+  const { live } = useLiveInfo()
   const ref = useParallax<HTMLDivElement>()
   return (
     <main className="landing landing-midnight">
@@ -80,7 +82,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
             Register <Arrow />
           </button>
           <button className="mn-link" onClick={onLogIn}>Log in to your dashboard</button>
-          <span className="mn-demo">Demo: both buttons open the sample agency.</span>
+          {!live && <span className="mn-demo">Demo: both buttons open the sample agency.</span>}
         </div>
         <ul className="mn-laurels">
           {BADGES.map((b) => (

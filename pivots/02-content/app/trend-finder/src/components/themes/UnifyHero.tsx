@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react'
 import { SlotCounter } from './unify/SlotCounter'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 
 // Search-page hero for the Unify direction. Owned by the Unify theme; renders only when that theme is on.
 export function UnifyHero({ clientName }: { clientName: string }) {
+  const { live, stats } = useLiveInfo()
   return (
     <header className="unify-hero">
       <p className="uh-eyebrow">Trend research for {clientName}</p>
@@ -17,10 +19,18 @@ export function UnifyHero({ clientName }: { clientName: string }) {
         <li>Outlier scores</li>
         <li>Approvals built in</li>
       </ul>
-      <p className="uh-count">
-        <span className="uh-stars" aria-hidden="true">★★★★★</span>
-        Trend Finder has scanned <SlotCounter value={1284301} /> videos this month <span className="uh-sample">sample</span>
-      </p>
+      {live ? (
+        stats && (
+          <p className="uh-count">
+            Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos
+          </p>
+        )
+      ) : (
+        <p className="uh-count">
+          <span className="uh-stars" aria-hidden="true">★★★★★</span>
+          Trend Finder has scanned <SlotCounter value={1284301} /> videos this month <span className="uh-sample">sample</span>
+        </p>
+      )}
     </header>
   )
 }
