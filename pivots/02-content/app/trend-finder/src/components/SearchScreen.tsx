@@ -5,6 +5,7 @@ import { SearchBox } from './SearchBox'
 import type { ComponentType, ReactNode } from 'react'
 import { useUiTheme, type UiTheme } from '../lib/theme'
 // altitude
+import { AltitudeHero } from './themes/AltitudeHero'
 
 // unify
 
@@ -14,6 +15,7 @@ import { useUiTheme, type UiTheme } from '../lib/theme'
 type Hero = { Hero: ComponentType<{ clientName: string; children?: ReactNode }>; holdsSearch?: boolean }
 const heroes: Partial<Record<UiTheme, Hero>> = {
   // altitude
+  altitude: { Hero: AltitudeHero, holdsSearch: true },
 
   // unify
 

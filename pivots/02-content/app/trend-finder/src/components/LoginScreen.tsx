@@ -3,6 +3,7 @@ import type { ComponentType } from 'react'
 import { useUiTheme, type UiTheme } from '../lib/theme'
 import { ThemeSwitcher } from './ThemeSwitcher'
 // altitude
+import { LandingAltitude } from './landing/LandingAltitude'
 
 // unify
 
@@ -12,6 +13,7 @@ type Landing = ComponentType<{ onLogIn: () => void; onRegister: () => void }>
 // Each design registers its landing page on its own line.
 const landings: Partial<Record<UiTheme, Landing>> = {
   // altitude
+  altitude: LandingAltitude,
 
   // unify
 

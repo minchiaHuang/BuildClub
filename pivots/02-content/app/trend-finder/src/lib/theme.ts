@@ -7,6 +7,7 @@ export type UiTheme = 'base' | 'altitude' | 'unify' | 'midnight'
 export const uiThemes: { id: UiTheme; label: string }[] = [
   { id: 'base', label: 'Current' },
   // altitude
+  { id: 'altitude', label: 'Altitude' },
 
   // unify
 
