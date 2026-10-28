@@ -1,4 +1,4 @@
-import type { Format, Line, Platform, Shot, Video } from '../types'
+import type { Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
 import type { Answer } from './answer'
 import { UNKNOWN_DAYS, hasScore, outlierScore } from './metrics'
 
@@ -330,13 +330,55 @@ export async function loadList<T>(name: 'clients' | 'ideas'): Promise<T[] | null
   return r.json()
 }
 
+// A save the API refused. status 401 means the session ended; 409 means a newer copy exists (see saveIdeas).
+export class SaveError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 export async function saveList<T>(name: 'clients' | 'ideas', items: T[]): Promise<void> {
   const r = await fetch(`/api/${name}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(items),
   })
-  if (!r.ok) throw new Error(`Could not save ${name}.`)
+  if (!r.ok) throw new SaveError(`Could not save ${name}.`, r.status)
+}
+
+// The ideas list carries a revision (the ETag header), so a tab holding an old copy can't overwrite a newer one.
+export async function loadIdeas(): Promise<{ items: SavedIdea[] | null; rev: string | null }> {
+  const r = await fetch('/api/ideas')
+  if (!r.ok) throw new Error('Could not load ideas.')
+  return { items: await r.json(), rev: r.headers.get('ETag') }
+}
+
+// Thrown by saveIdeas when the API holds a newer list than the revision sent: the newer list and its revision.
+export class IdeasConflict extends Error {
+  items: SavedIdea[]
+  rev: string | null
+  constructor(items: SavedIdea[], rev: string | null) {
+    super('The ideas changed in another tab.')
+    this.items = items
+    this.rev = rev
+  }
+}
+
+// Saves the whole list if `rev` is still current; returns the new revision.
+export async function saveIdeas(items: SavedIdea[], rev: string | null): Promise<string | null> {
+  const r = await fetch('/api/ideas', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(rev ? { 'If-Match': rev } : {}) },
+    body: JSON.stringify(items),
+  })
+  if (r.status === 409) {
+    const body = await r.json().catch(() => ({}))
+    throw new IdeasConflict(body.ideas ?? [], r.headers.get('ETag'))
+  }
+  if (!r.ok) throw new SaveError('Could not save ideas.', r.status)
+  return r.headers.get('ETag')
 }
 
 // Each client's last "Trending now" check, kept by the API too. null means nothing saved there yet.
@@ -352,7 +394,7 @@ export async function savePulses<T>(pulses: Record<string, T>): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(pulses),
   })
-  if (!r.ok) throw new Error('Could not save trending checks.')
+  if (!r.ok) throw new SaveError('Could not save trending checks.', r.status)
 }
 
 // The real videos and breakdowns that saved ideas point to. Without them, a saved idea opened
@@ -374,7 +416,7 @@ export async function saveLibrary(library: Library): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(library),
   })
-  if (!r.ok) throw new Error('Could not save saved videos.')
+  if (!r.ok) throw new SaveError('Could not save saved videos.', r.status)
 }
 
 // Sounds and hashtags shared by several accounts in the results: the live version of "formats that repeat".

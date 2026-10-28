@@ -34,9 +34,13 @@ import {
   applyBreakdown,
   checkLive,
   findPatterns,
+  IdeasConflict,
+  SaveError,
+  loadIdeas,
   loadLibrary,
   loadList,
   loadPulses,
+  saveIdeas,
   saveLibrary,
   saveList,
   savePulses,
@@ -138,6 +142,22 @@ export default function App() {
   // In live mode the API keeps clients and saved ideas too. Its copy wins on load; after that,
   // every change is saved back. If the API can't load them, this browser's copy is used.
   const [synced, setSynced] = useState(false)
+  // Something the user must know about syncing: the data didn't load, a save failed, or another tab changed the ideas.
+  const [syncProblem, setSyncProblem] = useState<{ kind: 'load' | 'auth' | 'failed' | 'conflict'; text: string } | null>(null)
+  // Bumped by Retry so every save effect looks again for changes the API doesn't hold.
+  const [retryTick, setRetryTick] = useState(0)
+  const saveFailed = useCallback((what: string, e: unknown) => {
+    setSyncProblem(
+      e instanceof SaveError && e.status === 401
+        ? { kind: 'auth', text: `Your session ended, so ${what} aren't saved yet. Sign in again in a new tab, then press Retry.` }
+        : { kind: 'failed', text: `Couldn't save ${what}. Your changes are still here; check your connection, then press Retry.` },
+    )
+  }, [])
+  const saved = useCallback(() => setSyncProblem((p) => (p?.kind === 'failed' || p?.kind === 'auth' ? null : p)), [])
+  // The ideas list is saved one request at a time, each with the revision the last one returned.
+  const ideasRev = useRef<string | null>(null)
+  const ideasQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const ideasGen = useRef(0)
   // Counts saves started and finished, so a read that overlapped one can be thrown away.
   const writes = useRef(0)
   // What the API already holds, so the copy just loaded from it isn't written straight back.
@@ -156,11 +176,12 @@ export default function App() {
     if (!live || !access) return
     Promise.all([
       loadList<Client>('clients'),
-      loadList<SavedIdea>('ideas'),
+      loadIdeas(),
       loadLibrary().catch(() => null),
       loadPulses<Pulse>().catch(() => null),
     ])
-      .then(([savedClients, savedIdeas, library, savedPulses]) => {
+      .then(([savedClients, loadedIdeas, library, savedPulses]) => {
+        const savedIdeas = loadedIdeas.items
         if (library) {
           // Add the saved videos this browser hasn't seen; its own copies stay as they are.
           setLiveStore((prev) => {
@@ -193,25 +214,51 @@ export default function App() {
           setPulses(savedPulses)
           onServer.current.pulses = savedPulses
         }
+        ideasRev.current = loadedIdeas.rev
         setSynced(true)
       })
-      .catch(() => {})
+      .catch(() => setSyncProblem({ kind: 'load', text: "Couldn't load your data. Reload the page to try again; nothing will be saved until it loads." }))
   }, [live, access, setClients, setIdeas, setLiveStore, setPulses])
   useEffect(() => {
     if (!synced || clients === onServer.current.clients) return
+    const prev = onServer.current.clients
     onServer.current.clients = clients
-    saveList('clients', clients).catch(() => {})
-  }, [synced, clients])
+    saveList('clients', clients)
+      .then(saved)
+      .catch((e) => {
+        if (onServer.current.clients === clients) onServer.current.clients = prev // so Retry sends it again
+        saveFailed('your clients', e)
+      })
+  }, [synced, clients, retryTick, saved, saveFailed])
   useEffect(() => {
     if (!synced || ideas === onServer.current.ideas) return
+    const prev = onServer.current.ideas
     onServer.current.ideas = ideas
     writes.current += 1
-    saveList('ideas', ideas)
-      .catch(() => {})
+    const gen = ideasGen.current
+    ideasQueue.current = ideasQueue.current
+      .then(async () => {
+        if (gen !== ideasGen.current) return // a newer list arrived from the API since this edit
+        ideasRev.current = await saveIdeas(ideas, ideasRev.current)
+        saved()
+      })
+      .catch((e) => {
+        if (e instanceof IdeasConflict) {
+          // Another tab saved first: take its list, drop edits queued behind this one.
+          ideasGen.current += 1
+          ideasRev.current = e.rev
+          onServer.current.ideas = e.items
+          setIdeas(e.items)
+          setSyncProblem({ kind: 'conflict', text: 'This list was changed in another tab, so we loaded the latest. Check your last edit.' })
+          return
+        }
+        if (onServer.current.ideas === ideas) onServer.current.ideas = prev // so Retry sends it again
+        saveFailed('your ideas', e)
+      })
       .finally(() => {
         writes.current += 1
       })
-  }, [synced, ideas])
+  }, [synced, ideas, retryTick, setIdeas, saved, saveFailed])
 
   // Annie answers on her own link, so the API's ideas are re-read every 20 s and when this window gets
   // focus, but only on the screens that show her answers. Skipped while this tab has changes of its own
@@ -226,10 +273,12 @@ export default function App() {
     let stopped = false
     const refresh = () => {
       const before = writes.current
-      loadList<SavedIdea>('ideas')
-        .then((fresh) => {
+      if (before % 2) return // a save is on its way
+      loadIdeas()
+        .then(({ items: fresh, rev }) => {
           if (stopped || !fresh || writes.current !== before) return
           if (ideasNow.current !== onServer.current.ideas) return
+          ideasRev.current = rev
           if (JSON.stringify(fresh) === JSON.stringify(ideasNow.current)) return
           onServer.current.ideas = fresh
           setIdeas(fresh)
@@ -247,9 +296,15 @@ export default function App() {
 
   useEffect(() => {
     if (!synced || pulses === onServer.current.pulses) return
+    const prev = onServer.current.pulses
     onServer.current.pulses = pulses
-    savePulses(pulses).catch(() => {})
-  }, [synced, pulses])
+    savePulses(pulses)
+      .then(saved)
+      .catch((e) => {
+        if (onServer.current.pulses === pulses) onServer.current.pulses = prev
+        saveFailed('your trending checks', e)
+      })
+  }, [synced, pulses, retryTick, saved, saveFailed])
 
   // The videos and breakdowns behind saved ideas, kept on the API like the ideas themselves.
   const library = useMemo(() => {
@@ -262,9 +317,15 @@ export default function App() {
     if (!synced) return
     const key = libraryKey(library)
     if (key === onServer.current.library) return
+    const prev = onServer.current.library
     onServer.current.library = key
-    saveLibrary(library).catch(() => {})
-  }, [synced, library])
+    saveLibrary(library)
+      .then(saved)
+      .catch((e) => {
+        if (onServer.current.library === key) onServer.current.library = prev
+        saveFailed('your saved videos', e)
+      })
+  }, [synced, library, retryTick, saved, saveFailed])
 
   // Where the user is now, read when a background search finishes.
   const here = useRef({ view, workspace })
@@ -793,6 +854,31 @@ export default function App() {
           </button>
           <strong>{inClient ? client.name : 'All clients'}</strong>
         </header>
+
+        {syncProblem && (
+          <div className="sync-problem" role="alert">
+            <span>{syncProblem.text}</span>
+            {syncProblem.kind === 'load' ? (
+              <button className="btn btn-sm" onClick={() => window.location.reload()}>
+                Reload
+              </button>
+            ) : syncProblem.kind === 'conflict' ? (
+              <button className="btn btn-sm" onClick={() => setSyncProblem(null)}>
+                OK
+              </button>
+            ) : (
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  setSyncProblem(null)
+                  setRetryTick((t) => t + 1)
+                }}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
 
         <main className="main">
           {view !== 'channel' && (!inClient || view === 'overview') && (

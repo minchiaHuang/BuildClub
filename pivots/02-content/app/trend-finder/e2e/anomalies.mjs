@@ -257,6 +257,13 @@ for (const theme of THEMES) {
       await page.waitForTimeout(1800)
       const t = await visibleText(page)
       check(/couldn't save|could not save|not saved|failed to save|save failed|try again|offline/i.test(t), 'a failed save shows nothing: the user thinks the edit is safe')
+      // The edit is kept: once the API works again, Retry sends it.
+      await page.unroute('**/api/ideas')
+      await page.getByRole('alert').getByRole('button', { name: 'Retry' }).click()
+      await page.waitForTimeout(1500)
+      const saved = (await (await o.ctx.request.get(base + '/api/ideas')).json()).some((i) => i.shots?.some((x) => x.shot === 'edit that cannot be saved'))
+      check(saved, 'Retry did not send the edit that failed to save')
+      check(!(await page.getByRole('alert').count()), 'the save warning stays after a successful retry')
     })
     await scenario('session expires mid-flow (401 on save)', async (o) => {
       const page = o.page
@@ -266,6 +273,7 @@ for (const theme of THEMES) {
       await page.waitForTimeout(1800)
       const t = await visibleText(page)
       check(/sign in|signed out|session|log in|expired|couldn't save/i.test(t), 'a 401 on save shows nothing; no way to know the edit was lost')
+      check(/session ended/i.test(t), 'a 401 on save does not say the session ended')
     })
 
     // ---- reload mid-flow ---------------------------------------------------------------------------------------
@@ -323,7 +331,9 @@ for (const theme of THEMES) {
         const mine = ideas.find((i) => i.shots?.[0]?.shot?.includes('TAB A') || i.noteToApprover === 'TAB B note edit')
         check(mine, 'neither edit reached the server')
         check(mine.shots?.[0]?.shot === 'TAB A shot edit', "tab A's shot edit was overwritten by tab B's older copy of the idea (last write wins, no warning)")
-        check(mine.noteToApprover === 'TAB B note edit', "tab B's note edit is missing")
+        // Tab B held an old copy, so its save is refused: it is told, and shows the newer list.
+        check(/changed in another tab/i.test(await visibleText(b.page)), 'tab B is not told that its edit was refused because the list changed in another tab')
+        check((await b.page.locator('#note-to-approver').inputValue().catch(() => '')) !== 'TAB B note edit' || mine.noteToApprover === 'TAB B note edit', "tab B's screen still shows an edit that was not saved")
       }, () => b?.page)
       await a?.ctx.close()
     }
@@ -352,6 +362,7 @@ for (const theme of THEMES) {
         await b.page.waitForTimeout(1500)
         const after = (await (await a.ctx.request.get(base + '/api/ideas')).json()).length
         check(after === mid, `tab B's stale list deleted ${mid - after} idea(s) saved by tab A (${mid} -> ${after})`)
+        check(/changed in another tab/i.test(await visibleText(b.page)), 'tab B is not told that its edit was refused')
       }, () => a?.page)
       await a?.ctx.close()
     }
