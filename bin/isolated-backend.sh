@@ -17,7 +17,7 @@ venv="${TF_VENV:-/Users/tommy/Desktop/BuildClub/$TF/backend/.venv}"
 
 tmp="$(mktemp -d)"
 pid=""
-cleanup() { [ -z "$pid" ] || kill "$pid" 2>/dev/null || true; rm -r -f "$tmp"; }
+cleanup() { [ -z "$pid" ] || kill "$pid" 2>/dev/null || true; rm -r "$tmp"; }
 trap cleanup EXIT
 trap 'exit 143' INT TERM
 
