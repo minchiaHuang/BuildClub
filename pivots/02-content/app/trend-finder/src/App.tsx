@@ -28,6 +28,7 @@ import { ChannelScreen } from './components/ChannelScreen'
 import type { Client, Format, Platform, Video } from './types'
 import {
   analyzeVideo,
+  checkNeeds,
   applyBreakdown,
   checkLive,
   findPatterns,
@@ -482,6 +483,21 @@ export default function App() {
   const openVideoDrawer = (videoId: string) => {
     setOpenVideoId(videoId)
     if (savedForClient.has(videoId)) breakDown(videoId)
+    fillNeeds(videoId)
+  }
+
+  // A real video that has a breakdown but no judged needs (an older one) gets them from the API, once per session.
+  const needsAsked = useRef(new Set<string>())
+  const fillNeeds = (videoId: string) => {
+    const v = videoById.get(videoId)
+    const f = v && formatById.get(v.formatId)
+    if (!v?.live || !v.url || !f || !f.shotList.length || f.needsKnown || needsAsked.current.has(videoId)) return
+    needsAsked.current.add(videoId)
+    checkNeeds(v.url, [...new Set(formats.flatMap((x) => x.needs))])
+      .then((needs) =>
+        setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? { ...x, needs, needsKnown: true } : x)) })),
+      )
+      .catch(() => needsAsked.current.delete(videoId))
   }
 
   const openPlan = (ideaId: string) => {

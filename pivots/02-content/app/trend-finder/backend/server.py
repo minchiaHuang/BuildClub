@@ -29,13 +29,15 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+import assist
 import channels
 import reddit
 import x
 import youtube
-from analyze import Jobs, job_id_for
+import analyze
+from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
-                    Library, SavedIdea, SearchResult)
+                    Library, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -90,6 +92,7 @@ X_USD_PER_TWEET = 0.0004  # the dearer of the two candidate actors; account medi
 REDDIT_USD_PER_SUB = 0.02
 APIFY_USD_PER_VIDEO = 0.0037  # TikTok actor; account medians cost this per video fetched (134 videos: 0.497)
 ANALYZE_USD = 0.08  # one Claude breakdown
+NEEDS_USD = 0.01  # one small Claude call that fills in a finished breakdown's needs
 
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
@@ -605,7 +608,7 @@ def start_analyze(body: AnalyzeRequest):
     current = jobs.get(job_id_for(url))
     if (not current or current.status == "failed") and not spend("claude", ANALYZE_USD, DAILY_CLAUDE_USD):
         return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
-    return {"job": jobs.submit(url)}
+    return {"job": jobs.submit(url, body.needs) if body.needs else jobs.submit(url)}
 
 
 @app.get("/api/analyze/{job_id}", response_model=AnalyzeJob, response_model_exclude_none=True)
@@ -614,6 +617,25 @@ def get_analyze(job_id: str):
     if not job:
         return error(404, "No breakdown with that id. Start one with POST /api/analyze.")
     return job
+
+
+@app.post("/api/needs", response_model=NeedsResult)
+def check_needs(body: NeedsRequest):
+    """Fills in `needs` on a breakdown saved before needs existed. Free once it has been filled."""
+    saved = analyze.JOBS_DIR / job_id_for(body.url.strip()) / "breakdown.json"
+    if not saved.exists():
+        return error(404, "No breakdown for that video yet. Break it down first.")
+    data = json.loads(saved.read_text(encoding="utf-8"))
+    if "needs" in data:
+        return {"needs": data["needs"]}
+    if not spend("claude", NEEDS_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+    try:
+        needs = assist.pick_needs(data, body.needs or DEFAULT_NEEDS)
+    except Exception as e:
+        return error(502, "Could not check what this video needs. Try again.", str(e))
+    saved.write_text(json.dumps({**data, "needs": needs}, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"needs": needs}
 
 
 # A channel summary takes minutes to an hour, so it also runs in the background and is polled.

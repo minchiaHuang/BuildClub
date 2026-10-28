@@ -54,9 +54,19 @@ export interface Format {
   shotList: Shot[]
   props: string[]
   needs: string[]
+  // True once the AI has judged `needs`; before that an empty list means "not checked", not "nothing needed".
+  needsKnown?: boolean
+  // The key lines of a real video and the job each does (from its AI breakdown).
+  lines?: Line[]
   // How hard it is for a typical client to film.
   effort: 'easy' | 'medium' | 'hard'
   editorNotes: string
+}
+
+export interface Line {
+  time: string
+  text: string
+  role: 'hook' | 'setup' | 'proof' | 'payoff' | 'cta'
 }
 
 export interface Client {

@@ -110,10 +110,23 @@ class Breakdown(BaseModel):
     props: list[str]
     editorNotes: str
     lines: list[Line]
+    # What the client needs to film it, chosen from a fixed list. Empty on breakdowns saved before this existed.
+    needs: list[str] = []
 
 
 class AnalyzeRequest(BaseModel):
     url: str
+    # The things a client may be unable to do; the breakdown picks its needs from this list only.
+    needs: list[str] = []
+
+
+class NeedsRequest(BaseModel):
+    url: str
+    needs: list[str] = []
+
+
+class NeedsResult(BaseModel):
+    needs: list[str]
 
 
 class AnalyzeStarted(BaseModel):

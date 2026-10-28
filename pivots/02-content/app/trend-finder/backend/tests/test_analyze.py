@@ -54,7 +54,7 @@ def test_unknown_job_is_404(client):
 
 def test_job_finishes_and_survives_restart(monkeypatch):
     monkeypatch.setattr(analyze, "prepare", fake_prepare)
-    monkeypatch.setattr(analyze, "breakdown", lambda prepared, work: RESULT)
+    monkeypatch.setattr(analyze, "breakdown", lambda prepared, work, vocab=None: RESULT)
     jobs = analyze.Jobs()
     job_id = jobs.submit(URL)
     job = wait(jobs, job_id)
@@ -68,7 +68,7 @@ def test_job_finishes_and_survives_restart(monkeypatch):
 def test_failed_job_reports_the_error(monkeypatch):
     monkeypatch.setattr(analyze, "prepare", fake_prepare)
 
-    def broken(prepared, work):
+    def broken(prepared, work, vocab=None):
         raise RuntimeError("The AI declined to analyse this video.")
 
     monkeypatch.setattr(analyze, "breakdown", broken)
@@ -82,7 +82,7 @@ def test_failed_job_reports_the_error(monkeypatch):
 def test_job_over_http(client, monkeypatch):
     import server
     monkeypatch.setattr(analyze, "prepare", fake_prepare)
-    monkeypatch.setattr(analyze, "breakdown", lambda prepared, work: RESULT)
+    monkeypatch.setattr(analyze, "breakdown", lambda prepared, work, vocab=None: RESULT)
     monkeypatch.setattr(server, "jobs", analyze.Jobs())
     job_id = client.post("/api/analyze", json={"url": URL}).json()["job"]
     wait(server.jobs, job_id)
@@ -95,13 +95,14 @@ class FakeAnthropic:
     """Stands in for anthropic.Anthropic(); records the request and returns a canned answer."""
     sent = {}
     stop_reason = "end_turn"
+    answer = RESULT
 
     def __init__(self):
         self.beta = SimpleNamespace(messages=SimpleNamespace(parse=self.parse))
 
     def parse(self, **kwargs):
         FakeAnthropic.sent = kwargs
-        parsed = RESULT if self.stop_reason == "end_turn" else None
+        parsed = FakeAnthropic.answer if self.stop_reason == "end_turn" else None
         return SimpleNamespace(model="claude-opus-5-5", stop_reason=self.stop_reason, parsed_output=parsed,
                                usage=SimpleNamespace(input_tokens=10, output_tokens=20))
 
@@ -151,3 +152,22 @@ def test_shots_and_frames_on_a_generated_video(tmp_path):
     picked = analyze.frames(video, cuts, tmp_path)
     assert [f["t"] for f in picked] == [0.5, 0.5, 1.5, 2.5]
     assert all((tmp_path / f["file"]).stat().st_size > 0 for f in picked)
+
+
+def test_breakdown_needs_are_limited_to_the_vocabulary(prepared, tmp_path, monkeypatch):
+    monkeypatch.setattr(FakeAnthropic, "answer", RESULT.model_copy(update={"needs": ["A kitchen", "A drone"]}))
+    result = analyze.breakdown(prepared, tmp_path, ["A kitchen"])
+    assert result.needs == ["A kitchen"]
+    text = FakeAnthropic.sent["messages"][0]["content"][-1]["text"]
+    assert "A kitchen" in text and "A drone" not in text
+
+
+def test_old_breakdown_without_needs_loads(client, tmp_path):
+    saved = tmp_path / "jobs" / "old1"
+    saved.mkdir(parents=True)
+    old = json.loads(RESULT.model_dump_json())
+    del old["needs"]
+    (saved / "breakdown.json").write_text(json.dumps(old))
+    r = client.get("/api/analyze/old1")
+    assert r.status_code == 200
+    assert r.json()["result"]["needs"] == []

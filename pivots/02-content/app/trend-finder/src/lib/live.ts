@@ -1,4 +1,4 @@
-import type { Format, Platform, Shot, Video } from '../types'
+import type { Format, Line, Platform, Shot, Video } from '../types'
 import { UNKNOWN_DAYS, outlierScore } from './metrics'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
@@ -143,7 +143,8 @@ export interface Breakdown {
   why: Format['why']
   props: string[]
   editorNotes: string
-  lines: { time: string; text: string; role: 'hook' | 'setup' | 'proof' | 'payoff' | 'cta' }[]
+  lines: Line[]
+  needs: string[]
 }
 
 interface AnalyzeJob {
@@ -183,7 +184,23 @@ export const applyBreakdown = (f: Format, b: Breakdown): Format => ({
   why: b.why,
   props: b.props,
   editorNotes: b.editorNotes,
+  lines: b.lines,
+  needs: b.needs,
+  // An empty list may just be a breakdown from before needs existed; the drawer then asks checkNeeds.
+  needsKnown: b.needs.length > 0,
 })
+
+// Asks the API what a client needs to film an already-broken-down video. Free once answered.
+export async function checkNeeds(url: string, vocab: string[]): Promise<string[]> {
+  const r = await fetch('/api/needs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, needs: vocab }),
+  })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(body.error ?? 'Could not check what this video needs.')
+  return body.needs as string[]
+}
 
 // Clients and saved ideas are also kept by the API, so they survive a new browser.
 // null means nothing has been saved there yet.

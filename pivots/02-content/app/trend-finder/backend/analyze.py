@@ -30,6 +30,17 @@ MAX_FRAMES = 12       # frames sent to the AI step, which is billed per image
 AI_MODEL = "claude-opus-5-5"
 AI_MAX_TOKENS = 16000  # caps one breakdown at about US$0.36 (2026-10-27 prices)
 
+# Every "needs" value in src/data/sample.ts: the list a breakdown chooses from unless the request brings its own.
+DEFAULT_NEEDS = [
+    "A kitchen",
+    "A blender",
+    "An overhead phone mount",
+    "People willing to be filmed on the street",
+    "A busy public spot",
+    "Permission to film in a supermarket",
+    "A confident presenter",
+]
+
 PROMPT = """You are helping a social media manager understand why a short video went viral, so
 their client can film something similar. Explain what the video does; do not write a new script.
 
@@ -44,6 +55,7 @@ any quoted speech or on-screen text.
 - props: things the client would need to film it.
 - editorNotes: 2-3 short instructions for an editor matching this style.
 - lines: the key spoken or on-screen lines in order, each with the job it does.
+- needs: which of these the video requires, chosen only from this list: {needs}
 
 shotList text and lines text hold only the words themselves, translated: no quote marks, no
 notes in brackets, no comments on the language or the subtitles. Leave shotList text empty when
@@ -144,7 +156,8 @@ def prepare(url: str, work: Path, step) -> dict:
     return prepared
 
 
-def breakdown(prepared: dict, work: Path) -> Breakdown:
+def breakdown(prepared: dict, work: Path, vocab: list[str] | None = None) -> Breakdown:
+    vocab = vocab or DEFAULT_NEEDS
     content = [{"type": "text", "text": f"Video length: {prepared['lengthSec']} seconds, "
                                         f"{len(prepared['shots'])} shots."}]
     for f in prepared["frames"]:
@@ -152,7 +165,7 @@ def breakdown(prepared: dict, work: Path) -> Breakdown:
         content.append({"type": "text", "text": f"Frame at {f['t']}s:"})
         content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": data}})
     speech = "\n".join(f"[{s['start']:.1f}-{s['end']:.1f}s] {s['text']}" for s in prepared["speech"])
-    content.append({"type": "text", "text": f"Transcript:\n{speech or '(no speech)'}\n\n{PROMPT}"})
+    content.append({"type": "text", "text": f"Transcript:\n{speech or '(no speech)'}\n\n{PROMPT.format(needs=json.dumps(vocab))}"})
 
     response = anthropic.Anthropic().beta.messages.parse(
         model=AI_MODEL,
@@ -173,7 +186,8 @@ def breakdown(prepared: dict, work: Path) -> Breakdown:
         raise RuntimeError("The AI declined to analyse this video.")
     if response.stop_reason == "max_tokens" or response.parsed_output is None:
         raise RuntimeError(f"The AI answer was incomplete ({response.stop_reason}).")
-    return response.parsed_output
+    result = response.parsed_output
+    return result.model_copy(update={"needs": [n for n in result.needs if n in vocab]})
 
 
 def job_id_for(url: str) -> str:
@@ -191,14 +205,14 @@ class Jobs:
         self._lock = threading.Lock()
         threading.Thread(target=self._work, name="analyze-worker", daemon=True).start()
 
-    def submit(self, url: str) -> str:
+    def submit(self, url: str, vocab: list[str] | None = None) -> str:
         job_id = job_id_for(url)
         with self._lock:
             current = self.get(job_id)
             if current and current.status != "failed":
                 return job_id
             self._jobs[job_id] = AnalyzeJob(job=job_id, status="queued", progress=0, step="Waiting to start")
-        self._q.put((job_id, url))
+        self._q.put((job_id, url, vocab))
         return job_id
 
     def get(self, job_id: str):
@@ -216,7 +230,7 @@ class Jobs:
 
     def _work(self) -> None:
         while True:
-            job_id, url = self._q.get()
+            job_id, url, vocab = self._q.get()
             work = JOBS_DIR / job_id
             try:
                 work.mkdir(parents=True, exist_ok=True)
@@ -224,7 +238,7 @@ class Jobs:
                 saved = work / "prepared.json"
                 prepared = json.loads(saved.read_text(encoding="utf-8")) if saved.exists() else prepare(url, work, step)
                 step("Explaining why it works", 0.7)
-                result = breakdown(prepared, work)
+                result = breakdown(prepared, work, vocab)
                 (work / "breakdown.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
                 self._set(job_id, status="done", progress=1, step="Done", result=result)
             except Exception as e:

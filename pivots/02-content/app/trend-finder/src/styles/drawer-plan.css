@@ -228,3 +228,6 @@
 }
 /* Tablet/laptop with sidebar: the action bar can wrap to two rows, so leave room for it */
 @media (min-width: 561px) and (max-width: 1200px) { .plan { padding-bottom: 168px; } }
+
+.line-roles { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.line-roles li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
