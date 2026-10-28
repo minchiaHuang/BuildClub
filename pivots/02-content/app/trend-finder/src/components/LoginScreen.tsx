@@ -1,25 +1,30 @@
 import { AGENCY_NAME } from '../state'
-import { useUiTheme } from '../lib/theme'
+import type { ComponentType } from 'react'
+import { useUiTheme, type UiTheme } from '../lib/theme'
 import { ThemeSwitcher } from './ThemeSwitcher'
-import { LandingAltitude } from './landing/LandingAltitude'
-import { LandingUnify } from './landing/LandingUnify'
-import { LandingMidnight } from './landing/LandingMidnight'
+// altitude
+
+// unify
+
+// midnight
+
+type Landing = ComponentType<{ onLogIn: () => void; onRegister: () => void }>
+// Each design registers its landing page on its own line.
+const landings: Partial<Record<UiTheme, Landing>> = {
+  // altitude
+
+  // unify
+
+  // midnight
+}
 
 // MOCK sign-in for the demo. No account or password is checked or stored.
 export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
   const ui = useUiTheme()
-  // The two reference directions get a full landing page (hero + what it does) with Log in / Register.
+  // Designs with a landing page (hero + what it does) show it, with Log in / Register; the rest get the plain sign-in card.
   // The design switcher lives on the public website only; the dashboard keeps whichever design was picked here.
-  const page =
-    ui === 'altitude' ? (
-      <LandingAltitude onLogIn={onSignIn} onRegister={onSignIn} />
-    ) : ui === 'unify' ? (
-      <LandingUnify onLogIn={onSignIn} onRegister={onSignIn} />
-    ) : ui === 'midnight' ? (
-      <LandingMidnight onLogIn={onSignIn} onRegister={onSignIn} />
-    ) : (
-      <BaseLogin onSignIn={onSignIn} />
-    )
+  const Landing = landings[ui]
+  const page = Landing ? <Landing onLogIn={onSignIn} onRegister={onSignIn} /> : <BaseLogin onSignIn={onSignIn} />
   return (
     <>
       {page}

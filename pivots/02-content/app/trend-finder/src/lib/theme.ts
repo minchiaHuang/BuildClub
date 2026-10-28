@@ -1,17 +1,20 @@
 import { useSyncExternalStore } from 'react'
 
-// Which visual direction the app is wearing. 'base' is the monochrome default; the other two follow
-// the Altitude and Unify references. Set with ?ui=altitude in the URL or the switcher; remembered per browser.
+// Which visual direction the app is wearing. 'base' is the monochrome default; the others follow the
+// reference designs. Set with ?ui=altitude in the URL or the switcher; remembered per browser.
+// Each design adds itself to uiThemes on its own line, so the design branches merge without conflicts.
 export type UiTheme = 'base' | 'altitude' | 'unify' | 'midnight'
 export const uiThemes: { id: UiTheme; label: string }[] = [
   { id: 'base', label: 'Current' },
-  { id: 'altitude', label: 'Altitude' },
-  { id: 'unify', label: 'Unify' },
-  { id: 'midnight', label: 'Midnight' },
+  // altitude
+
+  // unify
+
+  // midnight
 ]
 
 const KEY = 'trend-finder.ui-theme'
-const isTheme = (x: unknown): x is UiTheme => x === 'base' || x === 'altitude' || x === 'unify' || x === 'midnight'
+const isTheme = (x: unknown): x is UiTheme => uiThemes.some((t) => t.id === x)
 const listeners = new Set<() => void>()
 
 function initial(): UiTheme {

@@ -2,10 +2,23 @@ import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
 import { SearchBox } from './SearchBox'
-import { useUiTheme } from '../lib/theme'
-import { AltitudeHero } from './themes/AltitudeHero'
-import { UnifyHero } from './themes/UnifyHero'
-import { MidnightHero } from './themes/MidnightHero'
+import type { ComponentType, ReactNode } from 'react'
+import { useUiTheme, type UiTheme } from '../lib/theme'
+// altitude
+
+// unify
+
+// midnight
+
+// A design can put its own hero above the search. If it holds the search box itself (holdsSearch), the box goes inside it.
+type Hero = { Hero: ComponentType<{ clientName: string; children?: ReactNode }>; holdsSearch?: boolean }
+const heroes: Partial<Record<UiTheme, Hero>> = {
+  // altitude
+
+  // unify
+
+  // midnight
+}
 
 interface Props {
   query: Query
@@ -30,7 +43,7 @@ interface Props {
 
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
-  const ui = useUiTheme()
+  const hero = heroes[useUiTheme()]
   const searchBox = (
         <SearchBox
           inputId="keyword"
@@ -50,9 +63,7 @@ export function SearchScreen(props: Props) {
   )
   return (
     <section className="search-screen">
-      {ui === 'altitude' && <AltitudeHero clientName={clientName}>{searchBox}</AltitudeHero>}
-      {ui === 'unify' && <UnifyHero clientName={clientName} />}
-      {ui === 'midnight' && <MidnightHero clientName={clientName} />}
+      {hero && <hero.Hero clientName={clientName}>{hero.holdsSearch && searchBox}</hero.Hero>}
       <div className="search-intro">
         <span className="eyebrow">{clientName} · Search</span>
         {props.planned > 0 && (
@@ -74,7 +85,7 @@ export function SearchScreen(props: Props) {
         </p>
       </div>
 
-      {ui !== 'altitude' && searchBox}
+      {!hero?.holdsSearch && searchBox}
 
       {props.lastSearch && (
         <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>

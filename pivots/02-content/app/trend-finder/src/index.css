@@ -7,11 +7,11 @@
 @import './styles/drawer-plan.css';
 @import './styles/approvals.css';
 @import './styles/theme-switcher.css';
-@import './styles/theme-altitude.css';
-@import './styles/theme-unify.css';
-@import './styles/landing-altitude.css';
-@import './styles/landing-unify.css';
-@import './styles/theme-midnight.css';
-@import './styles/landing-midnight.css';
 @import './styles/typing-search.css';
-@import './styles/landing-altitude-sky.css';
+@import './styles/tags.css';
+/* Designs: each one adds its stylesheets under its own line, so the design branches merge without conflicts. */
+/* altitude */
+
+/* unify */
+
+/* midnight */
