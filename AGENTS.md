@@ -28,7 +28,7 @@ Working rules for AI tools in the BuildClub repo. `CLAUDE.md` holds the general 
 - Apify and Claude cost money. Before each paid run, state the cost and cap, and wait for a yes.
 - Apify cost is held by per-run caps (`MAX_USD_PER_SEARCH` 0.50, `MAX_USD_PER_MEDIANS` 0.60) and the daily caps `DAILY_APIFY_USD` (2.00) and `DAILY_CLAUDE_USD`. Roughly: a TikTok search is about US$0.11; a brand-new TikTok search with scores is about US$0.45; an AI breakdown is about US$0.08 the first time.
 - A new live search takes about a minute; scores fill in afterwards in the background. Repeat searches come from `backend/cache/` for free (24 hours); `backend/server.py pin "<search>"` keeps one for offline demos.
-- For UI checks that must not spend money, use `bash bin/isolated-backend.sh <port>` (ports 8797–8799).
+- For UI checks that must not spend money, use `bash bin/isolated-backend.sh <port>` (use ports 8797–8799; the script refuses 8787 and 5195).
 
 ## Secrets
 

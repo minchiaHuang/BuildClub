@@ -8,12 +8,9 @@ export async function createShareLink(clientId: string): Promise<{ token: string
     body: JSON.stringify({ clientId }),
   })
   if (!r.ok) throw new Error("Couldn't create the link.")
-  return r.json()
-}
-
-export async function revokeShareLink(token: string): Promise<void> {
-  const r = await fetch(`/api/share/${encodeURIComponent(token)}`, { method: 'DELETE' })
-  if (!r.ok) throw new Error("Couldn't turn off the link.")
+  const { token } = (await r.json()) as { token: string }
+  // Built here, not by the server, so the scheme and host are the ones Annie will actually open.
+  return { token, url: `${window.location.origin}/review/${token}` }
 }
 
 // Turns off every link this client has. Never creates one.

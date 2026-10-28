@@ -153,6 +153,7 @@ def test_answer_cached(client, monkeypatch):
     assert len(calls) == 1 and calls[0][0] == "claude-haiku-5-5"
     assert server.load(f"spend:{server.today()}")["claude"] == server.ASK_USD
     assert client.post("/api/answer", json=answer_body(31)).status_code == 422
+    assert client.post("/api/answer", json={**answer_body(), "query": "x" * 201}).status_code == 422
 
 
 def test_answer_over_budget_429(client, monkeypatch):

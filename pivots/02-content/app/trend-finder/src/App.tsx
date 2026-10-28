@@ -213,7 +213,7 @@ export default function App() {
   useEffect(() => {
     ideasNow.current = ideas
   }, [ideas])
-  const watchingAnswers = view === 'approvals' || view === 'overview' || workspace === 'all'
+  const watchingAnswers = view === 'approvals' || view === 'overview' || view === 'plans' || workspace === 'all'
   useEffect(() => {
     if (!live || !synced || !watchingAnswers) return
     let stopped = false

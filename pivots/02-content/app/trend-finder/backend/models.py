@@ -1,9 +1,9 @@
 """API contract between this backend and the front end. Field names match src/types.ts
 (camelCase), so the front end can use the JSON as is. /docs shows these models."""
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class SearchVideo(BaseModel):
@@ -171,17 +171,17 @@ class LikeImageResult(BaseModel):
 
 
 class AnswerVideo(BaseModel):
-    id: str
-    platform: str
-    hook: str
+    id: str = Field(max_length=100)
+    platform: str = Field(max_length=30)
+    hook: str = Field(max_length=300)
     views: int
     outlier: Optional[float] = None
-    hashtags: list[str] = []
-    music: str = ""
+    hashtags: list[Annotated[str, StringConstraints(max_length=60)]] = Field(default=[], max_length=30)
+    music: str = Field(default="", max_length=200)
 
 
 class AnswerRequest(BaseModel):
-    query: str
+    query: str = Field(max_length=200)
     videos: list[AnswerVideo] = Field(max_length=30)
 
 
