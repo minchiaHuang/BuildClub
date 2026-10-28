@@ -1,6 +1,9 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { Thumb } from './Thumb'
 
+// The client's own shots if edited, otherwise the reference format's.
+const shotCount = (idea: SavedIdea, f?: Format) => (idea.shots ?? f?.shotList ?? []).length
+
 interface Props {
   client: Client
   ideas: SavedIdea[]
@@ -18,15 +21,15 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, f
   return (
     <section className="plans">
       <header className="page-head">
-        <span className="eyebrow">{client.name} · Recreate plans</span>
+        <span className="eyebrow">{client.name} · Plans</span>
         <h1>Ready to film</h1>
-        <p className="muted">Approved ideas with a shot list and editor brief, soonest due first.</p>
+        <p className="muted">Approved ideas, soonest due first. Open one to copy the brief for your editor.</p>
       </header>
 
       {approved.length === 0 ? (
         <div className="empty">
           <h2>No approved ideas yet</h2>
-          <p>Once Annie approves an idea, its recreate plan shows up here.</p>
+          <p>Once Annie approves an idea, its plan shows up here.</p>
           <button className="btn btn-primary" onClick={onGoApprovals}>
             Go to approvals
           </button>
@@ -41,10 +44,12 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, f
               <li key={idea.id} className="idea">
                 <Thumb video={v} />
                 <div className="idea-body">
-                  <span className="small muted">Due {idea.dueDate}</span>
+                  <span className="plan-due">
+                    Due <strong>{idea.dueDate}</strong>
+                  </span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">
-                    {f?.shotList.length ? `${f.shotList.length} shots · ${f.props.length} props` : 'Shot list to write from the reference'}
+                    {shotCount(idea, f) ? `${shotCount(idea, f)} shots · ${f?.props.length ?? 0} props` : 'Shots still to write'}
                   </span>
                 </div>
                 <div className="idea-actions">

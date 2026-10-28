@@ -1,5 +1,6 @@
 import type { Client, SavedIdea } from '../types'
 import { AGENCY_NAME } from '../state'
+import { ProgressRing } from './ClientScreen'
 
 interface Props {
   clients: Client[]
@@ -32,12 +33,15 @@ export function OverviewScreen({ clients, ideas, onOpen }: Props) {
       </header>
 
       <div className="stat-row">
-        <div className="stat">
-          <span className="stat-num">
-            {totals.approved}
-            <span className="muted"> / {totals.target}</span>
-          </span>
-          <span className="small muted">videos approved this month</span>
+        <div className="stat stat-ring">
+          <ProgressRing value={totals.target ? Math.min(totals.approved / totals.target, 1) * 100 : 0} size={52} stroke={6} />
+          <div>
+            <span className="stat-num">
+              {totals.approved}
+              <span className="muted"> / {totals.target}</span>
+            </span>
+            <span className="small muted">videos approved this month</span>
+          </div>
         </div>
         <div className="stat">
           <span className="stat-num">{totals.waiting}</span>
@@ -76,12 +80,10 @@ export function OverviewScreen({ clients, ideas, onOpen }: Props) {
                   </td>
                   <td>
                     <div className="progress">
+                      <ProgressRing value={pct} tone={behind ? 'behind' : undefined} />
                       <span className="small">
                         {approved} of {c.monthlyTarget}
                       </span>
-                      <div className={`bar ${behind ? 'bar-behind' : ''}`} aria-hidden="true">
-                        <span style={{ width: `${pct}%` }} />
-                      </div>
                     </div>
                   </td>
                   <td className="num">{saved}</td>

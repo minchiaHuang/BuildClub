@@ -1,19 +1,19 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
 import type { Pattern } from './live'
-import { formatTrend, outlierScore, platformName, stageOrder, tierOf } from './metrics'
+import { formatTrend, outlierScore, stageOrder, tierOf } from './metrics'
 import { parseQuery } from './parseQuery'
 
 // One suggestion chip on the search page. `value` is what gets searched when it's clicked.
 export interface ClientChip {
   label: string
   value: string
-  // Why this chip is here, shown small next to it ("6 accounts", "Early on TikTok").
+  // Why this chip is here, shown small next to it ("6 accounts", "Early").
   hint?: string
   hot?: boolean
 }
 
 export interface ChipGroup {
-  id: 'trending' | 'audience' | 'saved' | 'ideas'
+  id: 'trending' | 'starter' | 'audience' | 'saved' | 'ideas'
   title: string
   chips: ClientChip[]
 }
@@ -82,13 +82,15 @@ export function buildChipGroups(x: Input): ChipGroup[] {
       .map((f) => formatTrend(f, x.sampleVideos))
       .filter((t) => !t.format.needs.some((n) => client.cannot.includes(n)))
       .filter((t) => !sentFormats.has(t.format.id))
+      // Only formats that are actually spreading count as trending. If none are left, the search box
+      // shows the client's starter searches instead.
+      .filter((t) => t.stage === 'early' || t.stage === 'rising')
       .sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage])
-    // Early and Rising formats first; if those are all used up, the rest still count as fresh ideas.
-    const stageHint = { early: '', rising: 'Rising', everywhere: 'Popular now', 'one-off': 'New, not proven' } as const
+    const stageHint = { early: 'Early', rising: 'Rising', everywhere: 'Peaked', 'one-off': 'One-off' } as const
     const chips = unused.slice(0, 5).map((t) => ({
       label: t.format.short,
       value: t.format.short,
-      hint: t.stage === 'early' && t.leader ? `Early on ${platformName[t.leader]}` : stageHint[t.stage],
+      hint: stageHint[t.stage],
       hot: t.stage === 'early',
     }))
     if (chips.length) groups.push({ id: 'trending', title: 'Trending now', chips })

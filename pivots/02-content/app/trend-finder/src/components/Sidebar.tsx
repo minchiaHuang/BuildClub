@@ -3,14 +3,13 @@ import type { Client } from '../types'
 import type { Workspace } from '../state'
 import { AGENCY_NAME } from '../state'
 
-export type View = 'overview' | 'search' | 'results' | 'saved' | 'approvals' | 'plans' | 'plan' | 'settings' | 'channel'
+export type View = 'overview' | 'search' | 'results' | 'saved' | 'approvals' | 'review' | 'plans' | 'plan' | 'settings' | 'channel'
 
 const paths: Record<string, string> = {
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm9 16-4.3-4.3',
   saved: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',
   approvals: 'M20 6 9 17l-5-5',
   plans: 'M8 4h11v16H8zM5 4v16M11 8h5M11 12h5M11 16h3',
-  tracking: 'M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v6h-4z',
   settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4',
   channel: 'M4 6h16v10H4zM8 20h8M12 16v4M10 9l5 2.5L10 14z',
   overview: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
@@ -156,14 +155,9 @@ export function Sidebar(p: Props) {
             <>
               {item('search', 'search', 'Search', undefined, p.view === 'search' || p.view === 'results')}
               {item('saved', 'saved', 'Saved ideas', p.counts.saved)}
-              {item('approvals', 'approvals', 'Approvals', p.counts.waiting)}
-              {item('plans', 'plans', 'Recreate plans', p.counts.plans, p.view === 'plans' || p.view === 'plan')}
+              {item('approvals', 'approvals', 'Approvals', p.counts.waiting, p.view === 'approvals' || p.view === 'review')}
+              {item('plans', 'plans', 'Plans', p.counts.plans, p.view === 'plans' || p.view === 'plan')}
               {item('channel', 'channel', 'Channel')}
-              <button className="side-link" disabled title="Coming later">
-                <Icon name="tracking" />
-                <span>Tracking</span>
-                <span className="soon">Soon</span>
-              </button>
               <div className="side-sep" />
               {item('settings', 'settings', 'Client settings')}
             </>
@@ -178,8 +172,8 @@ export function Sidebar(p: Props) {
 
         <div className="side-foot">
           {p.live ? (
-            <span className="live-pill" title="Search results are real videos">
-              Live data
+            <span className="live-pill" title="Search results are real TikTok videos">
+              Live TikTok data
             </span>
           ) : (
             <span className="sample-pill" title="All accounts and numbers are made up for this demo">

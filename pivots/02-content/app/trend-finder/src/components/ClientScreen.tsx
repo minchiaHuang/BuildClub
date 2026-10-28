@@ -17,7 +17,43 @@ const statusLabel: Record<IdeaStatus, string> = {
   saved: 'Not sent yet',
   waiting: 'Waiting for Annie',
   approved: 'Approved',
-  rejected: 'Rejected',
+  rejected: 'Not approved',
+}
+
+// Small SVG ring for a monthly target. The fill grows in once on mount (CSS), then follows the value.
+export function ProgressRing({
+  value,
+  size = 28,
+  stroke = 4,
+  tone,
+}: {
+  value: number
+  size?: number
+  stroke?: number
+  tone?: 'behind'
+}) {
+  const r = (size - stroke) / 2
+  const pct = Math.max(0, Math.min(100, value))
+  return (
+    <svg
+      className={`ring ${tone ? `ring-${tone}` : ''} ${pct === 0 ? 'ring-empty' : ''}`}
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-hidden="true"
+    >
+      <circle className="ring-track" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} />
+      <circle
+        className="ring-fill"
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        strokeWidth={stroke}
+        pathLength={100}
+        style={{ '--ring-offset': 100 - pct } as React.CSSProperties}
+      />
+    </svg>
+  )
 }
 
 export function ClientScreen(p: Props) {
@@ -39,12 +75,12 @@ export function ClientScreen(p: Props) {
           </p>
         </div>
         <div className="target">
-          <span className="target-num">
-            {approved} <span className="muted">of {client.monthlyTarget}</span>
-          </span>
-          <span className="small muted">videos approved this month</span>
-          <div className="bar" aria-hidden="true">
-            <span style={{ width: `${progress}%` }} />
+          <ProgressRing value={progress} size={56} stroke={6} />
+          <div className="target-text">
+            <span className="target-num">
+              {approved} <span className="muted">of {client.monthlyTarget}</span>
+            </span>
+            <span className="small muted">videos approved this month</span>
           </div>
         </div>
       </header>
@@ -53,26 +89,16 @@ export function ClientScreen(p: Props) {
         <span className="pill">{count('saved')} not sent</span>
         <span className="pill pill-wait">{count('waiting')} waiting</span>
         <span className="pill pill-ok">{approved} approved</span>
-        <span className="pill pill-no">{count('rejected')} rejected</span>
-        <span className="spacer" />
-        <button
-          className="btn btn-primary"
-          disabled={unsent.length === 0}
-          onClick={() => {
-            p.setStatus(
-              unsent.map((i) => i.id),
-              'waiting',
-            )
-          }}
-        >
-          Send {unsent.length || ''} to Annie for approval
-        </button>
+        <span className="pill pill-no">{count('rejected')} not approved</span>
+        {unsent.length > 0 && (
+          <span className="small muted">Open an idea's plan to send it to Annie with your shots and a note.</span>
+        )}
       </div>
 
       {mine.length === 0 ? (
         <div className="empty">
           <h2>No saved ideas yet</h2>
-          <p>Save videos from the search results and they'll show up here, ready to send for approval.</p>
+          <p>Save videos from the search results and they'll show up here, ready to plan and send for approval.</p>
           <button className="btn btn-primary" onClick={p.onFindMore}>
             Find trending videos
           </button>
@@ -96,7 +122,7 @@ export function ClientScreen(p: Props) {
                 </div>
                 <div className="idea-actions">
                   <button className="btn btn-ghost" onClick={() => p.onPlan(idea.id)}>
-                    Recreate plan
+                    Open plan
                   </button>
                   <button className="link-btn" onClick={() => p.onRemove(idea.id)}>
                     Remove

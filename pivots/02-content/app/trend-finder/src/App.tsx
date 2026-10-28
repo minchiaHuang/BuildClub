@@ -19,6 +19,7 @@ import { Sidebar } from './components/Sidebar'
 import type { View } from './components/Sidebar'
 import { OverviewScreen } from './components/OverviewScreen'
 import { ApprovalsScreen } from './components/ApprovalsScreen'
+import { ReviewScreen } from './components/ReviewScreen'
 import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
@@ -39,6 +40,7 @@ import {
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
+import { withScreenTransition } from './lib/motion'
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -51,13 +53,24 @@ export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
-  const [view, setView] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
+  const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
+  // Every screen change goes through here, so it cross-fades (View Transitions) where supported.
+  const viewRef = useRef(view)
+  useEffect(() => {
+    viewRef.current = view
+  }, [view])
+  const setView = useCallback((next: View) => {
+    if (next === viewRef.current) return setViewRaw(next)
+    withScreenTransition(() => setViewRaw(next))
+  }, [])
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState<Query>(defaultQuery)
   const [sort, setSort] = useState<Sort>('outlier')
   const [formatFilter, setFormatFilter] = useState<string | null>(null)
   const [openVideoId, setOpenVideoId] = useState<string | null>(null)
   const [planIdeaId, setPlanIdeaId] = useState<string | null>(null)
+  // The screen a plan was opened from, so Back returns there.
+  const [planFrom, setPlanFrom] = useState<View>('results')
   // The last search that produced results, so the search page can offer a way back to it.
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
@@ -330,7 +343,7 @@ export default function App() {
   const finishReading = useCallback(() => {
     setReading(null)
     setView('results')
-  }, [])
+  }, [setView])
 
   const removeChip = (chip: Chip) => {
     if (chip.kind === 'source') {
@@ -450,17 +463,30 @@ export default function App() {
     }
   }
 
+  const openPlan = (ideaId: string) => {
+    setPlanFrom(view)
+    setPlanIdeaId(ideaId)
+    setView('plan')
+  }
+
   const planFromVideo = (videoId: string) => {
     const idea = saveIdea(videoId)
-    setPlanIdeaId(idea.id)
     setOpenVideoId(null)
-    setView('plan')
+    openPlan(idea.id)
   }
 
   const likeFormat = interp.source ? formatById.get(interp.topics[0]?.formatId ?? '') : undefined
 
   const setStatus = (ids: string[], status: IdeaStatus) =>
     setIdeas((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, status } : i)))
+
+  // Annie's answer on a plan she was sent.
+  const decide = (ideaId: string, approved: boolean, reason?: string) =>
+    setIdeas((prev) =>
+      prev.map((i) =>
+        i.id === ideaId ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason } : i,
+      ),
+    )
 
   const openVideo = openVideoId ? videoById.get(openVideoId) : undefined
   const openFormat = openVideo && formatById.get(openVideo.formatId)
@@ -469,6 +495,21 @@ export default function App() {
   const planFormat = planVideo && formatById.get(planVideo.formatId)
   const planClient = planIdea && clients.find((c) => c.id === planIdea.clientId)
   const mine = shownIdeas.filter((i) => i.clientId === client.id)
+  const blockedFormatIds = new Set(
+    [...formatById.values()].filter((f) => f.needs.some((n) => client.cannot.includes(n))).map((f) => f.id),
+  )
+  const backLabel: Record<View, string> = {
+    overview: 'overview',
+    search: 'search',
+    results: 'search results',
+    saved: 'saved ideas',
+    approvals: 'approvals',
+    review: "Annie's review",
+    plans: 'plans',
+    plan: 'search results',
+    settings: 'settings',
+    channel: 'channel',
+  }
   const counts = {
     saved: mine.length,
     waiting: mine.filter((i) => i.status === 'waiting').length,
@@ -589,6 +630,7 @@ export default function App() {
               ideaStatus={new Map(shownIdeas.filter((i) => i.clientId === client.id).map((i) => [i.videoId, i.status]))}
               onOpen={setOpenVideoId}
               onToggleSave={toggleSave}
+              blockedFormatIds={blockedFormatIds}
             />
           )}
 
@@ -600,10 +642,7 @@ export default function App() {
               videoById={videoById}
               setStatus={setStatus}
               onRemove={(id) => setIdeas((prev) => prev.filter((i) => i.id !== id))}
-              onPlan={(id) => {
-                setPlanIdeaId(id)
-                setView('plan')
-              }}
+              onPlan={openPlan}
               onFindMore={() => setView('search')}
             />
           )}
@@ -616,10 +655,19 @@ export default function App() {
               videoById={videoById}
               setStatus={setStatus}
               onGoSaved={() => setView('saved')}
-              onPlan={(id) => {
-                setPlanIdeaId(id)
-                setView('plan')
-              }}
+              onPlan={openPlan}
+              onReview={() => setView('review')}
+            />
+          )}
+
+          {inClient && view === 'review' && (
+            <ReviewScreen
+              client={client}
+              ideas={shownIdeas}
+              formatById={formatById}
+              videoById={videoById}
+              onDecide={decide}
+              onBack={() => setView('approvals')}
             />
           )}
 
@@ -629,10 +677,7 @@ export default function App() {
               ideas={shownIdeas}
               formatById={formatById}
               videoById={videoById}
-              onOpen={(id) => {
-                setPlanIdeaId(id)
-                setView('plan')
-              }}
+              onOpen={openPlan}
               onGoApprovals={() => setView('approvals')}
             />
           )}
@@ -648,7 +693,8 @@ export default function App() {
               format={planFormat}
               client={planClient}
               onChange={(patch) => setIdeas((prev) => prev.map((i) => (i.id === planIdea.id ? { ...i, ...patch } : i)))}
-              onBack={() => setView('results')}
+              onBack={() => setView(planFrom)}
+              backLabel={backLabel[planFrom]}
               onFindMore={planAnother}
               onPlanAnother={planAnother}
               onGoApprovals={() => setView('approvals')}

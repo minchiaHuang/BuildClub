@@ -1,0 +1,32 @@
+/* Channel summary */
+.channel { display: grid; gap: 22px; }
+.chan-form { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; max-width: 760px; }
+.chan-form .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.chan-form .chip-group legend { width: 100%; }
+.chan-form .chip { cursor: pointer; }
+.chan-form .chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chan-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.chan-handle { flex: 1 1 240px; }
+.chan-progress { display: grid; gap: 12px; max-width: 760px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.chan-progress ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.chan-progress li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.chan-progress .step-now { color: var(--fg); font-weight: 600; }
+.chan-progress .step-done { color: var(--accent); }
+.step-mark { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--surface-2); flex: none; }
+.step-now .step-mark { background: var(--accent); color: var(--accent-fg); }
+.step-done .step-mark { background: var(--accent-soft); color: var(--accent); }
+.chan-summary { font-size: 17px; }
+.chan-result, .chan-section { display: grid; gap: 14px; }
+.chan-formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.chan-format { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; align-content: start; }
+.chan-format h3 { font-family: var(--font-display); font-size: 18px; }
+.chan-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.chan-facts dt { font-size: 11px; color: var(--muted); }
+.chan-facts dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chan-top3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.chan-top3 figure { margin: 0; display: grid; gap: 4px; }
+.chan-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.chan-video { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; align-items: start; }
+.chan-video-body { display: grid; gap: 6px; min-width: 0; }
+.chan-format-pill { justify-self: start; }
+@media (max-width: 520px) { .chan-videos { grid-template-columns: minmax(0, 1fr); } }

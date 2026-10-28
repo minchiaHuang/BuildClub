@@ -84,8 +84,6 @@ const lengthRules: [RegExp, number][] = [
 
 const platformRules: [RegExp, Platform][] = [
   [/\b(tiktok|tik tok|tiktoks)\b/, 'tiktok'],
-  [/\b(instagram|insta|ig|reels?)\b/, 'instagram'],
-  [/\b(youtube|yt)( shorts)?\b/, 'youtube'],
 ]
 
 const audienceRules: [RegExp, string][] = [

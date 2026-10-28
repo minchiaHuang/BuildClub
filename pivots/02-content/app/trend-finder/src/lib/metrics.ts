@@ -67,45 +67,31 @@ export type TrendStage = 'early' | 'rising' | 'everywhere' | 'one-off'
 
 export interface FormatTrend {
   format: Format
-  counts: Record<Platform, number>
+  // TikTok accounts that used the format.
+  accounts: number
   stage: TrendStage
-  // Platform the format is big on but hasn't reached yet (for "early").
-  leader?: Platform
-  lagger?: Platform
   newestDays: number
 }
 
-const otherPlatform = (p: Platform): Platform => (p === 'tiktok' ? 'instagram' : 'tiktok')
-
-// How we label a format, from how many accounts used it on each platform.
+// How we label a format, from how many TikTok accounts used it and how recently.
+// Few accounts, all new = early. Many accounts, still posting = rising. No new posts in 2 weeks = peaked.
 export function formatTrend(format: Format, pool: Video[]): FormatTrend {
-  const used = pool.filter((v) => v.formatId === format.id)
-  const counts = {
-    tiktok: used.filter((v) => v.platform === 'tiktok').length,
-    instagram: used.filter((v) => v.platform === 'instagram').length,
-    youtube: used.filter((v) => v.platform === 'youtube').length, // sample data has none; live mode skips trends
-    x: used.filter((v) => v.platform === 'x').length,
-    reddit: used.filter((v) => v.platform === 'reddit').length,
-  }
+  const used = pool.filter((v) => v.formatId === format.id && v.platform === 'tiktok')
+  const accounts = new Set(used.map((v) => v.handle)).size
   const newestDays = Math.min(...used.map((v) => v.daysAgo))
-  const total = counts.tiktok + counts.instagram
+  const oldestDays = Math.max(...used.map((v) => v.daysAgo))
 
-  if (total < 3) return { format, counts, stage: 'one-off', newestDays }
-  for (const p of ['tiktok', 'instagram'] as Platform[]) {
-    if (counts[p] >= 3 && counts[otherPlatform(p)] <= 1) {
-      return { format, counts, stage: 'early', leader: p, lagger: otherPlatform(p), newestDays }
-    }
-  }
-  if (counts.tiktok >= 4 && counts.instagram >= 4) return { format, counts, stage: 'everywhere', newestDays }
-  return { format, counts, stage: 'rising', newestDays }
+  if (accounts < 3) return { format, accounts, stage: 'one-off', newestDays }
+  if (newestDays > 14) return { format, accounts, stage: 'everywhere', newestDays }
+  if (accounts < 5 && oldestDays <= 14) return { format, accounts, stage: 'early', newestDays }
+  return { format, accounts, stage: 'rising', newestDays }
 }
 
 export function stageText(t: FormatTrend): string {
-  if (t.stage === 'early' && t.leader && t.lagger)
-    return `Big on ${platformName[t.leader]}, not yet on ${platformName[t.lagger]}`
-  if (t.stage === 'rising') return 'Growing on both platforms'
-  if (t.stage === 'everywhere') return 'On every feed. Probably too late'
-  return 'Only one or two videos. Could be luck'
+  if (t.stage === 'early') return `Just started: ${t.accounts} accounts in the last 2 weeks`
+  if (t.stage === 'rising') return `Spreading: ${t.accounts} accounts, still new posts`
+  if (t.stage === 'everywhere') return `No new posts in ${agoShort(t.newestDays)}. Probably too late`
+  return 'Only one or two accounts. Could be luck'
 }
 
 export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, everywhere: 2, 'one-off': 3 }
