@@ -49,10 +49,13 @@ export async function checkLive(): Promise<boolean> {
   }
 }
 
+// Cuts by characters, not UTF-16 units, so an emoji is never split in half (the API rejects half of one).
+const cut = (s: string, n: number) => Array.from(s).slice(0, n).join('')
+
 // The first line of the caption, without hashtags: usually the hook.
 function hookFrom(text: string): string {
   const line = text.split('\n').map((l) => l.replace(/#\S+/g, '').trim()).find(Boolean) ?? ''
-  return line.length > 90 ? `${line.slice(0, 87).trimEnd()}…` : line
+  return Array.from(line).length > 90 ? `${cut(line, 87).trimEnd()}…` : line
 }
 
 const daysSince = (iso: string | null) =>
@@ -302,15 +305,15 @@ export async function askAnswer(query: string, videos: Video[]): Promise<Answer>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query: query.slice(0, 200), // the server's limits (models.py AnswerRequest)
+      query: cut(query, 200), // the server's limits (models.py AnswerRequest)
       videos: top.map((v) => ({
         id: v.id,
         platform: v.platform,
-        hook: v.hook,
+        hook: cut(v.hook, 300),
         views: v.views,
         outlier: hasScore(v) ? outlierScore(v) : undefined,
-        hashtags: (v.hashtags ?? []).slice(0, 30).map((h) => h.slice(0, 60)),
-        music: (v.music ?? '').slice(0, 200),
+        hashtags: (v.hashtags ?? []).slice(0, 30).map((h) => cut(h, 60)),
+        music: cut(v.music ?? '', 200),
       })),
     }),
   })
