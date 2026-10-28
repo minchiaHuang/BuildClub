@@ -65,6 +65,23 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
   fastest: (a, b) => viewsPerDay(b) - viewsPerDay(a),
 }
 
+// Reload keeps the screen (and the plan being edited) for this tab. Results aren't kept, so they reopen as Search.
+const NAV_KEY = 'trend-finder.nav.v1'
+const restorable: View[] = ['overview', 'search', 'saved', 'approvals', 'review', 'plans', 'plan', 'settings', 'channel']
+interface Nav {
+  view: View
+  planIdeaId: string | null
+  planFrom: View
+}
+function readNav(): Nav | null {
+  try {
+    const n = JSON.parse(sessionStorage.getItem(NAV_KEY) ?? 'null') as Nav | null
+    return n && restorable.includes(n.view) ? n : null
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
   // Demo entry for when the API has no accounts (or isn't there); real sign-in uses the API's session.
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
@@ -80,7 +97,12 @@ export default function App() {
   const access = auth === 'open' || auth === 'signed-in'
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
-  const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
+  const [savedNav] = useState(readNav)
+  const [view, setViewRaw] = useState<View>(() => {
+    const v = savedNav?.view
+    if (!v) return workspace === 'all' ? 'overview' : 'search'
+    return workspace === 'all' && v !== 'overview' && v !== 'channel' ? 'overview' : v
+  })
   // Every screen change goes through here, so it cross-fades (View Transitions) where supported.
   const viewRef = useRef(view)
   useEffect(() => {
@@ -95,15 +117,23 @@ export default function App() {
   const [sort, setSort] = useState<Sort>('outlier')
   const [formatFilter, setFormatFilter] = useState<string | null>(null)
   const [openVideoId, setOpenVideoId] = useState<string | null>(null)
-  const [planIdeaId, setPlanIdeaId] = useState<string | null>(null)
+  const [planIdeaId, setPlanIdeaId] = useState<string | null>(savedNav?.planIdeaId ?? null)
   // The screen a plan was opened from, so Back returns there.
-  const [planFrom, setPlanFrom] = useState<View>('results')
+  const [planFrom, setPlanFrom] = useState<View>(savedNav?.planFrom ?? 'results')
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(NAV_KEY, JSON.stringify({ view, planIdeaId, planFrom }))
+    } catch {
+      // Storage blocked: a reload just starts on the default screen.
+    }
+  }, [view, planIdeaId, planFrom])
   // The last search that produced results, so the search page can offer a way back to it.
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
   // Live mode: real TikTok, Instagram, YouTube or X search through the local API (npm run api). Live mode keeps clients, saved ideas and videos on the API; without the API the app falls back to sample data stored in this browser.
   const [live, setLive] = useState(false)
+  const [liveChecked, setLiveChecked] = useState(false)
   const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
     videos: [],
     formats: [],
@@ -134,6 +164,7 @@ export default function App() {
   useEffect(() => {
     checkLive().then((ok) => {
       setLive(ok)
+      setLiveChecked(true)
       // TikTok's top results are often older, so live search starts with no date limit.
       if (ok) setQuery((q) => ({ ...q, days: 3650 }))
     })
@@ -783,6 +814,11 @@ export default function App() {
   const planVideo = planIdea && videoById.get(planIdea.videoId)
   const planFormat = planVideo && formatById.get(planVideo.formatId)
   const planClient = planIdea && clients.find((c) => c.id === planIdea.clientId)
+  // After a reload the plan that was open may be gone (deleted, or another account's); don't leave a blank page.
+  const planMissing = !(planIdea && planVideo && planFormat && planClient)
+  useEffect(() => {
+    if (view === 'plan' && planMissing && liveChecked && (!live || synced)) setViewRaw('saved')
+  }, [view, planMissing, liveChecked, live, synced])
   const mine = shownIdeas.filter((i) => i.clientId === client.id)
   const blockedFormatIds = new Set(
     [...formatById.values()].filter((f) => f.needs.some((n) => client.cannot.includes(n))).map((f) => f.id),
@@ -821,6 +857,11 @@ export default function App() {
   }
   const signOut = () => {
     if (auth === 'open') return setSignedIn(false)
+    try {
+      sessionStorage.removeItem(NAV_KEY)
+    } catch {
+      // Nothing stored to clear.
+    }
     void logout().then(() => {
       setAccount(null)
       setAuth('signed-out')
