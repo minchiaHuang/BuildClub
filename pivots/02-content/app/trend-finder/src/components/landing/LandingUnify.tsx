@@ -4,7 +4,7 @@ import { usePrefersReducedMotion } from '../../lib/motion'
 import { useLiveInfo } from '../../lib/useLiveInfo'
 
 // Public landing page for the Unify direction: website hero + "how it works" section, with Log in and Register.
-// Sign-in is a demo for now, so both buttons enter the sample agency.
+// Sign-in is a demo for now. With sample data (no API) the page says so; with the live API it shows real counts and drops the sample labels.
 
 const STEPS = [
   { title: 'Search a niche', body: "Type your client's niche, like budget recipes. Trend Finder searches TikTok live for what's working right now." },
@@ -58,7 +58,8 @@ function StepVisual({ i }: { i: number }) {
 
 export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
   const reduced = usePrefersReducedMotion()
-  const { live, stats } = useLiveInfo()
+  const { mode, stats } = useLiveInfo()
+  const sample = mode === 'sample'
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -91,12 +92,11 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
               <button type="button" className="lu-black lu-lg" onClick={onRegister}>Register free</button>
               <button type="button" className="lu-under" onClick={onLogIn}>Log in to your dashboard</button>
             </div>
-            {!live && <p className="lu-note">Demo: both buttons open the sample agency.</p>}
+            {sample && <p className="lu-note">Demo: both buttons open the sample agency.</p>}
             <ul className="lu-pills"><li>TikTok live search</li><li>Outlier scores</li><li>Client approvals</li><li>Editor briefs</li></ul>
-            {live ? (
-              stats && <p className="lu-count">Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos</p>
-            ) : (
-              <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>
+            {sample && <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>}
+            {mode === 'live' && stats && stats.videosScanned > 0 && (
+              <p className="lu-count">Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos</p>
             )}
           </div>
 
@@ -136,7 +136,7 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             </div>
           </div>
 
-          {!live && (
+          {sample && (
           <>
           <div className="lu-stats">
             <div className="lu-stat"><b>153×</b><span>best outlier this week</span></div>

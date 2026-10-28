@@ -5,7 +5,7 @@ import { PlatformLogo } from '../PlatformToggles'
 import type { LogoPlatform } from '../PlatformToggles'
 
 // Public landing page for the Altitude direction: website hero + "what it does" section, with Log in and Register.
-// Sign-in is a demo for now, so both buttons enter the sample agency.
+// Sign-in is a demo for now; the sample-agency notes show only without the live API.
 // Reuses the Altitude hero classes (.alt-sky, .alt-cloud, .alt-rot, .alt-icons) from theme-altitude.css.
 // How the platforms appear in the sky: 'tags' (Midnight-style text pills, being tried now) or 'round' (logo badges).
 // The round version is kept so we can switch back by changing this one value.
@@ -44,12 +44,12 @@ function StepIcon({ kind }: { kind: 'search' | 'plan' }) {
 }
 
 export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
-  const { live } = useLiveInfo()
+  const { mode } = useLiveInfo()
   return (
     <main className="landing landing-alt">
       <a className="la-strip" href="#what">
         Now searching TikTok live{' '}
-        {!live && (
+        {mode === 'sample' && (
           <>
             <span aria-hidden="true">·</span> Instagram coming soon{' '}
           </>
@@ -106,7 +106,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
             <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Register free</button>
             <button type="button" className="la-pill la-outline la-big" onClick={onLogIn}>Log in to dashboard</button>
           </div>
-          {!live && <p className="la-note">Demo: both buttons open the sample agency.</p>}
+          {mode === 'sample' && <p className="la-note">Demo: both buttons open the sample agency.</p>}
         </div>
       </header>
 

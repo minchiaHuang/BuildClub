@@ -1,4 +1,4 @@
-// Public landing page for the Midnight direction. Sign-in is a demo for now, so both buttons enter the sample agency.
+// Public landing page for the Midnight direction. Sign-in is a demo for now; the sample-agency notes show only without the live API.
 import { Pill, type PillSpec } from './midnight/Pills'
 import { TypingSearch } from './TypingSearch'
 import { useLiveInfo } from '../../lib/useLiveInfo'
@@ -41,7 +41,7 @@ const Arrow = () => (
 )
 
 export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
-  const { live } = useLiveInfo()
+  const { mode } = useLiveInfo()
   const ref = useParallax<HTMLDivElement>()
   return (
     <main className="landing landing-midnight">
@@ -82,7 +82,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
             Register <Arrow />
           </button>
           <button className="mn-link" onClick={onLogIn}>Log in to your dashboard</button>
-          {!live && <span className="mn-demo">Demo: both buttons open the sample agency.</span>}
+          {mode === 'sample' && <span className="mn-demo">Demo: both buttons open the sample agency.</span>}
         </div>
         <ul className="mn-laurels">
           {BADGES.map((b) => (

@@ -4,7 +4,7 @@ import { useLiveInfo } from '../../lib/useLiveInfo'
 
 // Search-page hero for the Unify direction. Owned by the Unify theme; renders only when that theme is on.
 export function UnifyHero({ clientName }: { clientName: string }) {
-  const { live, stats } = useLiveInfo()
+  const { mode, stats } = useLiveInfo()
   return (
     <header className="unify-hero">
       <p className="uh-eyebrow">Trend research for {clientName}</p>
@@ -19,16 +19,15 @@ export function UnifyHero({ clientName }: { clientName: string }) {
         <li>Outlier scores</li>
         <li>Approvals built in</li>
       </ul>
-      {live ? (
-        stats && (
-          <p className="uh-count">
-            Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos
-          </p>
-        )
-      ) : (
+      {mode === 'sample' && (
         <p className="uh-count">
           <span className="uh-stars" aria-hidden="true">★★★★★</span>
           Trend Finder has scanned <SlotCounter value={1284301} /> videos this month <span className="uh-sample">sample</span>
+        </p>
+      )}
+      {mode === 'live' && stats && stats.videosScanned > 0 && (
+        <p className="uh-count">
+          Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos
         </p>
       )}
     </header>
