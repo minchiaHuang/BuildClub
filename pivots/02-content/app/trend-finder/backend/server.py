@@ -40,7 +40,7 @@ import youtube
 import analyze
 import auth
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
-from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
+from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
                     Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
@@ -97,6 +97,7 @@ REDDIT_USD_PER_SUB = 0.02
 APIFY_USD_PER_VIDEO = 0.0037  # TikTok actor; account medians cost this per video fetched (134 videos: 0.497)
 ANALYZE_USD = 0.08  # one Claude breakdown
 NEEDS_USD = 0.01  # one small Claude call that fills in a finished breakdown's needs
+LIKE_USD = 0.01  # one small Claude call that turns a finished breakdown into search keywords
 
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
@@ -743,6 +744,35 @@ def get_analyze(job_id: str):
     if not job:
         return error(404, "No breakdown with that id. Start one with POST /api/analyze.")
     return job
+
+
+@app.post("/api/like", response_model=AnalyzeStarted)
+def start_like(body: LikeRequest):
+    """Find videos like a pasted link: starts (or reuses) the breakdown of that link."""
+    return start_analyze(AnalyzeRequest(url=body.url))
+
+
+@app.get("/api/like/{job_id}", response_model=LikeJob, response_model_exclude_none=True)
+def get_like(job_id: str):
+    job = jobs.get(job_id)
+    if not job:
+        return error(404, "No search with that id. Start one with POST /api/like.")
+    if job.status != "done" or not job.result:
+        return {"status": job.status, "step": job.step, "error": job.error}
+    breakdown = job.result.model_dump()
+    saved = analyze.JOBS_DIR / job_id / "like.json"
+    if saved.exists():
+        terms = json.loads(saved.read_text(encoding="utf-8"))
+    else:
+        if not spend("claude", LIKE_USD, DAILY_CLAUDE_USD):
+            return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+        try:
+            keywords, name = assist.like_terms(breakdown)
+        except Exception as e:
+            return error(502, "Could not read what this video is about. Try again.", str(e))
+        terms = {"keywords": keywords, "formatName": name}
+        saved.write_text(json.dumps(terms, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"status": "done", "step": "Done", "breakdown": breakdown, **terms}
 
 
 @app.post("/api/needs", response_model=NeedsResult)

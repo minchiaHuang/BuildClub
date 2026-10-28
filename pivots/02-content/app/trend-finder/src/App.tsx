@@ -39,6 +39,7 @@ import {
   saveLibrary,
   saveList,
   savePulses,
+  likeVideo,
   searchAll,
   searchLive,
 } from './lib/live'
@@ -100,7 +101,7 @@ export default function App() {
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
   // Live searches run in the background, so the rest of the app stays usable meanwhile.
-  const [searching, setSearching] = useState<{ q: string; platforms: Platform[] } | null>(null)
+  const [searching, setSearching] = useState<{ q: string; platforms: Platform[]; step?: string } | null>(null)
   // A search that finished after the user moved to another screen, waiting to be opened.
   const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
   const searchSeq = useRef(0)
@@ -300,9 +301,42 @@ export default function App() {
   // overrides the dropdowns; everything else keeps its current value.
   const [reading, setReading] = useState<MediaSource | null>(null)
 
-  const runLiveSearch = async (text: string) => {
-    if (/https?:\/\//.test(text)) {
-      setSearchError("Link search isn't live yet. Type what the video is about instead.")
+  // A pasted link: read the real video, then search for its first keyword.
+  const runLinkSearch = async (text: string) => {
+    const url = text.match(/https?:\/\/\S+/)?.[0] ?? text
+    const source = interpretMedia(url, null, formats)?.source ?? null
+    const seq = ++searchSeq.current
+    const clientId = workspace
+    setSearchError(null)
+    setSearchDone(null)
+    setSearching({ q: url, platforms: [], step: 'Reading the video' })
+    let like
+    try {
+      like = await likeVideo(url, (step) => {
+        if (seq === searchSeq.current) setSearching((s) => (s ? { ...s, step: step || s.step } : s))
+      })
+    } catch (e) {
+      if (seq !== searchSeq.current) return
+      const message = e instanceof Error ? e.message : 'Could not read that link.'
+      setSearching(null)
+      setSearchError(message)
+      if (here.current.view !== 'search' || here.current.workspace !== clientId) setSearchDone({ text, clientId, error: message })
+      return
+    }
+    if (seq !== searchSeq.current) return
+    const format = applyBreakdown(
+      { id: `like-${url}`, name: like.formatName, short: like.formatName, tags: [], audiences: [], summary: '', why: like.breakdown.why,
+        shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '' },
+      like.breakdown,
+    )
+    setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
+    setSearching(null)
+    await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
+  }
+
+  const runLiveSearch = async (text: string, like?: { source: MediaSource; formatId: string }) => {
+    if (!like && /https?:\/\//.test(text)) {
+      void runLinkSearch(text)
       return
     }
     const parsed = parseQuery(text, formats)
@@ -338,7 +372,10 @@ export default function App() {
       })
       setLiveResults(res.videos)
       setLiveQuery(q)
-      setInterp({ ...parsed, text, keywords: [q], topics: [], audience: null, isQuestion: false, source: null })
+      setInterp({
+        ...parsed, text, keywords: [q], topics: like ? [{ formatId: like.formatId, word: 'this video' }] : [],
+        audience: null, isQuestion: false, source: like?.source ?? null,
+      })
       setQuery((qq) => ({ ...qq, keyword: text, platforms, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
@@ -772,6 +809,7 @@ export default function App() {
                     trend={trends.find((t) => t.format.id === likeFormat.id)}
                     matches={results}
                     clientName={client.name}
+                    real={live}
                     onPlan={planFromVideo}
                   />
                 ) : null
@@ -906,7 +944,7 @@ function SearchStatus({
   onView,
   onDismiss,
 }: {
-  searching: { q: string; platforms: Platform[] } | null
+  searching: { q: string; platforms: Platform[]; step?: string } | null
   done: { text: string; error?: string } | null
   scoring: string | null
   onView: () => void
@@ -942,7 +980,16 @@ function SearchStatus({
     >
       {searching ? (
         <span className="small">
-          Searching {searching.platforms.map((p) => platformName[p]).join(', ')} for "{searching.q}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+          {searching.step ? (
+            <>
+              {searching.step}… <span className="muted">{seconds}s · keep browsing, a new link takes about a minute</span>
+            </>
+          ) : (
+            <>
+              Searching {searching.platforms.map((p) => platformName[p]).join(', ')} for "{searching.q}"…{' '}
+              <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+            </>
+          )}
         </span>
       ) : done?.error ? (
         <>

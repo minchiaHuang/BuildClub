@@ -47,3 +47,37 @@ def test_needs_backfill_over_budget(client, monkeypatch):
 
 def test_needs_backfill_without_a_breakdown_is_404(client):
     assert client.post("/api/needs", json={"url": URL, "needs": VOCAB}).status_code == 404
+
+
+LIKE_ANSWER = 'Here: {"keywords": ["blended tofu", "crispy asmr", "x", "y"], "formatName": "Crispy ASMR"}'
+
+
+def test_like_reuses_analyze_job(client, monkeypatch):
+    save_breakdown(URL)
+    calls = []
+    monkeypatch.setattr(assist, "call_claude", lambda model, *a: calls.append(model) or LIKE_ANSWER)
+    started = client.post("/api/like", json={"url": URL})
+    assert (started.status_code, started.json()) == (200, {"job": analyze.job_id_for(URL)})
+    r = client.get(f"/api/like/{started.json()['job']}")
+    body = r.json()
+    assert r.status_code == 200 and body["status"] == "done"
+    assert body["keywords"] == ["blended tofu", "crispy asmr", "x"] and body["formatName"] == "Crispy ASMR"
+    assert body["breakdown"]["props"] == ["blender"]
+    assert calls == ["claude-haiku-5-5"]
+    assert server.jobs._q.qsize() == 0  # no new breakdown was queued
+
+
+def test_like_keywords_cached(client, monkeypatch):
+    work = save_breakdown(URL)
+    calls = []
+    monkeypatch.setattr(assist, "call_claude", lambda *a: calls.append(1) or LIKE_ANSWER)
+    job = analyze.job_id_for(URL)
+    first = client.get(f"/api/like/{job}").json()
+    second = client.get(f"/api/like/{job}").json()
+    assert first == second and len(calls) == 1
+    assert json.loads((work / "like.json").read_text())["formatName"] == "Crispy ASMR"
+
+
+def test_like_bad_url_400(client):
+    r = client.post("/api/like", json={"url": "https://example.com/video"})
+    assert r.status_code == 400

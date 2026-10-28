@@ -215,6 +215,35 @@ export async function analyzeVideo(url: string, onStep: (step: string) => void):
   }
 }
 
+export interface LikeResult {
+  breakdown: Breakdown
+  keywords: string[]
+  formatName: string
+}
+
+// "Find videos like this link": breaks the video down (or reuses the saved breakdown) and returns
+// search keywords taken from it. Progress steps go to onStep.
+export async function likeVideo(url: string, onStep: (step: string) => void): Promise<LikeResult> {
+  const r = await fetch('/api/like', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  const started = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(started.error ?? 'Could not start reading that link.')
+  for (;;) {
+    const res = await fetch(`/api/like/${started.job}`)
+    const job = (await res.json().catch(() => ({}))) as Partial<AnalyzeJob> & Partial<LikeResult>
+    if (!res.ok) throw new Error((job as { error?: string }).error ?? 'Could not read that link. Try again.')
+    if (job.status === 'done' && job.breakdown && job.keywords?.length) {
+      return { breakdown: job.breakdown, keywords: job.keywords, formatName: job.formatName ?? job.keywords[0] }
+    }
+    if (job.status === 'failed') throw new Error(job.error ?? 'Could not read that link.')
+    onStep(job.step ?? '')
+    await new Promise((done) => setTimeout(done, 2000))
+  }
+}
+
 // The breakdown fills the same Format fields the sample data has.
 export const applyBreakdown = (f: Format, b: Breakdown): Format => ({
   ...f,

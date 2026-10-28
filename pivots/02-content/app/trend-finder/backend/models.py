@@ -152,6 +152,20 @@ class NeedsResult(BaseModel):
     needs: list[str]
 
 
+class LikeRequest(BaseModel):
+    url: str
+
+
+class LikeJob(BaseModel):
+    status: Literal["queued", "running", "done", "failed"]
+    step: str = ""
+    error: Optional[str] = None
+    breakdown: Optional[Breakdown] = None
+    # 1-3 search keywords and a short format name, taken from the real video's breakdown.
+    keywords: Optional[list[str]] = None
+    formatName: Optional[str] = None
+
+
 class AnalyzeStarted(BaseModel):
     job: str
 
