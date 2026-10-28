@@ -1,4 +1,5 @@
 import type { Format, Line, Platform, Shot, Video } from '../types'
+import type { Answer } from './answer'
 import { UNKNOWN_DAYS, hasScore, outlierScore } from './metrics'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
@@ -292,6 +293,30 @@ export async function checkNeeds(url: string, vocab: string[]): Promise<string[]
   const body = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(body.error ?? 'Could not check what this video needs.')
   return body.needs as string[]
+}
+
+// A short written answer to the search, from the real videos it found. Free for the same results.
+export async function askAnswer(query: string, videos: Video[]): Promise<Answer> {
+  const top = [...videos].sort((a, b) => outlierScore(b) - outlierScore(a)).slice(0, 30)
+  const r = await fetch('/api/answer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      videos: top.map((v) => ({
+        id: v.id,
+        platform: v.platform,
+        hook: v.hook,
+        views: v.views,
+        outlier: hasScore(v) ? outlierScore(v) : undefined,
+        hashtags: v.hashtags ?? [],
+        music: v.music ?? '',
+      })),
+    }),
+  })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(body.error ?? 'Could not write an answer.')
+  return body as Answer
 }
 
 // Clients and saved ideas are also kept by the API, so they survive a new browser.

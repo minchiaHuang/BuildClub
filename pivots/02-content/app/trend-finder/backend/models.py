@@ -167,6 +167,26 @@ class LikeImageResult(BaseModel):
     description: str
 
 
+class AnswerVideo(BaseModel):
+    id: str
+    platform: str
+    hook: str
+    views: int
+    outlier: Optional[float] = None
+    hashtags: list[str] = []
+    music: str = ""
+
+
+class AnswerRequest(BaseModel):
+    query: str
+    videos: list[AnswerVideo] = Field(max_length=30)
+
+
+class AnswerResult(BaseModel):  # same fields as the front end's Answer (src/lib/answer.ts)
+    lines: list[str]
+    basis: str
+
+
 class LikeJob(BaseModel):
     status: Literal["queued", "running", "done", "failed"]
     step: str = ""

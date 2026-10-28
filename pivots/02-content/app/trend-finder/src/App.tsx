@@ -12,6 +12,7 @@ import type { Interpretation, MediaSource } from './lib/parseQuery'
 import { LikeThisCard } from './components/LikeThisCard'
 import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
+import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
@@ -39,6 +40,7 @@ import {
   saveLibrary,
   saveList,
   savePulses,
+  askAnswer,
   likeImage,
   likeVideo,
   searchAll,
@@ -101,6 +103,8 @@ export default function App() {
   })
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
+  // The written answer to the latest live search; null while it is being written or if that failed.
+  const [liveAnswer, setLiveAnswer] = useState<Answer | null>(null)
   // Live searches run in the background, so the rest of the app stays usable meanwhile.
   const [searching, setSearching] = useState<{ q: string; platforms: Platform[]; step?: string } | null>(null)
   // A search that finished after the user moved to another screen, waiting to be opened.
@@ -405,6 +409,13 @@ export default function App() {
       })
       setLiveResults(res.videos)
       setLiveQuery(q)
+      // One answer per search, from the videos as they arrive. A failure just means no answer block.
+      setLiveAnswer(null)
+      if (res.videos.length) {
+        askAnswer(text, res.videos)
+          .then((a) => { if (seq === searchSeq.current) setLiveAnswer(a) })
+          .catch(() => {})
+      }
       setInterp({
         ...parsed, text, keywords: [q], topics: like ? [{ formatId: like.formatId, word: 'this video' }] : [],
         audience: null, isQuestion: false, source: like?.source ?? null,
@@ -571,7 +582,7 @@ export default function App() {
     [results, keywordPool, live],
   )
 
-  const answer = useMemo(() => (live ? null : buildAnswer(interp, results, trends)), [interp, results, trends, live])
+  const answer = useMemo(() => (live ? liveAnswer : buildAnswer(interp, results, trends)), [interp, results, trends, live, liveAnswer])
 
   // Live mode shows only ideas saved from real videos; sample mode only sample ones.
   const shownIdeas = ideas.filter((i) => Boolean(videoById.get(i.videoId)?.live) === live)

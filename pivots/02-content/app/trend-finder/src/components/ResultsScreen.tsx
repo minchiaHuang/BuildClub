@@ -215,7 +215,7 @@ export function ResultsScreen(p: Props) {
         <div className="answer" role="note">
           <div className="answer-head">
             <strong>{i.text.trim()}</strong>
-            <span className="ai-tag">Answer · sample</span>
+            <span className="ai-tag">{p.live ? 'Answer · from these results' : 'Answer · sample'}</span>
           </div>
           {p.answer.lines.map((line) => (
             <p key={line}>{line}</p>

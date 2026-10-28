@@ -86,3 +86,27 @@ def like_image_terms(image: str, media_type: str) -> tuple[list[str], str, str]:
         {"type": "text", "text": "What does this screenshot show?"},
     ]
     return parse_terms(call_claude(CHEAP_MODEL, system, content, 300))
+
+
+def parse_answer(answer: str) -> list[str]:
+    """The lines of an answer holding a JSON object {"lines": [...]}. Raises ValueError without any."""
+    found = re.search(r"\{.*\}", answer, re.S)
+    try:
+        data = json.loads(found.group(0)) if found else {}
+    except ValueError:
+        data = {}
+    raw = data.get("lines") if isinstance(data, dict) else None
+    lines = [x.strip() for x in raw if isinstance(x, str) and x.strip()][:6] if isinstance(raw, list) else []
+    if not lines:
+        raise ValueError("no lines in the answer")
+    return lines
+
+
+def answer_lines(query: str, videos: list[dict]) -> list[str]:
+    """2-5 short lines that answer the search, from the real videos found for it."""
+    system = ("You answer a search using only the real videos listed. Explain patterns in these real videos. "
+              "Do not write scripts or captions. Say what they have in common (hooks, formats, sounds, hashtags) "
+              "and why that may be working, in plain English, and do not claim anything the list does not show. "
+              'Answer with JSON only: {"lines": [2 to 5 short sentences]}.')
+    text = f"Search: {query}\n\nVideos:\n{json.dumps(videos, ensure_ascii=False)}"
+    return parse_answer(call_claude(CHEAP_MODEL, system, [{"type": "text", "text": text}], 600))

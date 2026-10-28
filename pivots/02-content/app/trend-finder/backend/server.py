@@ -41,7 +41,7 @@ import youtube
 import analyze
 import auth
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
-from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
+from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
                     Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
@@ -99,6 +99,7 @@ APIFY_USD_PER_VIDEO = 0.0037  # TikTok actor; account medians cost this per vide
 ANALYZE_USD = 0.08  # one Claude breakdown
 NEEDS_USD = 0.01  # one small Claude call that fills in a finished breakdown's needs
 IMAGE_USD = 0.02  # one small Claude call that reads a screenshot
+ASK_USD = 0.01  # one small Claude call that answers a search from its results
 MAX_IMAGE_BYTES = 5 * 1024 * 1024  # decoded; the base64 request body is about a third bigger
 LIKE_USD = 0.01  # one small Claude call that turns a finished breakdown into search keywords
 
@@ -801,6 +802,25 @@ def like_image(body: LikeImageRequest):
     except Exception as e:
         return error(502, "Could not read that image. Try again.", str(e))
     result = {"keywords": keywords, "formatName": name, "description": description}
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, json.dumps(result)))
+    return result
+
+
+@app.post("/api/answer", response_model=AnswerResult)
+def answer_search(body: AnswerRequest):
+    """Answers a search from the real videos it found. Free for the same search and videos seen before."""
+    key = "answer:" + hashlib.sha1(json.dumps([body.query, [v.id for v in body.videos]]).encode()).hexdigest()
+    cached = load(key)
+    if cached:
+        return cached
+    if not spend("claude", ASK_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+    try:
+        lines = assist.answer_lines(body.query, [v.model_dump(exclude={"id"}, exclude_none=True) for v in body.videos])
+    except Exception as e:
+        return error(502, "Could not write an answer. Try again.", str(e))
+    result = {"lines": lines, "basis": f"Written from the {len(body.videos)} real videos below"}
     with db() as conn:
         conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, json.dumps(result)))
     return result

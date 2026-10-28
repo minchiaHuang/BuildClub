@@ -131,3 +131,38 @@ def test_like_image_prompt_forbids_writing_scripts(client, monkeypatch):
     monkeypatch.setattr(assist, "call_claude", lambda model, system, *a: systems.append(system) or IMG_ANSWER)
     client.post("/api/like-image", json={"image": IMG, "mediaType": "image/webp"})
     assert "Do not write a script" in systems[0]
+
+
+ANSWER_TEXT = 'Here: {"lines": ["Most of these use a split screen.", "The hooks open on a question."]}'
+
+
+def answer_body(n=2):
+    vids = [{"id": f"v{i}", "platform": "tiktok", "hook": "Is this chicken?", "views": 1000 * (i + 1),
+             "outlier": 12.5, "hashtags": ["food"], "music": "original sound"} for i in range(n)]
+    return {"query": "why do food reactions work", "videos": vids}
+
+
+def test_answer_cached(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(assist, "call_claude", lambda *a: calls.append(a) or ANSWER_TEXT)
+    first = client.post("/api/answer", json=answer_body())
+    second = client.post("/api/answer", json=answer_body())
+    assert first.status_code == 200 and second.json() == first.json()
+    assert first.json()["lines"] == ["Most of these use a split screen.", "The hooks open on a question."]
+    assert first.json()["basis"] == "Written from the 2 real videos below"
+    assert len(calls) == 1 and calls[0][0] == "claude-haiku-5-5"
+    assert server.load(f"spend:{server.today()}")["claude"] == server.ASK_USD
+    assert client.post("/api/answer", json=answer_body(31)).status_code == 422
+
+
+def test_answer_over_budget_429(client, monkeypatch):
+    monkeypatch.setattr(assist, "call_claude", lambda *a: pytest.fail("Claude must not be called"))
+    monkeypatch.setattr(server, "DAILY_CLAUDE_USD", 0.001)
+    assert client.post("/api/answer", json=answer_body()).status_code == 429
+
+
+def test_answer_prompt_is_explain_only(client, monkeypatch):
+    systems = []
+    monkeypatch.setattr(assist, "call_claude", lambda model, system, *a: systems.append(system) or ANSWER_TEXT)
+    client.post("/api/answer", json=answer_body())
+    assert "Explain patterns in these real videos. Do not write scripts or captions." in systems[0]
