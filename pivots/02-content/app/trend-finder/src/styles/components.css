@@ -101,6 +101,8 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .q-chip-audience { background: var(--rising-soft); border-color: transparent; color: var(--rising); }
 .q-chip-x { background: none; border: 0; border-radius: 50%; width: 20px; height: 20px; display: grid; place-items: center; font-size: 10px; color: var(--muted); padding: 0; transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease); }
 .q-chip-x:hover { color: inherit; background: color-mix(in srgb, currentColor 12%, transparent); }
+.topic-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.topic-tags input { flex: 1 1 180px; }
 
 /* Pills and badges (sentence case, soft fills) */
 .pill { font-size: var(--text-sm); font-weight: 500; padding: 4px 10px; border-radius: var(--radius-pill); background: var(--surface-2); color: var(--fg); }

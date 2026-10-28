@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Client } from '../types'
 import { formats } from '../data/sample'
 
@@ -37,17 +38,15 @@ export function ClientFields({ client, onChange }: { client: Client; onChange: (
             ))}
           </datalist>
         </label>
-        <label className="field field-wide">
-          <span className="field-label">Topics to watch (comma-separated)</span>
-          <input
-            id="client-topics"
-            value={(client.topics ?? []).join(', ')}
-            placeholder="e.g. sydney nightclub, club night"
-            onChange={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trimStart()) })}
-            onBlur={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
-          />
-          <span className="small muted">The first topic is checked on TikTok once a day for the "Trending now" chips.</span>
-        </label>
+        <div className="field field-wide">
+          <label className="field-label" htmlFor="client-topics">
+            Topics to watch
+          </label>
+          <TopicTags topics={client.topics ?? []} onChange={(topics) => onChange({ topics })} />
+          <span className="small muted">
+            Press Enter to add each one. The first topic is checked on TikTok once a day for the "Trending now" chips.
+          </span>
+        </div>
         <label className="field field-wide">
           <span className="field-label">Starter searches (comma-separated)</span>
           <input
@@ -85,5 +84,54 @@ export function ClientFields({ client, onChange }: { client: Client; onChange: (
         </div>
       </fieldset>
     </>
+  )
+}
+
+// One tag per topic: Enter or a comma adds what was typed, Backspace on an empty box takes off the last one.
+function TopicTags({ topics, onChange }: { topics: string[]; onChange: (topics: string[]) => void }) {
+  const [text, setText] = useState('')
+  const add = (typed: string[], rest = '') => {
+    const next = [...topics]
+    for (const t of typed.map((x) => x.trim())) if (t && !next.some((x) => x.toLowerCase() === t.toLowerCase())) next.push(t)
+    if (next.length > topics.length) onChange(next)
+    setText(rest)
+  }
+
+  return (
+    <div className="topic-tags">
+      {topics.map((t) => (
+        <span key={t} className="q-chip q-chip-topic">
+          {t}
+          <button
+            type="button"
+            className="q-chip-x"
+            aria-label={`Remove ${t}`}
+            onClick={() => onChange(topics.filter((x) => x !== t))}
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+      <input
+        id="client-topics"
+        value={text}
+        placeholder={topics.length ? 'Add another topic' : 'e.g. sydney nightclub'}
+        // A pasted "a, b, c" becomes three tags.
+        onChange={(e) => {
+          const parts = e.target.value.split(',')
+          if (parts.length > 1) add(parts.slice(0, -1), parts[parts.length - 1].trimStart())
+          else setText(e.target.value)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            // Enter adds a tag here; it must not submit the form around it.
+            e.preventDefault()
+            add([text])
+          } else if (e.key === 'Backspace' && !text && topics.length) onChange(topics.slice(0, -1))
+        }}
+        // A topic typed but not yet added still counts when the box is left.
+        onBlur={() => add([text])}
+      />
+    </div>
   )
 }
