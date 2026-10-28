@@ -2,6 +2,29 @@ import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
 import { SearchBox } from './SearchBox'
+import type { ComponentType, ReactNode } from 'react'
+import { useUiTheme, type UiTheme } from '../lib/theme'
+// altitude
+import { AltitudeHero } from './themes/AltitudeHero'
+
+// unify
+import { UnifyHero } from './themes/UnifyHero'
+
+// midnight
+import { MidnightHero } from './themes/MidnightHero'
+
+// A design can put its own hero above the search. If it holds the search box itself (holdsSearch), the box goes inside it.
+type Hero = { Hero: ComponentType<{ clientName: string; children?: ReactNode }>; holdsSearch?: boolean }
+const heroes: Partial<Record<UiTheme, Hero>> = {
+  // altitude
+  altitude: { Hero: AltitudeHero, holdsSearch: true },
+
+  // unify
+  unify: { Hero: UnifyHero },
+
+  // midnight
+  midnight: { Hero: MidnightHero },
+}
 
 interface Props {
   query: Query
@@ -26,8 +49,27 @@ interface Props {
 
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
+  const hero = heroes[useUiTheme()]
+  const searchBox = (
+        <SearchBox
+          inputId="keyword"
+          value={query.keyword}
+          onValueChange={(text) => setQuery({ ...query, keyword: text })}
+          onSearch={onSearch}
+          platforms={query.platforms}
+          onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
+          live={live}
+          clientName={clientName}
+          clientExamples={props.clientExamples}
+          chipGroups={props.chipGroups}
+          pulse={props.pulse}
+          onRefreshPulse={props.onRefreshPulse}
+          autoFocus
+        />
+  )
   return (
     <section className="search-screen">
+      {hero && <hero.Hero clientName={clientName}>{hero.holdsSearch && searchBox}</hero.Hero>}
       <div className="search-intro">
         <span className="eyebrow">{clientName} · Search</span>
         {props.planned > 0 && (
@@ -49,21 +91,7 @@ export function SearchScreen(props: Props) {
         </p>
       </div>
 
-      <SearchBox
-        inputId="keyword"
-        value={query.keyword}
-        onValueChange={(text) => setQuery({ ...query, keyword: text })}
-        onSearch={onSearch}
-        platforms={query.platforms}
-        onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
-        live={live}
-        clientName={clientName}
-        clientExamples={props.clientExamples}
-        chipGroups={props.chipGroups}
-        pulse={props.pulse}
-        onRefreshPulse={props.onRefreshPulse}
-        autoFocus
-      />
+      {!hero?.holdsSearch && searchBox}
 
       {props.lastSearch && (
         <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>
