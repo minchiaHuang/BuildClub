@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Format, Video } from '../types'
 import { suggest } from '../lib/suggest'
 import type { Suggestion } from '../lib/suggest'
-import { useLiveInfo } from '../lib/useLiveInfo'
 
 interface Props {
   text: string
@@ -25,34 +24,9 @@ function useSettled(value: string, ms = 150) {
   return settled
 }
 
-// Past searches and client topics from the server; an older answer never replaces a newer one.
-function usePastSearches(text: string, live: boolean): string[] {
-  const [found, setFound] = useState<{ q: string; queries: string[] }>({ q: '', queries: [] })
-  useEffect(() => {
-    if (!live || !text.trim()) return
-    let current = true
-    fetch(`/api/suggest?q=${encodeURIComponent(text)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => current && Array.isArray(d?.queries) && setFound({ q: text, queries: d.queries }))
-      .catch(() => {})
-    return () => {
-      current = false
-    }
-  }, [text, live])
-  return live && found.q === text ? found.queries : []
-}
-
 export function Suggestions({ text, formats, videos, onRefine, onAsk, inputId, fallback = null }: Props) {
   const settled = useSettled(text)
-  const live = useLiveInfo().mode === 'live'
-  const past = usePastSearches(settled, live)
-  const items = useMemo<Suggestion[]>(() => {
-    if (!live) return suggest(settled, formats, videos)
-    const real = past.map((q) => ({ label: q, value: q, kind: 'refine' as const }))
-    // In live mode only questions come from the rules; sample-format chips are left out.
-    const rules = suggest(settled, formats, videos).filter((s) => s.kind === 'question')
-    return [...real, ...rules.filter((r) => !past.includes(r.value))]
-  }, [live, past, settled, formats, videos])
+  const items = useMemo(() => suggest(settled, formats, videos), [settled, formats, videos])
   if (items.length === 0) return <>{fallback}</>
 
   const pick = (s: Suggestion) => {
