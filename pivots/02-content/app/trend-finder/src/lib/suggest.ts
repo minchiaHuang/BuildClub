@@ -98,7 +98,6 @@ function refineSuggestions(text: string, formats: Format[], videos: Video[]): Su
     if (audience) out.push({ label: `+ for ${audience}`, value: `${base} for ${audience}`, kind: 'refine' })
   }
   if (!interp.days) out.push({ label: '+ this week', value: `${base} this week`, kind: 'refine' })
-  if (!interp.platforms) out.push({ label: '+ on TikTok', value: `${base} on TikTok`, kind: 'refine' })
   if (!interp.maxLength) out.push({ label: '+ under 30 sec', value: `${base} under 30 seconds`, kind: 'refine' })
 
   return out.slice(0, MAX)

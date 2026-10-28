@@ -10,6 +10,8 @@ interface Props {
   client: Client
   onChange: (patch: Partial<SavedIdea>) => void
   onBack: () => void
+  // Where Back goes ("search results", "approvals"…), so it returns to the screen she came from.
+  backLabel: string
   onFindMore: () => void
   onGoApprovals: () => void
   onPlanAnother: () => void
@@ -31,9 +33,13 @@ const ago = (ts?: number) => {
   return mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : `${Math.round(mins / 60)}h ago`
 }
 
-export function PlanScreen({ idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother }: Props) {
+export function PlanScreen(p: Props) {
+  const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother } = p
   // Last removed shot, so an accidental ✕ can be undone.
   const [removed, setRemoved] = useState<{ shot: Shot; index: number } | null>(null)
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle')
+  // Index of a shot just added with "+ Add a shot", so only that row plays its enter animation.
+  const [addedAt, setAddedAt] = useState<number | null>(null)
 
   const shots = idea.shots ?? format.shotList
   const editable = idea.status === 'saved' || idea.status === 'approved'
@@ -53,19 +59,39 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
       Send to {APPROVER} for approval
     </button>
   )
+  // Everything the editor needs in one paste: reference, shots, props and notes.
+  const brief = [
+    `${format.name} for ${client.name}`,
+    `Due: ${idea.dueDate}`,
+    `Reference: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
+    '',
+    'Shots:',
+    ...shots.map((s, i) => `${i + 1}. ${s.time ? `[${s.time}] ` : ''}${s.shot}${s.text ? ` (text on screen: "${s.text}")` : ''}`),
+    ...(format.props.length ? ['', `Props: ${format.props.join(', ')}`] : []),
+    ...(idea.notes ? ['', `Editor notes: ${idea.notes}`] : []),
+  ].join('\n')
+  const copyBrief = async () => {
+    try {
+      await navigator.clipboard.writeText(brief)
+      setCopied('done')
+    } catch {
+      setCopied('failed')
+    }
+  }
+
   const setShots = (next: Shot[]) => onChange({ shots: next })
   const updateShot = (i: number, patch: Partial<Shot>) => setShots(shots.map((s, j) => (j === i ? { ...s, ...patch } : s)))
 
   return (
     <section className="plan">
       <button className="link-btn" onClick={onBack}>
-        ← Back to search results
+        ← Back to {p.backLabel}
       </button>
 
       <header className="plan-head">
         <div className="plan-head-row">
           <span className="eyebrow">Plan for {client.name}</span>
-          {idea.status !== 'approved' && <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>}
+          <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
         </div>
         <h1>{format.name}</h1>
       </header>
@@ -78,9 +104,21 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
           <div>
             <strong>Sent to {APPROVER} for approval</strong>
             <span>
-              Sent {ago(idea.sentAt)}. Her answer will show up in Approvals. Meanwhile, plan the next video for{' '}
+              Sent {ago(idea.sentAt)}. Annie's answer will show up in Approvals. Meanwhile, plan the next video for{' '}
               {client.name}.
             </span>
+          </div>
+        </div>
+      )}
+
+      {idea.status === 'approved' && (
+        <div className="sent-banner" role="status">
+          <span className="sent-check" aria-hidden="true">
+            ✓
+          </span>
+          <div>
+            <strong>{APPROVER} approved this</strong>
+            <span>Film it by {idea.dueDate}, then copy the brief below for your editor.</span>
           </div>
         </div>
       )}
@@ -114,7 +152,7 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
         <div className="plan-main">
 
           <section className="block">
-            <h3>Shot suggestions</h3>
+            <h3>Shots</h3>
             <p className="small muted">
               {editable
                 ? `Based on the reference video. Edit them for ${client.name}: what you'll film and any text on screen.`
@@ -123,7 +161,7 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
             {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
             <ol className="shot-edit">
               {shots.map((s, i) => (
-                <li key={i}>
+                <li key={i} className={i === addedAt ? 'shot-added' : undefined}>
                   {editable ? (
                     <>
                       <input
@@ -155,6 +193,7 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
                         aria-label={`Remove shot ${i + 1}`}
                         onClick={() => {
                           setRemoved({ shot: s, index: i })
+                          setAddedAt(null)
                           setShots(shots.filter((_, j) => j !== i))
                         }}
                       >
@@ -178,7 +217,10 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => setShots([...shots, { time: '', shot: '' }])}
+                  onClick={() => {
+                    setAddedAt(shots.length)
+                    setShots([...shots, { time: '', shot: '' }])
+                  }}
                 >
                   + Add a shot
                 </button>
@@ -225,6 +267,30 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
             />
           </section>
 
+          {idea.status === 'approved' && (
+            <section className={`block editor-brief${copied === 'done' ? ' is-copied' : ''}`}>
+              <h3>For the editor</h3>
+              <label className="field">
+                <span className="field-label">Due</span>
+                <input id="plan-due" type="date" value={idea.dueDate} onChange={(e) => onChange({ dueDate: e.target.value })} />
+              </label>
+              {format.props.length > 0 && (
+                <div className="field">
+                  <span className="field-label">Props</span>
+                  <ul className="props-list">
+                    {format.props.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <label className="field">
+                <span className="field-label">Notes for the editor</span>
+                <textarea id="plan-editor-notes" rows={3} value={idea.notes} onChange={(e) => onChange({ notes: e.target.value })} />
+              </label>
+            </section>
+          )}
+
           {idea.status === 'rejected' && (
             <section className="block">
               <h3>{APPROVER}'s feedback</h3>
@@ -259,7 +325,7 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
               See sent ideas
             </button>
             <button className="btn btn-ghost" onClick={onBack}>
-              Back to results
+              Back to {p.backLabel}
             </button>
             <button className="btn btn-primary" onClick={onPlanAnother}>
               Plan another video
@@ -269,8 +335,37 @@ export function PlanScreen({ idea, video, format, client, onChange, onBack, onFi
 
         {idea.status === 'approved' && (
           <>
-            <span className="spacer" />
-            {sendButton}
+            <span className="plan-bar-text" role="status">
+              {copied === 'done'
+                ? 'Brief copied. Paste it to your editor with the footage.'
+                : copied === 'failed'
+                  ? "Couldn't copy. Your browser blocked the clipboard."
+                  : `Approved. Due ${idea.dueDate}.`}
+            </span>
+            <button className="btn btn-ghost" onClick={onPlanAnother}>
+              Plan another video
+            </button>
+            <button
+              className={`btn btn-primary copy-btn${copied === 'done' ? ' is-copied' : ''}`}
+              onClick={() => void copyBrief()}
+            >
+              {copied === 'done' ? (
+                <>
+                  Copied
+                  <svg className="copy-icon copy-icon-check" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3.5 8.5l3 3 6-7" />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  <svg className="copy-icon" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M5.5 5.5V3.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2" />
+                    <path d="M3.5 5.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z" />
+                  </svg>
+                  Copy brief for editor
+                </>
+              )}
+            </button>
           </>
         )}
 

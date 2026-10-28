@@ -39,7 +39,7 @@ export function buildAnswer(interp: Interpretation, results: Video[], trends: Fo
   } else if (/^(is|are|does|do|should|can|could|will)\b/.test(q)) {
     const early = lead.t.stage === 'early' || lead.t.stage === 'rising'
     lines.push(
-      `${early ? 'Yes, there is still room.' : 'Probably late.'} "${lead.t.format.name}" is ${lead.t.stage === 'one-off' ? 'a one-off' : lead.t.stage}: ${lowerFirst(stageText(lead.t))}.`,
+      `${early ? 'Yes, there is still room.' : 'Probably late.'} "${lead.t.format.name}" is ${{ early: 'early', rising: 'rising', everywhere: 'peaked', 'one-off': 'a one-off' }[lead.t.stage]}: ${lowerFirst(stageText(lead.t))}.`,
       `The newest matching video was posted ${lead.t.newestDays} days ago.`,
     )
   } else {

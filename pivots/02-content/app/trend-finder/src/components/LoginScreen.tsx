@@ -1,7 +1,39 @@
 import { AGENCY_NAME } from '../state'
+import type { ComponentType } from 'react'
+import { useUiTheme, type UiTheme } from '../lib/theme'
+import { ThemeSwitcher } from './ThemeSwitcher'
+// altitude
+
+// unify
+
+// midnight
+
+type Landing = ComponentType<{ onLogIn: () => void; onRegister: () => void }>
+// Each design registers its landing page on its own line.
+const landings: Partial<Record<UiTheme, Landing>> = {
+  // altitude
+
+  // unify
+
+  // midnight
+}
 
 // MOCK sign-in for the demo. No account or password is checked or stored.
 export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
+  const ui = useUiTheme()
+  // Designs with a landing page (hero + what it does) show it, with Log in / Register; the rest get the plain sign-in card.
+  // The design switcher lives on the public website only; the dashboard keeps whichever design was picked here.
+  const Landing = landings[ui]
+  const page = Landing ? <Landing onLogIn={onSignIn} onRegister={onSignIn} /> : <BaseLogin onSignIn={onSignIn} />
+  return (
+    <>
+      {page}
+      <ThemeSwitcher />
+    </>
+  )
+}
+
+function BaseLogin({ onSignIn }: { onSignIn: () => void }) {
   return (
     <div className="login">
       <div className="login-card">
@@ -13,7 +45,7 @@ export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
         </div>
         <div className="login-copy">
           <h1>Find what's working for every client</h1>
-          <p className="muted">Trending video research, approvals and recreate plans for social media agencies.</p>
+          <p className="muted">Trending video research, approvals and filming plans for social media agencies.</p>
         </div>
         <form
           className="login-form"
@@ -22,14 +54,6 @@ export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
             onSignIn()
           }}
         >
-          <label className="field">
-            <span className="field-label">Work email</span>
-            <input id="login-email" type="email" placeholder="you@agency.com" disabled />
-          </label>
-          <label className="field">
-            <span className="field-label">Password</span>
-            <input id="login-password" type="password" placeholder="••••••••" disabled />
-          </label>
           <button type="submit" className="btn btn-primary login-btn">
             Continue as demo agency
           </button>

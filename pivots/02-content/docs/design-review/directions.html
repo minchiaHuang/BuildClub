@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trend Finder Directions</title>
+<style>
+:root{--ink:#16161a;--mute:#6b6b73;--line:#e3e1dc;--bg:#fbfaf7;--card:#fff;--hl:#f2d33b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#eceae4;--mute:#a09f9a;--line:#2c2c30;--bg:#141416;--card:#1c1c1f}}
+:root[data-theme="dark"]{--ink:#eceae4;--mute:#a09f9a;--line:#2c2c30;--bg:#141416;--card:#1c1c1f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Inter","Helvetica Neue",Arial,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px 80px}
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;gap:24px;align-items:center;padding-bottom:0;flex-wrap:wrap}
+header.top h1{font-size:15px;margin:14px 0}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{all:unset;cursor:pointer;padding:14px 12px;font-weight:600;color:var(--mute);border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+.tabs button:focus-visible{outline:2px solid #2a6;outline-offset:-2px}
+h2{font-size:32px;letter-spacing:-.02em;margin:56px 0 8px;line-height:1.1}
+h3{font-size:19px;margin:36px 0 10px}
+p.lede{max-width:70ch;color:var(--mute);margin:0 0 16px}
+.note{font-size:13px;color:var(--mute)}
+.panel[hidden]{display:none}
+.frame{border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:10px 0 6px;background:#fff}
+.frame-bar{display:flex;gap:6px;padding:8px 10px;background:#e9e7e2;border-bottom:1px solid #d6d3cc}
+.frame-bar i{width:9px;height:9px;border-radius:50%;background:#c9c5bd}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.ann{counter-reset:a;list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}
+.ann li{counter-increment:a;padding-left:30px;position:relative;font-size:14px}
+.ann li::before{content:counter(a);position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;display:grid;place-items:center}
+.pin{position:absolute;width:22px;height:22px;border-radius:50%;background:#e2401c;color:#fff;font:700 11px/22px sans-serif;text-align:center;z-index:5;box-shadow:0 0 0 2px #fff}
+img.shot{width:100%;display:block;border:1px solid var(--line);border-radius:6px}
+figure{margin:0}figcaption{font-size:13px;color:var(--mute);margin-top:6px}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.mood{border:1px solid var(--line);background:var(--card);border-radius:6px;overflow:hidden}
+.mood .vis{height:150px;position:relative}
+.mood .txt{padding:12px 14px;font-size:13px}
+.mood b{display:block;font-size:14px;margin-bottom:2px}
+.sb{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.sb .step{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:10px}
+.sb .step .vis{height:150px;border-radius:4px;position:relative;overflow:hidden;background:#eee}
+.sb .step p{font-size:13px;margin:8px 0 0}
+.sb .step b{font-size:12px;color:var(--mute);display:block}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+.sw{display:inline-block;width:18px;height:18px;border-radius:3px;vertical-align:middle;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
+/* stand-in covers: honest about sample data */
+.cv{position:relative;overflow:hidden;background:linear-gradient(170deg,hsl(var(--h) 45% 62%),hsl(calc(var(--h) + 20) 40% 30%));color:#fff}
+.cv::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 40% at 40% 35%,rgba(255,255,255,.28),transparent 70%)}
+.cv .hk{position:absolute;left:10px;right:10px;bottom:10px;font-weight:600;font-size:13px;line-height:1.25;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.cv .len{position:absolute;right:8px;top:8px;font:600 11px/1 sans-serif;background:rgba(0,0,0,.55);padding:3px 5px;border-radius:3px;z-index:2}
+
+/* ================= V1 CONTACT SHEET ================= */
+.v1{background:#111;color:#e8e6e1;font-family:"Helvetica Neue",Inter,Arial,sans-serif}
+.v1 .nav{display:flex;align-items:center;gap:28px;padding:18px 28px;font-size:14px}
+.v1 .logo{font-weight:700;letter-spacing:-.01em;color:#fff}
+.v1 .nav .t{color:#7d7b76}.v1 .nav .t.on{color:#fff}
+.v1 .q{flex:1;max-width:460px;margin:0 auto;background:#1e1e1e;border-radius:10px;padding:10px 14px;color:#9a9893;font-size:14px}
+.v1 .q b{color:#fff;font-weight:500}
+.v1 .client{color:#9a9893;font-size:13px}
+.v1 .sub{display:flex;gap:22px;padding:6px 28px 18px;font-size:13px;color:#7d7b76;align-items:baseline}
+.v1 .sub .on{color:#fff}
+.v1 .sub .sort{margin-left:auto}
+.v1 .mason{columns:5 180px;column-gap:28px;padding:0 28px 28px}
+.v1 .tile{break-inside:avoid;margin-bottom:28px;position:relative}
+.v1 .tile .cv{border-radius:0}
+.v1 .tile .x{position:absolute;left:10px;top:8px;font:600 22px/1 "Helvetica Neue",sans-serif;font-variant-numeric:tabular-nums;z-index:3;letter-spacing:-.02em}
+.v1 .tile .meta{display:none}
+.v1 .tile.hover .cv{outline:1px solid #fff;outline-offset:4px}
+.v1 .tile.hover .hk{display:none}.v1 .tile.hover .meta{display:block;position:absolute;inset:auto 0 0 0;z-index:4;background:linear-gradient(transparent,rgba(0,0,0,.85) 35%);padding:40px 10px 10px;font-size:12px;color:#ddd}
+.v1 .tile.hover .meta .r{display:flex;justify-content:space-between;margin-top:6px}
+.v1 .tile.hover .meta .sv{background:#fff;color:#111;padding:4px 10px;border-radius:999px;font-weight:600}
+.v1 .group{padding:0 28px 6px;display:flex;gap:14px;align-items:baseline;font-size:13px;color:#8b8984}
+.v1 .group h4{margin:0;font-size:18px;color:#fff;font-weight:500}
+.v1 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.v1-hero{padding:90px 28px 0;display:grid;gap:28px}
+.v1-hero h1{font-size:clamp(40px,6vw,84px);line-height:.98;letter-spacing:-.035em;margin:0;font-weight:500;max-width:13ch;color:#fff}
+.v1-hero p{color:#9a9893;max-width:46ch;margin:0;font-size:17px}
+.v1-hero .cta{display:flex;gap:18px;align-items:center}
+.v1-hero .cta a{background:#fff;color:#111;padding:11px 20px;border-radius:999px;font-weight:600;text-decoration:none;font-size:14px}
+.v1-hero .cta span{color:#9a9893;font-size:13px}
+.v1-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:20px;padding:56px 28px 40px;align-items:end}
+.v1-strip .cv{aspect-ratio:9/16}
+.v1-strip .lab{font:500 13px/1.3 sans-serif;color:#8b8984;margin-top:8px;font-variant-numeric:tabular-nums}
+.v1-strip .lab b{color:#fff;font-size:20px;display:block;font-weight:500}
+
+/* ================= V2 THE CHART ================= */
+.v2{background:#f3eee2;color:#1b1a17;font-family:-apple-system,Inter,sans-serif}
+.v2 .serif,.v2 h1,.v2 h4{font-family:"Sentient","Iowan Old Style","Georgia",serif;font-weight:400}
+.v2 .nav{display:flex;align-items:center;gap:26px;padding:16px 32px;border-bottom:1px solid #1b1a17;font-size:14px}
+.v2 .nav .logo{font-family:Georgia,serif;font-size:22px}
+.v2 .nav .t{color:#6d685c}.v2 .nav .t.on{color:#1b1a17;text-decoration:underline;text-underline-offset:6px}
+.v2 .nav .client{margin-left:auto;font-size:13px}
+.v2 .issue{display:grid;grid-template-columns:1fr auto;padding:22px 32px 14px;border-bottom:1px solid #cfc7b4;align-items:end;gap:12px}
+.v2 .issue h1{font-size:44px;margin:0;letter-spacing:-.02em;line-height:1}
+.v2 .issue h1 mark{background:var(--hl);padding:0 .1em}
+.v2 .issue .f{font-size:13px;color:#6d685c;text-align:right}
+.v2 .row{display:grid;grid-template-columns:64px 230px 1fr;gap:24px;padding:22px 32px;border-bottom:1px solid #cfc7b4;align-items:start}
+.v2 .rank{font-family:Georgia,serif;font-size:54px;line-height:.9;font-variant-numeric:tabular-nums}
+.v2 .row h4{font-size:28px;margin:0 0 6px;line-height:1.1;letter-spacing:-.01em}
+.v2 .stage{font-size:13px;font-weight:600;text-transform:none}
+.v2 .why{font-size:14px;color:#3d3a33;max-width:40ch;margin:8px 0 12px}
+.v2 .acts a{font-size:13px;font-weight:600;color:#1b1a17;margin-right:14px}
+.v2 .reel{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.v2 .reel .cv{aspect-ratio:9/14;border-radius:2px}
+.v2 .reel .n{font-size:12px;margin-top:5px;font-variant-numeric:tabular-nums;color:#6d685c}
+.v2 .reel .n b{color:#1b1a17;font-size:16px}
+.v2 .reel .hover .cv{outline:2px solid #1b1a17;outline-offset:2px}
+.v2-hero{padding:56px 32px 0;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:end;border-bottom:1px solid #1b1a17}
+.v2-hero h1{font-size:clamp(44px,6vw,88px);line-height:.95;margin:0;letter-spacing:-.025em}
+.v2-hero h1 mark{background:var(--hl);padding:0 .08em}
+.v2-hero p{font-size:17px;max-width:42ch;color:#3d3a33}
+.v2-hero .cta a{display:inline-block;background:#1b1a17;color:#f3eee2;padding:12px 22px;font-weight:600;text-decoration:none;font-size:14px;margin-right:14px}
+.v2-hero table td{border-color:#cfc7b4;font-size:14px}
+.v2-hero table td:first-child{font-family:Georgia,serif;font-size:26px;width:40px}
+.v2-hero table td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+
+/* ================= V3 LIGHTBOX ================= */
+.v3{background:#fff;color:#141414;font-family:-apple-system,Inter,sans-serif}
+.v3 .nav{display:flex;align-items:center;gap:16px;padding:12px 20px}
+.v3 .logo{width:30px;height:30px;border-radius:8px;background:#1f6f5c;color:#fff;display:grid;place-items:center;font-weight:700}
+.v3 .q{flex:1;background:#f1f1f1;border-radius:24px;padding:11px 18px;font-size:15px;color:#141414}
+.v3 .q span{color:#767676}
+.v3 .client{font-size:13px;font-weight:600;padding:8px 12px;border-radius:20px;background:#f1f1f1}
+.v3 .cats{display:flex;gap:22px;padding:6px 20px 12px;font-size:15px;font-weight:600;color:#767676;overflow:auto}
+.v3 .cats .on{color:#141414;box-shadow:inset 0 -3px 0 #141414;padding-bottom:6px}
+.v3 .body{display:grid;grid-template-columns:1fr 250px;gap:16px;padding:0 20px 20px}
+.v3 .mason{columns:4 160px;column-gap:14px}
+.v3 .tile{break-inside:avoid;margin-bottom:14px;position:relative}
+.v3 .tile .cv{border-radius:14px}
+.v3 .tile .cap{display:flex;justify-content:space-between;font-size:12px;padding:6px 4px 0;color:#555}
+.v3 .tile .cap b{color:#141414;font-variant-numeric:tabular-nums}
+.v3 .tile .st{position:absolute;left:8px;top:8px;z-index:3;background:#fff;color:#141414;font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px}
+.v3 .tile.hover .cv::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:2}
+.v3 .tile .hv{display:none}.v3 .tile.hover .hk{display:none}
+.v3 .tile.hover .hv{display:block}
+.v3 .hv .save{position:absolute;right:8px;top:8px;z-index:4;background:#e2401c;color:#fff;font-weight:700;font-size:13px;padding:8px 14px;border-radius:20px}
+.v3 .hv .cmp{position:absolute;left:10px;right:10px;bottom:44px;z-index:4;color:#fff;font-size:12px}
+.v3 .hv .bar{height:4px;background:rgba(255,255,255,.35);border-radius:2px;margin-top:4px}
+.v3 .hv .bar i{display:block;height:100%;width:1.2%;background:#fff;border-radius:2px}
+.v3 .hv .more{position:absolute;right:8px;bottom:8px;z-index:4;background:#fff;color:#141414;border-radius:50%;width:30px;height:30px;display:grid;place-items:center;font-weight:700}
+.v3 .tray{border-left:1px solid #eee;padding-left:16px;font-size:13px}
+.v3 .tray h5{font-size:15px;margin:4px 0 2px}
+.v3 .tray .it{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;margin:10px 0}
+.v3 .tray .it .cv{height:64px;border-radius:8px}
+.v3 .tray a{display:block;text-align:center;background:#1f6f5c;color:#fff;padding:10px;border-radius:22px;font-weight:600;text-decoration:none;margin-top:14px}
+.v3-hero{display:grid;grid-template-columns:1fr 1.1fr;gap:32px;align-items:center;padding:48px 32px}
+.v3-hero h1{font-size:clamp(38px,5vw,64px);line-height:1.02;letter-spacing:-.03em;margin:0 0 14px}
+.v3-hero p{font-size:17px;color:#555;max-width:40ch}
+.v3-hero .cta a{display:inline-block;background:#1f6f5c;color:#fff;padding:12px 22px;border-radius:24px;font-weight:600;text-decoration:none;font-size:14px}
+.v3-hero .m{columns:3;column-gap:12px}
+.v3-hero .m .cv{border-radius:14px;margin-bottom:12px;break-inside:avoid}
+.v3-hero .m .tag{position:absolute;left:8px;top:8px;background:#fff;color:#141414;z-index:3;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px}
+
+.pos{position:relative}
+@media (max-width:760px){
+ .v2 .row{grid-template-columns:40px 1fr}.v2 .row .reel{grid-column:1/-1}
+ .v2-hero,.v3-hero{grid-template-columns:1fr}.v3 .body{grid-template-columns:1fr}.v3 .tray{border:0;padding:0}
+ .v1-strip{grid-template-columns:repeat(3,1fr)}.v1 .q{display:none}
+ .v2 .rank{font-size:34px}
+}
+@media (prefers-reduced-motion:no-preference){.tabs button{transition:color .15s}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+ <h1>Trend Finder: three directions</h1>
+ <div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-p="v1">Version 1: Contact Sheet</button>
+  <button role="tab" aria-selected="false" data-p="v2">Version 2: The Chart</button>
+  <button role="tab" aria-selected="false" data-p="v3">Version 3: Lightbox</button>
+  <button role="tab" aria-selected="false" data-p="shared">Audit, moodboard, storyboards</button>
+ </div>
+</div></header>
+
+<main class="wrap">
+<p class="note" style="margin-top:16px">Design review, 28 Oct 2026. Phases 1 to 3 only; the app is unchanged. Covers are coloured stand-ins because the sample data has none; live TikTok searches already return real covers (<code>Thumb.tsx</code>), which these layouts are built for. Every number shown exists in the data: views, usual (median) views, followers, outlier multiple, stage, account count, shares and saves, days ago, length.</p>
+
+<!-- ================= V1 ================= -->
+<section class="panel" id="v1">
+<h2>Version 1: Contact Sheet</h2>
+<p class="lede"><b>Pitch.</b> The interface disappears and the covers become the page. A near-black gallery with square corners, wide gutters and no card chrome, in the spirit of a photographer's contact sheet (and the founder's Cosmos reference). Each cover carries one number, its outlier multiple, set like a frame number. Everything else waits for hover or focus. It is the strongest answer to "make the content the hero" and the most radical change from today.</p>
+
+<h3>Landing hero</h3>
+<div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+<div class="v1 pos">
+ <div class="nav"><span class="logo">Trend Finder</span><span class="t">How it works</span><span class="t">Pricing</span><span style="margin-left:auto" class="t on">Log in</span></div>
+ <div class="v1-hero">
+  <h1>The TikToks beating their own numbers.</h1>
+  <p>Every cover below got far more views than its creator usually does. Find the ones worth remaking for your clients.</p>
+  <div class="cta"><a href="#">Start with a search</a><span>TikTok only for now. Instagram is coming.</span></div>
+ </div>
+ <div class="v1-strip" id="v1strip"></div>
+ <span class="pin" style="left:24px;top:150px">1</span><span class="pin" style="left:24px;top:330px">2</span>
+</div></div>
+<ol class="ann"><li>No gradient text, no stickers, no glow. One weight-500 headline, tight tracking, white on #111.</li><li>The proof is the product's real output: a row of covers with their multiples. No fake totals, no logos for unsupported platforms.</li></ol>
+
+<h3>Results page (1440)</h3>
+<div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+<div class="v1 pos">
+ <div class="nav"><span class="logo">Trend Finder</span><span class="t on">Discover</span><span class="t">Saved 8</span><span class="t">Plans 5</span><span class="t">Approvals 2</span><div class="q">Search <b>tofu recipe</b></div><span class="client">For Evergreen Foods ▾</span></div>
+ <div class="sub"><span class="on">All 13</span><span>Rising 5</span><span>Early 3</span><span>One-off 4</span><span>Peaked 1</span><span class="sort">Sort: biggest multiple ▾</span></div>
+ <div class="group"><h4>Crispy tofu ASMR</h4><span><i class="dot" style="background:#f0a23a"></i>Rising · 5 accounts, still new posts</span></div>
+ <div class="mason" id="v1grid"></div>
+ <span class="pin" style="left:240px;top:60px">1</span><span class="pin" style="left:90px;top:104px">2</span><span class="pin" style="left:20px;top:142px">3</span><span class="pin" style="left:520px;top:200px">4</span>
+</div></div>
+<ol class="ann"><li>Navigation is four text tabs in a top bar; the 264px sidebar is gone. The client becomes a quiet "For Evergreen Foods" control.</li><li>Filters are the trend stages, as plain text with counts. Active = white; the rest grey. No chips.</li><li>Grid is grouped by pattern: the pattern name and its stage answer "what" and "why" before the posts.</li><li>Hover or keyboard focus: a 1px white outline offset 4px, then a caption fades up with usual vs this, handle, age, and Save. Touch shows the caption permanently in a compact form.</li></ol>
+
+<h3>Design-system sheet</h3>
+<table>
+<tr><th>Type</th><td>Helvetica Neue / Inter. 84 hero / 32 page / 18 pattern name / 22 multiple (tabular) / 13 meta. Weight 500 for display, 400 body; no uppercase labels.</td></tr>
+<tr><th>Colour</th><td><span class="sw" style="background:#111"></span>#111 page <span class="sw" style="background:#1e1e1e"></span>#1E1E1E field <span class="sw" style="background:#e8e6e1"></span>#E8E6E1 text <span class="sw" style="background:#7d7b76"></span>#7D7B76 muted. Stage dots only: <span class="sw" style="background:#7fb7ff"></span>early <span class="sw" style="background:#f0a23a"></span>rising <span class="sw" style="background:#9a9893"></span>peaked. No brand accent: white is the accent.</td></tr>
+<tr><th>Spacing</th><td>4px base; gutters 28px desktop, 12px mobile; 28px page margin.</td></tr>
+<tr><th>Shape</th><td>Covers 0 radius. Only the search field (10px) and the single white CTA (pill) are rounded.</td></tr>
+<tr><th>States</th><td>Rest: cover + multiple. Hover/focus: outline + caption, 150ms fade. Selected (compare): white outline stays + tick. Saved: small filled star bottom-left. Loading: flat #1a1a1a blocks at real aspect ratios, no shimmer sweep. Empty: one sentence + three starter searches as text links.</td></tr>
+</table>
+<p class="note">Risk: dark-only gallery suits browsing but Annie's review on a phone may want a light reading mode. The drawer would need a light "paper" variant.</p>
+</section>
+
+<!-- ================= V2 ================= -->
+<section class="panel" id="v2" hidden>
+<h2>Version 2: The Chart</h2>
+<p class="lede"><b>Pitch.</b> Trend Finder as a weekly music chart for content. Patterns are ranked like singles: big numerals, a serif title, the stage written like "re-entry" or "climbing", and a reel of the posts that prove it. It is editorial and warm, builds on the Altitude yellow and Sentient serif the founder already approved, and it is the best direction for answering "why is it trending?" and "is it worth copying?" at a glance, because the pattern, not the single video, is the unit.</p>
+
+<h3>Landing hero</h3>
+<div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+<div class="v2 pos">
+ <div class="nav"><span class="logo">Trend Finder</span><span class="t">This week</span><span class="t">How it works</span><span class="client">Log in · <b>Register</b></span></div>
+ <div class="v2-hero">
+  <div><h1>This week's <mark>breakout</mark> TikToks, ranked.</h1>
+  <p>We compare every video with its creator's usual views. The ones that beat it by 10× or more make the chart. Pick one and plan a version for your client.</p>
+  <p class="cta"><a href="#">See the chart</a><span style="font-size:13px;color:#6d685c">TikTok only for now.</span></p></div>
+  <table><tr><td>1</td><td><b>Crispy tofu in 5 min</b><br><span class="note">@smallkitchen.sample · 9 days</span></td><td>267×</td></tr>
+  <tr><td>2</td><td><b>Student budget crispy tofu</b><br><span class="note">@uni.eats.sample · 3 days</span></td><td>153×</td></tr>
+  <tr><td>3</td><td><b>Nobody guessed it was tofu</b><br><span class="note">@cbd.foodie.sample</span></td><td>62×</td></tr></table>
+ </div>
+ <span class="pin" style="left:10px;top:100px">1</span><span class="pin" style="right:12px;top:100px">2</span>
+</div></div>
+<ol class="ann"><li>Serif display headline with a single highlighter word (the founder's yellow), not three underlined accent words.</li><li>The hero is a real chart excerpt with sample numbers labelled as sample. Ranking explains the product without a feature list.</li></ol>
+
+<h3>Results page (1440)</h3>
+<div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+<div class="v2 pos">
+ <div class="nav"><span class="logo">Trend Finder</span><span class="t on">Chart</span><span class="t">Saved</span><span class="t">Plans</span><span class="t">Approvals</span><span class="client">Evergreen Foods ▾</span></div>
+ <div class="issue"><h1>"tofu recipe": <mark>5 patterns</mark>, 13 videos</h1><div class="f">Last 30 days · TikTok · ranked by best multiple<br>Show: <u>patterns</u> · all videos</div></div>
+ <div id="v2rows"></div>
+ <span class="pin" style="left:14px;top:120px">1</span><span class="pin" style="left:330px;top:120px">2</span><span class="pin" style="right:14px;top:150px">3</span>
+</div></div>
+<ol class="ann"><li>Rank numerals in serif, rows divided by hairlines: no cards at all. Density comes from the ruled rhythm, like a print chart.</li><li>Each pattern row says the stage in words with an arrow (↑ rising), the account count, and a one-line "why" drawn from the existing breakdown copy.</li><li>The reel shows up to four proof posts with their multiples. Click a post for the detail view; "Plan this" acts on the pattern's best post.</li></ol>
+
+<h3>Design-system sheet</h3>
+<table>
+<tr><th>Type</th><td>Sentient (Georgia fallback) for display, ranks and pattern names: 88 / 44 / 28. Inter for UI: 15 body / 13 meta. Numbers in tabular figures; multiples bold Inter 16.</td></tr>
+<tr><th>Colour</th><td><span class="sw" style="background:#f3eee2"></span>#F3EEE2 paper <span class="sw" style="background:#1b1a17"></span>#1B1A17 ink <span class="sw" style="background:#cfc7b4"></span>#CFC7B4 rule <span class="sw" style="background:#f2d33b"></span>#F2D33B highlighter (one use per screen). Stage colour lives in the text: <span style="color:#1a7f4b;font-weight:600">↑ rising</span>, <span style="color:#2f5fb3;font-weight:600">● early</span>, <span style="color:#8a5a00;font-weight:600">→ peaked</span>.</td></tr>
+<tr><th>Spacing</th><td>8px base; 22px row padding; 32px page margin; reels 10px gap.</td></tr>
+<tr><th>Shape</th><td>Square buttons (0 radius), 2px on covers. Hairline rules replace containers.</td></tr>
+<tr><th>States</th><td>Row hover: paper darkens to #ece6d6. Post hover/focus: 2px ink outline + play preview (muted, after 400ms). Saved: highlighter bar under the post multiple. Loading: ruled rows with grey numerals. Empty: "No pattern charted for this search yet" + nearby searches.</td></tr>
+</table>
+<p class="note">Risk: ranking implies authority. We must say what the rank is (best multiple in this search) and never imply a forecast.</p>
+</section>
+
+<!-- ================= V3 ================= -->
+<section class="panel" id="v3" hidden>
+<h2>Version 3: Lightbox</h2>
+<p class="lede"><b>Pitch.</b> A bright working table for picking content, built on the Pinterest interaction the founder liked, not its look. Variable-height masonry, plain text tabs, and hover that reveals a red Save and the "usual → this" bar. A persistent plan tray on the right turns saving into the start of a plan, so Discover → Save → Adapt happens on one screen. It is the most familiar and lowest-risk direction, and keeps today's green accent.</p>
+
+<h3>Landing hero</h3>
+<div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+<div class="v3 pos">
+ <div class="nav"><div class="logo">↗</div><b>Trend Finder</b><span style="margin-left:auto;font-weight:600;font-size:14px">Log in</span></div>
+ <div class="v3-hero">
+  <div><h1>Save the TikToks worth remaking. Plan them for every client.</h1>
+  <p>Search a topic, see which videos beat their creator's usual views, drop the best into a plan your client approves from their phone.</p>
+  <p class="cta"><a href="#">Try a search</a></p><p class="note">TikTok only for now. Instagram coming soon.</p></div>
+  <div class="m" id="v3hero"></div>
+ </div>
+ <span class="pin" style="right:20px;top:60px">1</span>
+</div></div>
+<ol class="ann"><li>A live-looking masonry of covers tagged with their multiples. Rounded 14px tiles, but no shadows, glows or floating stickers.</li></ol>
+
+<h3>Results page (1440)</h3>
+<div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+<div class="v3 pos">
+ <div class="nav"><div class="logo">↗</div><div class="q">tofu recipe <span>· 13 videos · last 30 days</span></div><span class="client">Evergreen Foods ▾</span></div>
+ <div class="cats"><span class="on">All</span><span>Crispy ASMR</span><span>Blind taste test</span><span>3-ingredient dessert</span><span>"Buying it wrong"</span><span>Press hack</span></div>
+ <div class="body"><div class="mason" id="v3grid"></div>
+ <aside class="tray"><h5>Plan for Evergreen Foods</h5><span class="note">3 saved this session · 7 of 12 planned this month</span><div id="v3tray"></div><a href="#">Turn into a plan</a></aside></div>
+ <span class="pin" style="left:150px;top:80px">1</span><span class="pin" style="left:30px;top:180px">2</span><span class="pin" style="right:240px;top:200px">3</span>
+</div></div>
+<ol class="ann"><li>Patterns become the category tabs (Pinterest-style underline). "All" keeps a flat browse.</li><li>Tile at rest: cover + stage tag + a one-line caption (multiple, handle). Hover/focus: dim, Save, the "usual → this" bar, and a ••• menu (open breakdown, copy link, not relevant).</li><li>The tray is always visible on desktop and a bottom sheet on mobile, so saves have a destination and progress toward the monthly target is visible.</li></ol>
+
+<h3>Design-system sheet</h3>
+<table>
+<tr><th>Type</th><td>Inter throughout: 64 hero / 24 page / 15 tabs (600) / 13 caption / 12 tag. Multiples bold tabular.</td></tr>
+<tr><th>Colour</th><td><span class="sw" style="background:#fff"></span>#FFF page <span class="sw" style="background:#f1f1f1"></span>#F1F1F1 fields <span class="sw" style="background:#141414"></span>#141414 ink <span class="sw" style="background:#1f6f5c"></span>#1F6F5C primary (existing token) <span class="sw" style="background:#e2401c"></span>#E2401C Save only.</td></tr>
+<tr><th>Spacing</th><td>14px masonry gutter, 20px page margin, 250px tray.</td></tr>
+<tr><th>Shape</th><td>Tiles 14px, fields and buttons pill. That is the full radius set: two values.</td></tr>
+<tr><th>States</th><td>Hover: 35% dim + overlay controls (120ms). Focus-visible: 3px ink ring, same controls. Saved: Save becomes "Saved" in ink, tile flies to the tray (reduced motion: no flight, tray count increments). Loading: grey rounded blocks at random heights. Error: inline row above grid with retry.</td></tr>
+</table>
+<p class="note">Risk: closest to a known product, so it needs its own details (the plan tray, the usual → this bar) to avoid reading as a clone.</p>
+</section>
+
+<!-- ================= SHARED ================= -->
+<section class="panel" id="shared" hidden>
+<h2>Before and after</h2>
+<p class="lede">Current screens captured 28 Oct 2026 at 1440px (all screenshots in <code>img/</code>). Full findings in <code>audit.md</code>.</p>
+<div class="cols">
+ <figure><img class="shot" src="img/midnight-1440-1-landing.png" alt="Midnight landing"><figcaption><b>Before, Midnight landing.</b> Gradient text, glossy floating stickers over the headline, glowing CTA. After: Version 1 hero (covers as proof).</figcaption></figure>
+ <figure><img class="shot" src="img/unify-1440-4-results.png" alt="Unify results"><figcaption><b>Before, Unify results.</b> First video starts ~470px down under a repeated search card, uppercase labels and pills. After: Version 2 opens on the ranked patterns.</figcaption></figure>
+ <figure><img class="shot" src="img/altitude-1440-3-search.png" alt="Altitude search"><figcaption><b>Before, Altitude search.</b> Cloud card, four unsupported platform logos, split headline. After: Version 3 single query bar.</figcaption></figure>
+ <figure><img class="shot" src="img/midnight-1440-5-drawer.png" alt="Midnight drawer"><figcaption><b>Before, video drawer.</b> Three nested stat cards. After: one typographic block next to a large cover (storyboard 3).</figcaption></figure>
+</div>
+
+<h2>Moodboard (annotated)</h2>
+<p class="lede">Described and redrawn as schematics rather than copied screenshots. Sources accessed 28 Oct 2026; observations are from the founder's reference screenshots and general product knowledge, not a fresh site audit, so details may have changed.</p>
+<div class="board">
+ <div class="mood"><div class="vis" style="background:#111;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px"><div style="background:#5a4b3c"></div><div style="background:#8a7660;height:70%"></div><div style="background:#3d4a52"></div><div style="background:#a99b85;height:80%"></div></div><div class="txt"><b>Cosmos (cosmos.so)</b>Principle: imagery is the interface. No captions or metrics at rest; wide gutters create calm. Used in Version 1.</div></div>
+ <div class="mood"><div class="vis" style="background:#fff;padding:12px;columns:4;column-gap:6px"><div style="background:#d9c4b0;height:60px;border-radius:8px;margin-bottom:6px"></div><div style="background:#b7c9d6;height:90px;border-radius:8px;margin-bottom:6px"></div><div style="background:#c8d6b7;height:50px;border-radius:8px;margin-bottom:6px"></div><div style="background:#e1c6c6;height:100px;border-radius:8px"></div></div><div class="txt"><b>Pinterest (pinterest.com)</b>Principle: variable-height masonry, text tabs, hover reveals Save and a ••• menu. The founder likes the interaction, not the look. Used in Version 3.</div></div>
+ <div class="mood"><div class="vis" style="background:#f3eee2;padding:12px;font-family:Georgia,serif"><div style="font-size:30px;border-bottom:1px solid #000">1 &nbsp;Song title</div><div style="font-size:30px;border-bottom:1px solid #000">2 &nbsp;Song title</div><div style="font-size:30px">3 &nbsp;Song title</div></div><div class="txt"><b>Music charts (Billboard Hot 100, print charts)</b>Principle: rank + movement + weeks on chart is a tiny, trusted language for "what's trending and why". Used in Version 2.</div></div>
+ <div class="mood"><div class="vis" style="background:#fafafa;padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:start"><div style="background:#ccc;height:40px"></div><div style="background:#bbb;height:40px"></div><div style="background:#ddd;height:40px"></div><div style="background:#aaa;height:40px"></div><div style="background:#ccc;height:40px"></div><div style="background:#bbb;height:40px;outline:2px solid #e2401c"></div></div><div class="txt"><b>Are.na (are.na)</b>Principle: blocks collected into channels; saving is the core verb and it is quiet. Informs the plan tray and collections.</div></div>
+ <div class="mood"><div class="vis" style="background:#000;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:10px;align-content:center"><div style="aspect-ratio:9/16;background:#333"></div><div style="aspect-ratio:9/16;background:#444"></div><div style="aspect-ratio:9/16;background:#555;outline:2px solid #fff"></div><div style="aspect-ratio:9/16;background:#444"></div><div style="aspect-ratio:9/16;background:#333"></div></div><div class="txt"><b>Video libraries (TikTok profile grid, YouTube Shorts shelf)</b>Principle: 9:16 covers with one overlaid count, muted autoplay on hover. Users already read a number on a cover as "performance".</div></div>
+ <div class="mood"><div class="vis" style="background:#fff;padding:14px;font-family:Georgia,serif"><div style="font-size:26px;line-height:1">Headline set<br>in a real serif</div><div style="border-top:1px solid #000;margin-top:10px;font:12px sans-serif;padding-top:6px">Byline · section · date</div></div><div class="txt"><b>Editorial sites (e.g. The Pudding, Bloomberg Businessweek features)</b>Principle: hierarchy from type and rules instead of boxes. Used in Version 2.</div></div>
+</div>
+
+<h2>Interaction storyboards</h2>
+<h3>1. Hover / preview a video</h3>
+<div class="sb" id="sb1"></div>
+<h3>2. Filter by stage or pattern</h3>
+<div class="sb" id="sb2"></div>
+<h3>3. Open detail</h3>
+<div class="sb" id="sb3"></div>
+<h3>4. Save → plan</h3>
+<div class="sb" id="sb4"></div>
+
+<h3>Interaction rules (all versions)</h3>
+<table>
+<tr><th>Preview</th><td>Hover or focus for 400ms starts muted playback of live videos (cover zoom 1.02 for sample data). Leaving stops it. Never autoplay on scroll. Reduced motion: no zoom, no autoplay; a play icon appears instead.</td></tr>
+<tr><th>Keyboard</th><td>Tab moves between tiles in reading order; Enter opens detail; S saves; J/K next/previous inside detail; Esc closes and returns focus to the tile (existing <code>useShortcuts.ts</code>). Focus ring always visible, 3px, never removed on mouse use for the grid.</td></tr>
+<tr><th>Filtering</th><td>Stage/pattern tabs filter in place, update the count, keep scroll at top of grid, and write to the URL so Back works. Empty filter result says which filter and offers "Show all".</td></tr>
+<tr><th>Detail</th><td>Desktop: right-side panel 560px with the grid still visible and dimmed, so J/K browsing feels continuous. Mobile: full screen, swipe down to close.</td></tr>
+<tr><th>Save</th><td>Optimistic, with undo for 5s. Saved count in nav updates. In V3 the tile animates to the tray (200ms; skipped under reduced motion).</td></tr>
+<tr><th>Loading / error</th><td>Skeletons match final layout (masonry blocks or ruled rows). Live search errors show inline above the grid with the query kept and a retry button.</td></tr>
+<tr><th>Responsive</th><td>390px: 2-column grid, filters scroll horizontally, query bar in header, multiple stays on cover, caption always on (no hover on touch).</td></tr>
+</table>
+
+<h2>Recommendation</h2>
+<p class="lede"><b>Version 2 (The Chart) for results and landing, borrowing Version 1's cover treatment</b> (one multiple on the cover, metrics on hover) for the "All videos" view and Version 3's plan tray as the save destination. The Chart is the only direction whose structure answers "why is it trending?" without opening anything, it continues the Altitude yellow and serif the founder chose, and it has an identity no SaaS template has. Version 1 is the purest "content as hero" if the founder prefers a gallery feel; Version 3 is the safe fallback.</p>
+</section>
+</main>
+
+<script>
+const V=[["Crispy tofu in 5 min","267×",32,"9k → 2.4M","@smallkitchen.sample","9d","0:13",1.75],["Student budget crispy tofu","153×",40,"4k → 610k","@uni.eats.sample","3d","0:15",1.5],["Nobody guessed it was tofu","62×",200,"12k → 740k","@cbd.foodie.sample","5d","0:22",1.3],["3-ingredient tofu mousse","41×",330,"6k → 246k","@sweetplant.sample","12d","0:18",1.78],["Is it chicken? Street test","28×",210,"8k → 224k","@tastetest.sample","6d","0:31",1.2],["You are buying tofu wrong","19×",140,"20k → 380k","@grocer.sample","14d","0:40",1.6],["Press tofu with a pan","14×",260,"5k → 70k","@kitchenhacks.sample","2d","0:09",1.4],["Air fryer tofu bites","11×",28,"3k → 33k","@airfry.sample","4d","0:17",1.7],["Silken tofu chocolate pie","9×",320,"10k → 90k","@vegbake.sample","20d","0:26",1.25],["Tofu scramble 2 ways","8×",50,"7k → 56k","@brekkie.sample","8d","0:35",1.55]];
+const cv=(v,h)=>`<div class="cv" style="--h:${v[2]};${h?`height:${h}px`:`aspect-ratio:1/${v[7]}`}"><span class="len">${v[6]}</span><span class="hk">${v[0]}</span></div>`;
+const $=id=>document.getElementById(id);
+$('v1strip').innerHTML=V.slice(0,6).map(v=>`<div>${cv(v).replace('aspect-ratio:1/'+v[7],'aspect-ratio:9/16')}<div class="lab"><b>${v[1]}</b>${v[4]}</div></div>`).join('');
+$('v1grid').innerHTML=V.map((v,i)=>`<div class="tile${i==2?' hover':''}"><span class="x">${v[1]}</span>${cv(v)}<div class="meta">${v[4]} · ${v[5]} ago<div class="r"><span>usual → this: <b>${v[3]}</b></span><span class="sv">Save</span></div></div></div>`).join('');
+const P=[["Crispy tofu ASMR","↑ Rising · 5 accounts, still new posts","#1a7f4b","Close-up crunch in the first second; the sound is the hook. Small accounts are getting 100×+.",[0,1,7,8]],["Blind taste test","● Early · 3 accounts","#2f5fb3","A stranger guesses the ingredient on camera; the reveal holds viewers to the end.",[2,4]],["3-ingredient dessert","↑ Rising · 4 accounts","#1a7f4b","Short list of ingredients in the hook text; saves are high, people keep it for later.",[3,8]],["\"You're buying it wrong\"","→ Peaked · 1 account, no new posts","#8a5a00","A one-off from a grocer account; strong, but nobody else has copied it yet.",[5]]];
+$('v2rows').innerHTML=P.map((p,i)=>`<div class="row"><div class="rank">${i+1}</div><div><h4>${p[0]}</h4><div class="stage" style="color:${p[2]}">${p[1]}</div><p class="why">${p[3]}</p><div class="acts"><a href="#">Plan the best one</a><a href="#">Why it works</a></div></div><div class="reel">${p[4].map((k,j)=>`<div class="${i==0&&j==0?'hover':''}">${cv(V[k]).replace(/aspect-ratio:1\/[\d.]+/,'aspect-ratio:9/14')}<div class="n"><b>${V[k][1]}</b> · ${V[k][3]}</div></div>`).join('')}</div></div>`).join('');
+const st=["Rising","Rising","Early","Rising","Early","Peaked","One-off","Rising","Rising","One-off"];
+$('v3grid').innerHTML=V.map((v,i)=>`<div class="tile${i==1?' hover':''}"><span class="st">${st[i]}</span>${cv(v)}<div class="hv"><span class="save">Save</span><div class="cmp">usual ${v[3].split(' → ')[0]} → this ${v[3].split(' → ')[1]}<div class="bar"><i style="width:${Math.min(100,parseInt(v[1]))/1}%"></i></div></div><span class="more">•••</span></div><div class="cap"><b>${v[1]}</b><span>${v[4]}</span></div></div>`).join('');
+$('v3tray').innerHTML=[0,3,2].map(k=>`<div class="it">${cv(V[k],64).replace(/<span class="hk">.*?<\/span>/,'')}<div><b>${V[k][0]}</b><br><span class="note">${V[k][1]} · ${V[k][4]}</span></div></div>`).join('');
+$('v3hero').innerHTML=V.slice(0,6).map(v=>`<div class="pos">${cv(v)}<span class="tag" style="position:absolute;left:8px;top:8px;z-index:3;background:#fff;color:#141414;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px">${v[1]}</span></div>`).join('');
+// storyboards
+const box=(inner,bg='#111')=>`<div class="vis" style="background:${bg}">${inner}</div>`;
+const mini=(v,o='')=>`<div class="cv" style="--h:${v[2]};position:absolute;${o}"><span class="hk" style="font-size:11px">${v[0]}</span></div>`;
+const step=(n,t,vis,d)=>`<div class="step"><b>${n}</b>${vis}<p><b style="color:inherit;font-size:13px">${t}</b>${d}</p></div>`;
+$('sb1').innerHTML=[
+ step('1 · Rest','Cover + multiple',box(mini(V[1],'left:60px;top:10px;width:80px;height:130px')+'<span style="position:absolute;left:66px;top:14px;color:#fff;font-weight:600;z-index:3">153×</span>'),'Only the outlier multiple sits on the cover.'),
+ step('2 · Hover/focus 0ms','Outline + caption',box(mini(V[1],'left:60px;top:10px;width:80px;height:130px;outline:1px solid #fff;outline-offset:3px')+'<span style="position:absolute;left:62px;bottom:16px;width:76px;color:#fff;font-size:10px;z-index:3;background:rgba(0,0,0,.7);padding:4px">4k → 610k · Save</span>'),'Caption fades in 150ms. Same on keyboard focus.'),
+ step('3 · 400ms','Muted preview',box(mini(V[1],'left:60px;top:10px;width:80px;height:130px;outline:1px solid #fff;outline-offset:3px')+'<span style="position:absolute;left:62px;top:60px;width:76px;text-align:center;color:#fff;z-index:3">▶ ▮▮▮▯▯</span>'),'Live videos play muted with a progress line; sample covers zoom 1.02. Reduced motion: neither.'),
+ step('4 · Leave','Reset',box(mini(V[1],'left:60px;top:10px;width:80px;height:130px')),'Playback stops and resets; no lingering state.')].join('');
+$('sb2').innerHTML=[
+ step('1','Tabs with counts',box('<div style="padding:14px;color:#888;font-size:13px"><span style="color:#fff">All 13</span> &nbsp; Rising 5 &nbsp; Early 3</div>'),'Stages or patterns as plain text, counts show what you will get.'),
+ step('2','Choose "Rising"',box('<div style="padding:14px;color:#888;font-size:13px">All 13 &nbsp; <span style="color:#fff;border-bottom:1px solid #fff">Rising 5</span> &nbsp; Early 3</div>'),'Grid filters in place (fade 150ms), URL updates to ?stage=rising.'),
+ step('3','Result',box([0,1,3].map((k,i)=>mini(V[k],`left:${14+i*62}px;top:50px;width:54px;height:90px`)).join('')),'Count and heading update; sort stays. Back restores All.'),
+ step('4','Nothing matches',box('<div style="padding:14px;color:#ccc;font-size:13px">No peaked patterns for "tofu recipe".<br><u>Show all 13</u></div>'),'Empty state names the filter and offers the way out.')].join('');
+$('sb3').innerHTML=[
+ step('1','Click or Enter',box(mini(V[0],'left:60px;top:10px;width:80px;height:130px;outline:1px solid #fff;outline-offset:3px')),'Tile is a button with a full aria-label (existing pattern).'),
+ step('2','Panel opens',box('<div style="position:absolute;inset:0;background:rgba(0,0,0,.5)"></div><div style="position:absolute;right:0;top:0;bottom:0;width:60%;background:#f3eee2"></div>'+mini(V[0],'right:60px;top:14px;width:60px;height:100px')),'Slides 240ms from the right, grid stays visible and dimmed.'),
+ step('3','One block of facts',box('<div style="position:absolute;inset:12px;color:#1b1a17;font-family:Georgia,serif"><div style="font-size:34px">267×</div><div style="font:12px sans-serif">usual 9k → this 2.4M</div><div style="height:4px;background:#cfc7b4;margin:6px 0"><div style="width:100%;height:4px;background:#1b1a17"></div></div><div style="font:11px sans-serif">6.7 shares+saves per 100 views</div></div>','#f3eee2'),'No nested cards: number, comparison bar, one supporting rate, then "why it worked".'),
+ step('4','J / K / Esc',box('<div style="padding:14px;color:#fff;font-size:13px">J next · K previous<br>Esc closes, focus returns to tile</div>'),'Browse without closing the panel.')].join('');
+$('sb4').innerHTML=[
+ step('1','Save on hover',box(mini(V[1],'left:60px;top:10px;width:80px;height:130px')+'<span style="position:absolute;right:56px;top:16px;background:#e2401c;color:#fff;font-size:11px;padding:3px 8px;border-radius:10px;z-index:4">Save</span>','#fff'),'Or press S on a focused tile.'),
+ step('2','Goes to the tray',box(mini(V[1],'left:120px;top:40px;width:30px;height:50px;opacity:.7')+'<div style="position:absolute;right:0;top:0;bottom:0;width:50px;border-left:1px solid #eee"></div>','#fff'),'200ms flight; under reduced motion only the count changes. Undo toast for 5s.'),
+ step('3','Tray fills',box('<div style="padding:12px;font-size:12px;color:#141414"><b>Plan for Evergreen Foods</b><br>3 saved · 7 of 12 this month<div style="margin-top:30px;background:#1f6f5c;color:#fff;text-align:center;padding:6px;border-radius:14px">Turn into a plan</div></div>','#fff'),'Saved items show progress toward the monthly target (existing data).'),
+ step('4','Plan screen',box('<div style="padding:12px;font-size:12px;color:#141414"><b>Plan: Crispy tofu ASMR</b><br>Hook · shots · caption<br><span style="color:#1f6f5c">Send for approval →</span></div>','#fff'),'Existing PlanScreen, prefilled from the saved post; Annie reviews as today.')].join('');
+// tabs
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));document.querySelectorAll('.panel').forEach(p=>p.hidden=p.id!==b.dataset.p);try{history.replaceState(null,'','#'+b.dataset.p)}catch(e){}scrollTo(0,0)});
+const go=()=>{const h=location.hash.slice(1);const t=document.querySelector(`.tabs button[data-p="${h}"]`);if(t)t.click()};go();addEventListener("hashchange",go);
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+/* Design tokens. Every other stylesheet reads from these; don't hard-code colours, radii or durations elsewhere.
+   Direction: calm canvas, loud content, monochrome (see docs/visual-direction.md). */
+:root {
+  /* Surfaces and text */
+  --bg: #f5f5f7;            /* page canvas (Apple light grey) */
+  --surface: #ffffff;       /* cards, panels, inputs */
+  --surface-2: #f0f0f2;     /* soft fills: hover, tracks, quiet badges */
+  --surface-3: #e5e5ea;     /* pressed / stronger fill */
+  --fg: #1d1d1f;
+  --muted: #6e6e73;         /* secondary text, 4.6:1 on --bg */
+  --line: #e5e5ea;          /* hairline borders */
+  --line-strong: #d2d2d7;   /* input borders, dividers that must read */
+  --frost: rgb(255 255 255 / 0.88); /* sticky bars, with backdrop-filter */
+  --scrim: rgb(16 16 20 / 0.32);    /* behind drawers and overlays */
+
+  /* Accent: monochrome. Black primary buttons and focus; colour is kept for scores and status only. */
+  --accent: #1d1d1f;
+  --accent-hover: #3a3a3c;
+  --accent-fg: #ffffff;
+  --accent-soft: #ececef;
+
+  /* Status: soft fill + readable text colour, and a foreground for solid fills */
+  --hot: #c2410c;
+  --hot-soft: #fdefe7;
+  --hot-fg: #ffffff;
+  --early: #1a7a44;
+  --early-soft: #e5f4ea;
+  --early-fg: #ffffff;
+  --rising: #93600a;
+  --rising-soft: #fbf3e1;
+  --late: #6b6b70;
+  --late-soft: #f0f0f2;
+  --no: #b42318;
+  --no-soft: #fdeceb;
+
+  /* Platforms */
+  --tiktok: #111111;
+  --instagram: #c13584;
+
+  /* Type */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-sans); /* kept as aliases so older rules still resolve */
+  --font-body: var(--font-sans);
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --tracking-tight: -0.02em;
+
+  /* Radius */
+  --radius-xs: 8px;    /* tiny inner bits (badges on thumbnails, inline images) */
+  --radius-sm: 12px;   /* buttons, inputs, small cards */
+  --radius: 16px;      /* cards */
+  --radius-lg: 20px;   /* large panels, drawers, dialogs */
+  --radius-pill: 999px;
+
+  /* Shadow (subtle) */
+  --shadow-sm: 0 1px 2px rgb(16 16 20 / 0.05);
+  --shadow-md: 0 1px 2px rgb(16 16 20 / 0.04), 0 6px 20px rgb(16 16 20 / 0.06);
+  --shadow-lg: 0 2px 6px rgb(16 16 20 / 0.05), 0 24px 56px rgb(16 16 20 / 0.12);
+  --shadow: var(--shadow-md); /* legacy alias */
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+
+  /* Motion */
+  --dur-fast: 150ms;
+  --dur: 220ms;
+  --dur-slow: 300ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --surface-3: #3a3a3c;
+    --fg: #f5f5f7;
+    --muted: #a1a1a6;
+    --line: #2c2c2e;
+    --line-strong: #48484a;
+    --frost: rgb(28 28 30 / 0.9);
+    --scrim: rgb(0 0 0 / 0.6);
+
+    --accent: #f5f5f7;
+    --accent-hover: #ffffff;
+    --accent-fg: #1d1d1f;
+    --accent-soft: #2c2c2e;
+
+    --hot: #f08a5d;
+    --hot-soft: #3a1f14;
+    --hot-fg: #1a0b04;
+    --early: #62cf8f;
+    --early-soft: #15301f;
+    --early-fg: #06140c;
+    --rising: #e6b452;
+    --rising-soft: #33280f;
+    --late: #a0a0a7;
+    --late-soft: #232327;
+    --no: #f2877b;
+    --no-soft: #3a1c19;
+
+    --tiktok: #f2f2f4;
+    --instagram: #e46aaf;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
+    --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
+
+    color-scheme: dark;
+  }
+}

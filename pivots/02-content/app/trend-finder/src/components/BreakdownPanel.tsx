@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Client, Format, Video } from '../types'
 import {
   ago,
+  clientFit,
   compact,
   outlierScore,
   platformName,
@@ -12,6 +13,7 @@ import {
   times,
   viewsPerDay,
 } from '../lib/metrics'
+import { useCountUp } from '../lib/motion'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -25,18 +27,69 @@ interface Props {
   onPlan: () => void
 }
 
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
 export function BreakdownPanel({ video, format, formatAccounts, client, saved, onClose, onSave, onPlan }: Props) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+  // Play the slide-out before App unmounts the panel (skipped under reduced motion).
+  const [closing, setClosing] = useState(false)
+  const close = useCallback(() => {
+    if (reducedMotion()) onClose()
+    else setClosing(true)
   }, [onClose])
 
+  // Focus: start on Close, keep Tab inside the dialog, hand focus back to the opener on unmount.
+  const dialogRef = useRef<HTMLElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    closeRef.current?.focus({ preventScroll: true })
+    return () => {
+      if (opener?.isConnected) opener.focus({ preventScroll: true })
+    }
+  }, [])
+
+  const trapTab = (e: ReactKeyboardEvent) => {
+    if (e.key !== 'Tab' || !dialogRef.current) return
+    const items = [
+      ...dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    ].filter((el) => el.getClientRects().length > 0)
+    if (!items.length) return
+    const first = items[0]
+    const last = items[items.length - 1]
+    const active = document.activeElement
+    if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [close])
+
+  // Safety net in case the close animation never reports back.
+  useEffect(() => {
+    if (!closing) return
+    const t = window.setTimeout(onClose, 400)
+    return () => window.clearTimeout(t)
+  }, [closing, onClose])
+
   const score = outlierScore(video)
+  // Count up once when the panel opens (final value straight away under reduced motion).
+  const shownScore = useCountUp(score)
+  const shownViews = useCountUp(video.views)
+  const fit = clientFit(format, client)
   const tier = tierOf(score)
   // The numbers are the point of this panel, so they get their own row of cards.
   const stats = [
-    { label: 'Views', value: compact(video.views), note: `${compact(video.followers)} followers` },
+    { label: 'Views', value: compact(shownViews), note: `${compact(video.followers)} followers` },
     {
       label: 'Shares + saves',
       value: `${shareSaveRate(video).toFixed(1)}`,
@@ -53,12 +106,20 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
   ]
 
   return (
-    <div className="drawer-wrap" onClick={onClose}>
+    <div
+      className={`drawer-wrap${closing ? ' is-closing' : ''}`}
+      onClick={close}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === e.currentTarget) onClose()
+      }}
+    >
       <aside
         className="drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
+        ref={dialogRef}
+        onKeyDown={trapTab}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="drawer-head">
@@ -68,7 +129,7 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             </span>
             <h2 id="drawer-title">"{video.hook}"</h2>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
+          <button ref={closeRef} className="icon-btn" onClick={close} aria-label="Close">
             ✕
           </button>
         </header>
@@ -82,12 +143,12 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             <div className={`stat-card stat-score stat-${tier}`}>
               <span className="stat-label">Score</span>
               <div className="stat-score-row">
-                <span className="stat-big">{times(score)}</span>
+                <span className="stat-big">{times(shownScore)}</span>
                 <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
               </div>
               <span className="stat-note">{scoreLine(video)}</span>
               <span className="stat-compare">
-                {compact(video.medianViews ?? video.followers)} → <strong>{compact(video.views)}</strong>
+                {compact(video.medianViews ?? video.followers)} → <strong>{compact(shownViews)}</strong>
               </span>
             </div>
             {stats.map((m) => (
@@ -113,6 +174,11 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
               {video.music && <span className="small muted">Sound: {video.music}</span>}
             </section>
           )}
+
+          <section className={`block fit ${fit.ok ? 'fit-ok' : 'fit-no'}`}>
+            <h3>Can {client.name} film it?</h3>
+            <p>{fit.text}</p>
+          </section>
 
           <section className="block">
             <h3>
@@ -150,7 +216,7 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
             {saved ? '★ Saved to client' : `Save to ${client.name}`}
           </button>
           <button className="btn btn-primary" onClick={onPlan}>
-            Create recreate plan
+            Plan this for {client.name}
           </button>
         </footer>
       </aside>
