@@ -81,6 +81,28 @@ class SavedIdea(BaseModel):
     rejectReason: Optional[str] = None
 
 
+class Pattern(BaseModel):
+    """A sound or hashtag shared by several accounts in a search (Pattern in src/lib/live.ts)."""
+    kind: Literal["sound", "hashtag"]
+    label: str
+    accounts: int
+    avgScore: float
+    videoIds: list[str]
+
+
+class Breakout(BaseModel):
+    hook: str
+    score: float
+
+
+class Pulse(BaseModel):
+    """One client's last "Trending now" check (Pulse in src/lib/clientChips.ts)."""
+    topic: str
+    fetchedAt: int
+    patterns: list[Pattern]
+    breakouts: list[Breakout]
+
+
 class Library(BaseModel):
     """The real videos and formats (with their breakdowns) that saved ideas point to. The front
     end owns their shape (Video and Format in src/types.ts), so they are stored as given."""

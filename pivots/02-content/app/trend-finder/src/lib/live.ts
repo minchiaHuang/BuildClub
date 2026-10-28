@@ -219,6 +219,22 @@ export async function saveList<T>(name: 'clients' | 'ideas', items: T[]): Promis
   if (!r.ok) throw new Error(`Could not save ${name}.`)
 }
 
+// Each client's last "Trending now" check, kept by the API too. null means nothing saved there yet.
+export async function loadPulses<T>(): Promise<Record<string, T> | null> {
+  const r = await fetch('/api/pulses')
+  if (!r.ok) throw new Error('Could not load trending checks.')
+  return r.json()
+}
+
+export async function savePulses<T>(pulses: Record<string, T>): Promise<void> {
+  const r = await fetch('/api/pulses', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pulses),
+  })
+  if (!r.ok) throw new Error('Could not save trending checks.')
+}
+
 // The real videos and breakdowns that saved ideas point to. Without them, a saved idea opened
 // in another browser has nothing to show.
 export interface Library {

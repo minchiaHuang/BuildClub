@@ -37,7 +37,7 @@ import youtube
 import analyze
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
-                    Library, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
+                    Library, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -531,7 +531,10 @@ def load(key: str):
 
 
 def save(key: str, items) -> None:
-    value = json.dumps([i.model_dump(exclude_none=True) for i in items] if isinstance(items, list) else items.model_dump())
+    if isinstance(items, dict):
+        value = json.dumps({k: v.model_dump() for k, v in items.items()})
+    else:
+        value = json.dumps([i.model_dump(exclude_none=True) for i in items] if isinstance(items, list) else items.model_dump())
     with db() as conn:
         conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, value))
 
@@ -568,6 +571,18 @@ def get_library():
 def put_library(library: Library):
     save("library", library)
     return library
+
+
+# Each client's last "Trending now" check, keyed by client id.
+@app.get("/api/pulses", response_model=Optional[dict[str, Pulse]])
+def get_pulses():
+    return load("pulses")
+
+
+@app.put("/api/pulses", response_model=dict[str, Pulse])
+def put_pulses(pulses: dict[str, Pulse]):
+    save("pulses", pulses)
+    return pulses
 
 
 budget_lock = threading.Lock()

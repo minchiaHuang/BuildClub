@@ -34,8 +34,10 @@ import {
   findPatterns,
   loadLibrary,
   loadList,
+  loadPulses,
   saveLibrary,
   saveList,
+  savePulses,
   livePlatform,
   searchLive,
 } from './lib/live'
@@ -113,15 +115,26 @@ export default function App() {
   // every change is saved back. If the API can't load them, this browser's copy is used.
   const [synced, setSynced] = useState(false)
   // What the API already holds, so the copy just loaded from it isn't written straight back.
-  const onServer = useRef<{ clients: Client[] | null; ideas: SavedIdea[] | null; library: string | null }>({
+  const onServer = useRef<{
+    clients: Client[] | null
+    ideas: SavedIdea[] | null
+    library: string | null
+    pulses: Record<string, Pulse> | null
+  }>({
     clients: null,
     ideas: null,
     library: null,
+    pulses: null,
   })
   useEffect(() => {
     if (!live) return
-    Promise.all([loadList<Client>('clients'), loadList<SavedIdea>('ideas'), loadLibrary().catch(() => null)])
-      .then(([savedClients, savedIdeas, library]) => {
+    Promise.all([
+      loadList<Client>('clients'),
+      loadList<SavedIdea>('ideas'),
+      loadLibrary().catch(() => null),
+      loadPulses<Pulse>().catch(() => null),
+    ])
+      .then(([savedClients, savedIdeas, library, savedPulses]) => {
         if (library) {
           // Add the saved videos this browser hasn't seen; its own copies stay as they are.
           setLiveStore((prev) => {
@@ -145,10 +158,15 @@ export default function App() {
           const sampleIds = new Set(sampleIdeas.map((i) => i.id))
           setIdeas((prev) => prev.filter((i) => !sampleIds.has(i.id)))
         }
+        // The API's copy wins; when it has none, this browser's copy is saved up by the effect below.
+        if (savedPulses) {
+          setPulses(savedPulses)
+          onServer.current.pulses = savedPulses
+        }
         setSynced(true)
       })
       .catch(() => {})
-  }, [live, setClients, setIdeas, setLiveStore])
+  }, [live, setClients, setIdeas, setLiveStore, setPulses])
   useEffect(() => {
     if (!synced || clients === onServer.current.clients) return
     onServer.current.clients = clients
@@ -159,6 +177,12 @@ export default function App() {
     onServer.current.ideas = ideas
     saveList('ideas', ideas).catch(() => {})
   }, [synced, ideas])
+
+  useEffect(() => {
+    if (!synced || pulses === onServer.current.pulses) return
+    onServer.current.pulses = pulses
+    savePulses(pulses).catch(() => {})
+  }, [synced, pulses])
 
   // The videos and breakdowns behind saved ideas, kept on the API like the ideas themselves.
   const library = useMemo(() => {
