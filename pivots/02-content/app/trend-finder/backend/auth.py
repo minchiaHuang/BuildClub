@@ -6,6 +6,7 @@ command line (server.py add-user), there is no self-service registration."""
 import hashlib
 import secrets
 import sqlite3
+import threading
 import time
 
 COOKIE = "tf_session"
@@ -21,6 +22,7 @@ SCHEMA = (
 
 # Failed sign-ins per normalised email, kept in memory: a restart forgives them.
 failures: dict[str, list[float]] = {}
+failures_lock = threading.Lock()  # sign-ins run in a thread pool
 
 
 def normalise(email: str) -> str:
@@ -54,19 +56,26 @@ def has_users(conn: sqlite3.Connection) -> bool:
 
 
 def too_many_failures(email: str, now: float) -> bool:
-    recent = [t for t in failures.get(email, []) if t > now - WINDOW_SECONDS]
-    if recent:
-        failures[email] = recent
-    else:
-        failures.pop(email, None)
-    return len(recent) >= MAX_FAILURES
+    with failures_lock:
+        recent = [t for t in failures.get(email, []) if t > now - WINDOW_SECONDS]
+        if recent:
+            failures[email] = recent
+        else:
+            failures.pop(email, None)
+        return len(recent) >= MAX_FAILURES
 
 
 def note_failure(email: str, now: float) -> None:
-    if len(failures) > 5000:  # many made-up addresses: forget the ones whose window has passed
-        for key in [k for k, v in failures.items() if v[-1] <= now - WINDOW_SECONDS]:
-            del failures[key]
-    failures.setdefault(email, []).append(now)
+    with failures_lock:
+        if len(failures) > 5000:  # many made-up addresses: forget the ones whose window has passed
+            for key in [k for k, v in failures.items() if v[-1] <= now - WINDOW_SECONDS]:
+                del failures[key]
+        failures.setdefault(email, []).append(now)
+
+
+def clear_failures(email: str) -> None:
+    with failures_lock:
+        failures.pop(email, None)
 
 
 # Checked against when the address is unknown, so a miss takes as long as a wrong password.

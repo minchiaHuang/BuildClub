@@ -122,7 +122,12 @@ PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login")
 PUBLIC_API_PREFIX = "/api/review/"
 
 
+DOC_PATHS = ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")
+
+
 def needs_session(path: str) -> bool:
+    if path in DOC_PATHS:  # the API docs list every route, so they sit behind sign-in too
+        return True
     if path != "/api" and not path.startswith("/api/"):
         return False
     return path not in PUBLIC_API and not path.startswith(PUBLIC_API_PREFIX)
@@ -633,7 +638,7 @@ def auth_login(body: LoginRequest, request: Request):
             return error(401, "Wrong email or password.")
         token = auth.start_session(conn, user[0], now)
         conn.commit()
-    auth.failures.pop(email, None)
+    auth.clear_failures(email)
     response = JSONResponse({"email": user[0], "name": user[1], "agency": user[2]})
     response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_SECONDS, path="/", httponly=True, samesite="lax",
                         secure=session_cookie_secure(request))

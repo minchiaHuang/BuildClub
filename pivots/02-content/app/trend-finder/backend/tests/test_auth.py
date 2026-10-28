@@ -76,9 +76,25 @@ def test_api_needs_session_once_users_exist(client, site, monkeypatch):
         r = getattr(client, method)(path)
         assert r.status_code == 401, path
         assert r.json().get("error") and "WWW-Authenticate" not in r.headers, path
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 401, path
+    basic_ok = {"Authorization": "Basic " + base64.b64encode(b"x:tofu").decode()}
+    assert client.get("/api/clients", headers=basic_ok).status_code == 401  # a right Basic password is not a session
     assert login(client).status_code == 200
     assert client.get("/api/clients").status_code == 200
     assert client.get("/api/health").status_code == 200
+    assert client.get("/openapi.json").status_code == 200
+
+
+def test_no_users_docs_stay_open(client, site):
+    assert client.get("/openapi.json").status_code == 200
+
+
+def test_oversized_login_input_is_rejected(client, site):
+    add_user()
+    assert login(client, password="x" * 1025).status_code == 422
+    assert login(client, email="a" * 321 + "@x.co").status_code == 422
+    assert auth.failures == {}
 
 
 def test_share_routes_skip_login(client, site):
