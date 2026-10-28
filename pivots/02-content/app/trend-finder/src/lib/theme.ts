@@ -10,6 +10,7 @@ export const uiThemes: { id: UiTheme; label: string }[] = [
   { id: 'altitude', label: 'Altitude' },
 
   // unify
+  { id: 'unify', label: 'Unify' },
 
   // midnight
 ]

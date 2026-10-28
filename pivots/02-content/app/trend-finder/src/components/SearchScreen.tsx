@@ -8,6 +8,7 @@ import { useUiTheme, type UiTheme } from '../lib/theme'
 import { AltitudeHero } from './themes/AltitudeHero'
 
 // unify
+import { UnifyHero } from './themes/UnifyHero'
 
 // midnight
 
@@ -18,6 +19,7 @@ const heroes: Partial<Record<UiTheme, Hero>> = {
   altitude: { Hero: AltitudeHero, holdsSearch: true },
 
   // unify
+  unify: { Hero: UnifyHero },
 
   // midnight
 }

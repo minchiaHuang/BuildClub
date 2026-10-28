@@ -6,6 +6,7 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 import { LandingAltitude } from './landing/LandingAltitude'
 
 // unify
+import { LandingUnify } from './landing/LandingUnify'
 
 // midnight
 
@@ -16,6 +17,7 @@ const landings: Partial<Record<UiTheme, Landing>> = {
   altitude: LandingAltitude,
 
   // unify
+  unify: LandingUnify,
 
   // midnight
 }
