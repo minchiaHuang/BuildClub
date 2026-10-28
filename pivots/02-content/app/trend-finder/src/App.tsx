@@ -38,7 +38,7 @@ import {
   saveLibrary,
   saveList,
   savePulses,
-  livePlatform,
+  searchAll,
   searchLive,
 } from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
@@ -88,13 +88,15 @@ export default function App() {
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
   // Live searches run in the background, so the rest of the app stays usable meanwhile.
-  const [searching, setSearching] = useState<{ q: string; platform: Platform } | null>(null)
+  const [searching, setSearching] = useState<{ q: string; platforms: Platform[] } | null>(null)
   // A search that finished after the user moved to another screen, waiting to be opened.
   const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
   const searchSeq = useRef(0)
   // A search whose TikTok, YouTube or X scores (each account's usual views) are still being fetched.
   const [scoring, setScoring] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
+  // Platforms that returned nothing in the last search (daily cap, upstream error), shown above the results.
+  const [searchFailed, setSearchFailed] = useState<{ platform: Platform; message: string }[]>([])
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
 
   // Daily live trend check per client, which powers the "Trending now" chips on the search page.
@@ -254,18 +256,23 @@ export default function App() {
     const parsed = parseQuery(text, formats)
     // Send the platform the meaningful words; time, platform and length words become filters instead.
     const q = ([...parsed.keywords, ...parsed.topics.map((t) => t.word)].join(' ') || text).trim()
-    // A platform named in the text ("on instagram") wins over the toggles.
-    const platform = livePlatform(parsed.platforms?.length === 1 ? parsed.platforms : query.platforms)
-    if (!q || (q === searching?.q && platform === searching.platform)) return
+    // Platforms named in the text ("on instagram") win over the toggles.
+    const platforms = parsed.platforms?.length ? parsed.platforms : query.platforms
+    if (!q || (q === searching?.q && platforms.join() === searching.platforms.join())) return
     const seq = ++searchSeq.current
     const clientId = workspace
     setSearchError(null)
     setSearchDone(null)
-    setSearching({ q, platform })
+    setSearching({ q, platforms })
     try {
-      const res = await searchLive(q, false, platform)
+      const res = await searchAll(q, platforms)
       // A newer search has started since; its results win.
       if (seq !== searchSeq.current) return
+      // Every platform failed: nothing to show, so it is an error like before.
+      if (res.failed.length === platforms.length) {
+        throw new Error(res.failed.map((f) => `${platformName[f.platform]}: ${f.message}`).join(' '))
+      }
+      setSearchFailed(res.failed)
       setLiveStore((prev) => {
         const keep = (list: { id: string }[], add: { id: string }[]) => {
           const ids = new Set(add.map((x) => x.id))
@@ -279,11 +286,11 @@ export default function App() {
       setLiveResults(res.videos)
       setLiveQuery(q)
       setInterp({ ...parsed, text, keywords: [q], topics: [], audience: null, isQuestion: false, source: null })
-      setQuery((qq) => ({ ...qq, keyword: text, platforms: [platform], days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
+      setQuery((qq) => ({ ...qq, keyword: text, platforms, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
       setLastSearch(text)
-      if (res.mediansPending) void fillScores(q, platform)
+      if (res.pending.length) void fillScores(q, res.pending)
       // Only jump to the results if the user is still waiting on this client's search page.
       if (here.current.view === 'search' && here.current.workspace === clientId) setView('results')
       else setSearchDone({ text, clientId })
@@ -297,10 +304,10 @@ export default function App() {
     }
   }
 
-  // Poll the saved (free) search until the account medians are in, then update the scores in place.
-  const fillScores = async (q: string, platform: Platform) => {
+  // Poll each platform's saved (free) search until its account medians are in, then update the scores in place.
+  const fillScores = async (q: string, platforms: Platform[]) => {
     setScoring(q)
-    try {
+    const poll = async (platform: Platform) => {
       for (let i = 0; i < 36; i++) {
         await new Promise((r) => setTimeout(r, 5000))
         const res = await searchLive(q, false, platform, true)
@@ -311,11 +318,10 @@ export default function App() {
         setLiveResults((prev) => prev.map(fill))
         return
       }
-    } catch {
-      // The results are still usable; they just keep the views ÷ followers score.
-    } finally {
-      setScoring((s) => (s === q ? null : s))
     }
+    // The results are still usable if a poll fails; they just keep the views ÷ followers score.
+    await Promise.allSettled(platforms.map(poll))
+    setScoring((s) => (s === q ? null : s))
   }
 
   const runSearch = (text: string) => {
@@ -653,6 +659,7 @@ export default function App() {
 
           {inClient && view === 'results' && (
             <ResultsScreen
+              failed={live ? searchFailed : []}
               query={query}
               setQuery={setQuery}
               interp={interp}
@@ -820,7 +827,7 @@ function SearchStatus({
   onView,
   onDismiss,
 }: {
-  searching: { q: string; platform: Platform } | null
+  searching: { q: string; platforms: Platform[] } | null
   done: { text: string; error?: string } | null
   scoring: string | null
   onView: () => void
@@ -856,7 +863,7 @@ function SearchStatus({
     >
       {searching ? (
         <span className="small">
-          Searching {platformName[searching.platform]} for "{searching.q}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+          Searching {searching.platforms.map((p) => platformName[p]).join(', ')} for "{searching.q}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
         </span>
       ) : done?.error ? (
         <>

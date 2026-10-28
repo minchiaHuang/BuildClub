@@ -1,5 +1,5 @@
 import type { Format, Line, Platform, Shot, Video } from '../types'
-import { UNKNOWN_DAYS, outlierScore } from './metrics'
+import { UNKNOWN_DAYS, hasScore, outlierScore } from './metrics'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
 interface LiveItem {
@@ -113,9 +113,6 @@ function toFormat(item: LiveItem, v: Video): Format {
   }
 }
 
-// The one platform a live search runs on: the only one picked, else TikTok.
-export const livePlatform = (selected: Platform[]): Platform => (selected.length === 1 ? selected[0] : 'tiktok')
-
 export async function searchLive(
   query: string,
   fresh = false,
@@ -135,6 +132,43 @@ export async function searchLive(
     formats.push(toFormat(item, v))
   }
   return { videos, formats, cached: Boolean(body.cached), fetchedAt: body.fetchedAt, mediansPending: Boolean(body.mediansPending) }
+}
+
+export interface SearchAll {
+  videos: Video[]
+  formats: Format[]
+  // Platforms whose search failed (daily cap, upstream error, nothing saved); the others still count.
+  failed: { platform: Platform; message: string }[]
+  // Platforms still working out account medians; poll them with cachedOnly.
+  pending: Platform[]
+}
+
+// Scored videos first by score, then the unscored ones by views.
+const byScore = (a: Video, b: Video) =>
+  Number(hasScore(b)) - Number(hasScore(a)) || (hasScore(a) ? outlierScore(b) - outlierScore(a) : b.views - a.views)
+
+// One search per platform, in parallel. A platform that fails never fails the rest.
+export async function searchAll(
+  query: string,
+  platforms: Platform[],
+  opts: { fresh?: boolean; cachedOnly?: boolean } = {},
+): Promise<SearchAll> {
+  const settled = await Promise.allSettled(platforms.map((p) => searchLive(query, opts.fresh, p, opts.cachedOnly)))
+  const videos: Video[] = []
+  const formats: Format[] = []
+  const failed: SearchAll['failed'] = []
+  const pending: Platform[] = []
+  settled.forEach((r, i) => {
+    const platform = platforms[i]
+    if (r.status === 'rejected') {
+      failed.push({ platform, message: r.reason instanceof Error ? r.reason.message : 'Search failed.' })
+      return
+    }
+    videos.push(...r.value.videos)
+    formats.push(...r.value.formats)
+    if (r.value.mediansPending) pending.push(platform)
+  })
+  return { videos: videos.sort(byScore), formats, failed, pending }
 }
 
 // The AI breakdown of one real video (Breakdown in backend/models.py).

@@ -35,6 +35,8 @@ interface Props {
   likeThis: React.ReactNode
   // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
   live: boolean
+  // Platforms whose search failed in this live search; the rest still show.
+  failed: { platform: Platform; message: string }[]
   patterns: React.ReactNode
   results: Video[]
   trends: FormatTrend[]
@@ -89,7 +91,7 @@ export function ResultsScreen(p: Props) {
   const best = proven[0] ?? open[0] ?? ranked[0]
   const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformCounts = (['tiktok'] as Platform[])
+  const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
   const i = p.interp
@@ -190,6 +192,12 @@ export function ResultsScreen(p: Props) {
           </span>
         ))}
       </div>
+
+      {p.failed.map((f) => (
+        <p key={f.platform} className="error" role="alert">
+          {platformName[f.platform]}: {f.message}
+        </p>
+      ))}
 
       {p.likeThis}
 

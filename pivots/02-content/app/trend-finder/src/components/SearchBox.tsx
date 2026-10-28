@@ -42,7 +42,7 @@ export function SearchBox(p: Props) {
     >
       <div className="search-on">
         <span className="field-label">Search on</span>
-        <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} showSoon live={p.live} />
+        <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} />
       </div>
 
       <label htmlFor={p.inputId} className="sr-only">
