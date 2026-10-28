@@ -302,15 +302,15 @@ export async function askAnswer(query: string, videos: Video[]): Promise<Answer>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query,
+      query: query.slice(0, 200), // the server's limits (models.py AnswerRequest)
       videos: top.map((v) => ({
         id: v.id,
         platform: v.platform,
         hook: v.hook,
         views: v.views,
         outlier: hasScore(v) ? outlierScore(v) : undefined,
-        hashtags: v.hashtags ?? [],
-        music: v.music ?? '',
+        hashtags: (v.hashtags ?? []).slice(0, 30).map((h) => h.slice(0, 60)),
+        music: (v.music ?? '').slice(0, 200),
       })),
     }),
   })
