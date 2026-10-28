@@ -9,6 +9,7 @@ export const uiThemes: { id: UiTheme; label: string }[] = [
   // altitude
 
   // unify
+  { id: 'unify', label: 'Unify' },
 
   // midnight
 ]
