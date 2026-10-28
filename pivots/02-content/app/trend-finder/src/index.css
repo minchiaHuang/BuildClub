@@ -11,6 +11,9 @@
 @import './styles/tags.css';
 /* Designs: each one adds its stylesheets under its own line, so the design branches merge without conflicts. */
 /* altitude */
+@import './styles/theme-altitude.css';
+@import './styles/landing-altitude.css';
+@import './styles/landing-altitude-sky.css';
 
 /* unify */
 
