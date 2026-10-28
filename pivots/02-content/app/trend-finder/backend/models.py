@@ -80,6 +80,9 @@ class SavedIdea(BaseModel):
     sentAt: Optional[int] = None
     rejectReason: Optional[str] = None
     decidedAt: Optional[int] = None
+    # Daphne's production stage for an approved idea. No stage means "approved".
+    stage: Optional[Literal["approved", "filming", "editing", "posted"]] = None
+    postedAt: Optional[int] = None
 
 
 class Pattern(BaseModel):

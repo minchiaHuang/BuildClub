@@ -83,6 +83,7 @@ export interface Client {
   cannot: string[]
 }
 
+export type IdeaStage = 'approved' | 'filming' | 'editing' | 'posted'
 export type IdeaStatus = 'saved' | 'waiting' | 'approved' | 'rejected'
 
 export interface SavedIdea {
@@ -101,4 +102,8 @@ export interface SavedIdea {
   rejectReason?: string
   // When the approver answered (ms). Stops an older tab from putting the idea back to waiting.
   decidedAt?: number
+  // Where an approved idea is in production. Missing means 'approved'.
+  stage?: IdeaStage
+  // When it was marked posted (ms).
+  postedAt?: number
 }

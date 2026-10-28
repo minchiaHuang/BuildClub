@@ -1,5 +1,7 @@
-import type { Client, Format, SavedIdea, Video } from '../types'
+import { useState } from 'react'
+import type { Client, Format, IdeaStage, SavedIdea, Video } from '../types'
 import { Thumb } from './Thumb'
+import { TrackingBoard } from './TrackingBoard'
 
 // The client's own shots if edited, otherwise the reference format's.
 const shotCount = (idea: SavedIdea, f?: Format) => (idea.shots ?? f?.shotList ?? []).length
@@ -10,10 +12,12 @@ interface Props {
   videoById: Map<string, Video>
   formatById: Map<string, Format>
   onOpen: (ideaId: string) => void
+  onMove: (ideaId: string, stage: IdeaStage) => void
   onGoApprovals: () => void
 }
 
-export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, formatById }: Props) {
+export function PlansScreen({ client, ideas, videoById, onOpen, onMove, onGoApprovals, formatById }: Props) {
+  const [mode, setMode] = useState<'list' | 'board'>('list')
   const approved = ideas
     .filter((i) => i.clientId === client.id && i.status === 'approved')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
@@ -26,6 +30,16 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, f
         <p className="muted">Approved ideas, soonest due first. Open one to copy the brief for your editor.</p>
       </header>
 
+      {approved.length > 0 && (
+        <div className="view-switch" role="group" aria-label="Plans view">
+          {(['list', 'board'] as const).map((m) => (
+            <button key={m} className={`btn btn-sm ${mode === m ? 'btn-primary' : 'btn-ghost'}`} aria-pressed={mode === m} onClick={() => setMode(m)}>
+              {m === 'list' ? 'List' : 'Board'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {approved.length === 0 ? (
         <div className="empty">
           <h2>No approved ideas yet</h2>
@@ -34,6 +48,8 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, f
             Go to approvals
           </button>
         </div>
+      ) : mode === 'board' ? (
+        <TrackingBoard ideas={approved} videoById={videoById} formatById={formatById} onMove={onMove} onOpen={onOpen} />
       ) : (
         <ul className="idea-list">
           {approved.map((idea) => {

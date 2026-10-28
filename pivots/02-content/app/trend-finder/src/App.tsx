@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { IdeaStatus, SavedIdea } from './types'
+import type { IdeaStage, IdeaStatus, SavedIdea } from './types'
 import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
 import { formatTrend, hasDate, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { AGENCY_NAME, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
@@ -687,6 +687,12 @@ export default function App() {
   const setStatus = (ids: string[], status: IdeaStatus) =>
     setIdeas((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, status } : i)))
 
+  // Daphne moves an approved idea along the board. Posting stamps the date; moving back clears it.
+  const moveStage = (ideaId: string, stage: IdeaStage) =>
+    setIdeas((prev) =>
+      prev.map((i) => (i.id === ideaId ? { ...i, stage, postedAt: stage === 'posted' ? Date.now() : undefined } : i)),
+    )
+
   // Annie's answer on a plan she was sent.
   const decide = (ideaId: string, approved: boolean, reason?: string) =>
     setIdeas((prev) =>
@@ -919,6 +925,7 @@ export default function App() {
               formatById={formatById}
               videoById={videoById}
               onOpen={openPlan}
+              onMove={moveStage}
               onGoApprovals={() => setView('approvals')}
             />
           )}
