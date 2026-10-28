@@ -1,7 +1,9 @@
 # STATUS
 
-**一句話：** Trend Finder 搜尋支援 TikTok / Instagram / YouTube / Reddit / X 五個平台；2026-10-27 用 Apify 實際扣款校正 TikTok 單價，每日上限調到 US$2、中位數 run 另設 US$0.60 上限，全新 TikTok 搜尋實測估算 0.68 ≈ 實扣 0.668（已 push，PR #3）。
+**一句話：** 2026-10-28 把 Veralyn 的 premium-ui 前端（TikTok only、Annie review）合進 Python 後端，分支 `feat/integrate-premium-ui`，PR 給她審（base `feature/premium-ui`）；live 模式下拆解抽屜、shot list、Annie review 都是真資料。Apify 帳號本期額度用完，無法跑新的付費搜尋。
 
+- **2026-10-28（整合 premium-ui）：** 分支 `feat/integrate-premium-ui`（worktree `~/orca/workspaces/BuildClub/integrate-premium-ui`），merge `origin/feature/premium-ui`（f782a1f），10 個衝突以她的設計為主：PlatformToggles、ResultsScreen、parseQuery、`formatTrend`、`index.css`（拆成 `src/styles/*.css`）、側邊欄「Live TikTok data」用她的版本；BreakdownPanel、VideoTile 合併（她的 count-up、`data-video-id` + 我們的無分數／無日期／Reddit 處理、hover 播放）。**拿掉／不再顯示：** 前端 IG/YouTube/Reddit/X 平台切換與 parseQuery 的 IG/YouTube 關鍵字（後端五個平台照舊）、YouTube 封面裁黑邊 CSS、側邊欄「Tracking · Soon」、「Live data」文案修正、她的全螢幕 `LiveLoading`（改用我們的右下角搜尋狀態，因為中位數在背景補）。**保留要她決定：** 側邊欄 Channel 入口（樣式移到 `styles/channel.css`）、hover 播放的 `.thumb-player`（加到 `search-results.css`）。驗證：`bash bin/verify.sh` 綠、`npm run build` 過、tsc 無錯、eslint 改動檔乾淨；Playwright 隔離副本（scratchpad，port 8797，無 `.env`、`APIFY_TOKEN=dummy`、每日上限 0）搜 tofu 快取：30 支、側邊欄 Live TikTok data；xingye0615 抽屜 806× / 145k views，存了 8 秒內出 AI 拆解；規劃頁 13 個 shot；送審後 Annie review 卡片有參考影片、note、13 個 shot。唯一 API 錯誤是首頁 trend 建議 `tofu recipe` 回 429（上限 0，預期）。
+- **2026-10-28（真實 TikTok 實測，沒跑成）：** 全新搜尋「kimchi fried rice」（新 data.db，6 支／30 天）一送出 Apify 就回 **402 not-enough-usage-to-run-paid-actor**：本計費週期只剩 US$0.0006，**沒有任何扣款**（app 帳本記了估算 0.12，在這個 worktree 的 data.db）。**影響：8787（Daphne 用）現在也跑不了新的付費搜尋，只剩快取／pin。** 要升級 Apify 方案或等下個計費週期才能實測。
 - **2026-10-27 22:30（TikTok 省錢）：** 使用者選 1 + 3：`VIDEOS_PER_AUTHOR` 10 → **6**（中位數 15 個作者約 US$0.33，全新 TikTok 搜尋估約 **US$0.45**，原本 0.68）；`MEDIAN_DAYS` 7 → **30**（五個平台共用，X/Reddit 的中位數也會少抓）。風險：只抓 6 支、`MIN_VIDEOS` 仍是 5，近期影片少的帳號沒有分數的比例可能變高（10 支時 16/30 有分數）。驗證：`bash bin/verify.sh` 綠。**還沒真實實測**：今天 app 記 1.67/2.00，剩的不夠一次 0.45。
 - **2026-10-27 22:10（花費上限）：** 使用者決定：`DAILY_APIFY_USD` 預設 1.00 → **2.00**；新增 `MAX_USD_PER_MEDIANS`（預設 **0.60**），只用在 TikTok 作者中位數那個 run（15 × 10 支約 0.56，原本被 0.50 截在 134 支），搜尋本身仍是 `MAX_USD_PER_SEARCH` 0.50。`run_actor` 多一個 `max_usd` 參數，測試的假 actor 跟著改，加 1 個測試（共 159）。真實全新 TikTok 搜尋「miso soup recipe」：搜尋 49 秒回 30 支，中位數背景 48 秒，16/30 支有分數；app 估算 0.12 + 0.56 = **0.68**，Apify 實際扣款 **0.668**（搜尋 0.112、中位數 0.556，上限 0.6，沒有截斷）。app 今天記的 Apify 花費 1.67/2.00。驗證：`bash bin/verify.sh` 綠。
 
@@ -14,7 +16,7 @@
 
 - **2026-10-27 晚（manager session）：** hover 播放（TikTok 會播；IG embed 不自動播，維持封面）；YouTube 用 yt-dlp 免費，一次約 13 支 Shorts；X 用 kaito actor，tofu 實測 38 支、估 US$0.06；Reddit 改用 clearpath actor 搜 `site:v.redd.it`，tofu 實測 5.4 秒 30 支影片、23 支有分數（免費 JSON 從這台被 403 擋）；Channel 總結呼叫 channel-decoder，@mkbhd 50 支實測：7 種格式、Claude 命名約 US$0.15、Jev US$0.005，結果已快取。驗證：`bash bin/verify.sh` 綠（158 測試）、`npm run build` 過、eslint 乾淨、8787 `/api/health` 列出 5 個平台。使用者授權：驗證過可自動 commit push，付費實測低於 US$1 不用先問。
 
-- **上次驗證：** 2026-10-27 晚（搜尋加速）：`bash bin/verify.sh` 綠（49 個離線測試）、`npm run build` 過、eslint 乾淨；隔離副本用假的 Apify（`run_actor` 換成假資料，中位數延遲 15 秒，不花錢）以 curl 實測：新搜尋 0.03 秒回結果（`mediansPending: true`），15 秒後讀快取分數已補上；`cachedOnly=1` 對沒快取的字回 404。**真實新 TikTok 搜尋還沒實測**（約 US$0.07–0.31，要先問）。更早（IG 前端）：`bash bin/verify.sh` 綠、`npm run build` 過、eslint 改動檔乾淨；Playwright 在隔離副本（scratchpad 複製 backend+dist，無 `.env`、每日上限 0，不可能付費）只搜 tofu 快取，7 項全過：TikTok/IG 單選切換、IG 結果只顯示觀看數（無 × 分數、無 0 followers）、IG 拆解抽屜 Score 顯示「–」、切回 TikTok 分數照舊、「tofu instagram」自動搜 IG、未快取字回每日上限錯誤、IG 規劃頁只顯示觀看數。更早 2026-10-27 晚，`bash bin/verify.sh` 綠（32 個離線測試，含 5 個每日上限測試）；載入多餘 PUT 修好後在瀏覽器實測（vite 5191 → 8787）：載入只有 GET，改一次 client 設定就送一次 `PUT /api/clients`。更早：worktree 裡 `npm ci` 後 `npm run build` 通過（tsc 無錯誤），`eslint src/lib/live.ts src/App.tsx` 無警告；瀏覽器實測（Playwright，vite 5190 → API 8787）全部通過：demo 登入 → 搜尋 tofu（快取）→ 存 xingye0615（快取拆解，秒回）→ 規劃 → 存 thaotamto「Boil your tofu」（真實拆解約 1 分鐘，15 次輪詢）→ 重新整理後 clients/ideas 還在；console 只有 favicon 404 和 TikTok embed 503。本次實測：
+- **上次驗證：** 2026-10-28（整合 premium-ui）：verify 綠、build 過、eslint 乾淨、Playwright 隔離副本 3 項全過（見最上面）。更早 2026-10-27 晚（搜尋加速）：`bash bin/verify.sh` 綠（49 個離線測試）、`npm run build` 過、eslint 乾淨；隔離副本用假的 Apify（`run_actor` 換成假資料，中位數延遲 15 秒，不花錢）以 curl 實測：新搜尋 0.03 秒回結果（`mediansPending: true`），15 秒後讀快取分數已補上；`cachedOnly=1` 對沒快取的字回 404。**真實新 TikTok 搜尋還沒實測**（約 US$0.07–0.31，要先問）。更早（IG 前端）：`bash bin/verify.sh` 綠、`npm run build` 過、eslint 改動檔乾淨；Playwright 在隔離副本（scratchpad 複製 backend+dist，無 `.env`、每日上限 0，不可能付費）只搜 tofu 快取，7 項全過：TikTok/IG 單選切換、IG 結果只顯示觀看數（無 × 分數、無 0 followers）、IG 拆解抽屜 Score 顯示「–」、切回 TikTok 分數照舊、「tofu instagram」自動搜 IG、未快取字回每日上限錯誤、IG 規劃頁只顯示觀看數。更早 2026-10-27 晚，`bash bin/verify.sh` 綠（32 個離線測試，含 5 個每日上限測試）；載入多餘 PUT 修好後在瀏覽器實測（vite 5191 → 8787）：載入只有 GET，改一次 client 設定就送一次 `PUT /api/clients`。更早：worktree 裡 `npm ci` 後 `npm run build` 通過（tsc 無錯誤），`eslint src/lib/live.ts src/App.tsx` 無警告；瀏覽器實測（Playwright，vite 5190 → API 8787）全部通過：demo 登入 → 搜尋 tofu（快取）→ 存 xingye0615（快取拆解，秒回）→ 規劃 → 存 thaotamto「Boil your tofu」（真實拆解約 1 分鐘，15 次輪詢）→ 重新整理後 clients/ideas 還在；console 只有 favicon 404 和 TikTok embed 503。本次實測：
   - 作者中位數：對 pin 住的 tofu 補抓 15 個作者 × 10 支，39 秒，134 支，16/30 支有分數。
   - Prompt 修正後重跑 tofu 拆解：28 秒，in 6,530 / out 2,609；shotList/lines 不再有括號註解。舊結果備份在 `backend/jobs/01f97bb23401/breakdown.before-prompt-fix.json`。
   - IG 真實搜尋「tofu」：18 秒，回 12 支 reels（不是 30，actor 說免費方案只抓第一頁）；IG 第一名影片 analyze 全流程 39 秒，yt-dlp 不需登入。
@@ -42,8 +44,8 @@
 - **下一步：**
   - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
   - IG hover 播放要後端提供影片檔網址才做得到。
-  0. 明天跑一次全新 TikTok 搜尋（約 US$0.45），確認實扣和有分數的比例。
-  1. 等 Veralyn 審 PR #3，回應她的意見。
+  0. Apify 額度恢復後（升級方案或下個計費週期）跑一次全新 TikTok 搜尋（約 US$0.45），確認實扣和有分數的比例（10 支時 16/30）。
+  1. 等 Veralyn 審 PR #3 和整合 PR（base `feature/premium-ui`），回應她的意見（特別是 Channel 入口、搜尋狀態取代 LiveLoading）。
   2. 和 Veralyn 討論上面的前端已知問題（費用提示、拆解狀態顯示、自動搜尋客戶主題）。
   3. 前端 `lines` 顯示（Veralyn 的元件）。
 
