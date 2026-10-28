@@ -157,7 +157,7 @@ export function PlanScreen(p: Props) {
             {video.url && (
               <>
                 {' · '}
-                <a href={video.url} target="_blank" rel="noreferrer">
+                <a className="plan-watch" href={video.url} target="_blank" rel="noreferrer">
                   Watch on {platformName[video.platform]} ↗
                 </a>
               </>

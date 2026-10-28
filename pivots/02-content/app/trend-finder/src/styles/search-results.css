@@ -247,6 +247,7 @@ button.best-video-sample:hover .best-play, button.best-video-sample:focus-visibl
   box-shadow: var(--shadow-md);
   transition: transform var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
+@media (max-width: 600px) { .tile-save { width: 40px; height: 40px; } }
 .tile-save:hover, .tile-save:focus-visible { transform: scale(1.08); }
 .tile-save:active { transform: scale(0.94); }
 .tile-save-on { background: var(--accent); color: var(--accent-fg); }

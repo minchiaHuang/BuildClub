@@ -174,4 +174,6 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
   .link-btn, .link-strong { min-height: 40px; display: inline-flex; align-items: center; }
   .link-strong { display: flex; }
   .q-chip-x { width: 40px; height: 40px; margin: -10px -12px -10px -10px; }
+  .btn-sm, select, .check, .shot-edit input { min-height: 40px; }
+  .plan-watch { display: inline-flex; align-items: center; min-height: 40px; }
 }
