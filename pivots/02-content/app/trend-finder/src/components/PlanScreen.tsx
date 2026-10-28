@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { BestVideo } from './BestVideo'
@@ -40,6 +40,12 @@ export function PlanScreen(p: Props) {
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle')
   // Index of a shot just added with "+ Add a shot", so only that row plays its enter animation.
   const [addedAt, setAddedAt] = useState<number | null>(null)
+
+  // Keyboard focus lands on the heading when the plan opens or its status changes (the button that had focus is gone).
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true })
+  }, [idea.id, idea.status])
 
   const shots = idea.shots ?? format.shotList
   const editable = idea.status === 'saved' || idea.status === 'approved'
@@ -93,7 +99,9 @@ export function PlanScreen(p: Props) {
           <span className="eyebrow">Plan for {client.name}</span>
           <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
         </div>
-        <h1>{format.name}</h1>
+        <h1 ref={heading} tabIndex={-1}>
+          {format.name}
+        </h1>
       </header>
 
       {idea.status === 'waiting' && (
