@@ -22,6 +22,7 @@ import { ApprovalsScreen } from './components/ApprovalsScreen'
 import { ReviewScreen } from './components/ReviewScreen'
 import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
+import { NewClientForm } from './components/NewClientForm'
 import { LoginScreen } from './components/LoginScreen'
 import { ChannelScreen } from './components/ChannelScreen'
 import type { Client, Format, Platform, Video } from './types'
@@ -188,6 +189,15 @@ export default function App() {
     setOpenVideoId(null)
     // Picking a client from the switcher always starts on Search.
     setView(w === 'all' ? 'overview' : 'search')
+  }
+
+  const [addingClient, setAddingClient] = useState(false)
+  const onAddClient = (c: Client) => {
+    setClients([...clients, c])
+    setAddingClient(false)
+    setWorkspaceRaw(c.id)
+    setOpenVideoId(null)
+    setView('settings')
   }
 
   const updateClient = (patch: Partial<Client>) =>
@@ -546,7 +556,11 @@ export default function App() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         live={live}
+        onAddClient={() => setAddingClient(true)}
       />
+      {addingClient && (
+        <NewClientForm existingIds={clients.map((c) => c.id)} onAdd={onAddClient} onCancel={() => setAddingClient(false)} />
+      )}
 
       <div className="shell-main">
         <header className="mobile-bar">

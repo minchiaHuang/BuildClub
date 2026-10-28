@@ -45,9 +45,10 @@ interface Props {
   open: boolean
   onClose: () => void
   live: boolean
+  onAddClient: () => void
 }
 
-function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'>) {
+function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'> & { onAddClient: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const current = clients.find((c) => c.id === workspace)
@@ -107,11 +108,18 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
             </button>
           ))}
           <div className="switcher-sep" />
-          <button role="menuitem" className="switcher-item switcher-add" disabled title="Coming later">
+          <button
+            role="menuitem"
+            className="switcher-item switcher-add"
+            onClick={() => {
+              setOpen(false)
+              onAddClient()
+            }}
+          >
             <span className="avatar avatar-add">+</span>
             <span>
               <strong>Add client</strong>
-              <span className="small muted">Coming soon</span>
+              <span className="small muted">New client</span>
             </span>
           </button>
         </div>
@@ -148,7 +156,7 @@ export function Sidebar(p: Props) {
           Trend Finder
         </div>
 
-        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} />
+        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} onAddClient={() => { p.onClose(); p.onAddClient() }} />
 
         <nav className="side-nav">
           {inClient ? (
