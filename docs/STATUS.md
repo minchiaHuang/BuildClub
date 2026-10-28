@@ -1,6 +1,6 @@
 # STATUS
 
-**一句話：** 2026-10-29 `feat/full-backend-coverage` 把 Trend Finder 前端每個功能都接上真 API（16 個 task 做完 15 個，付費冒煙被 hook 擋下沒跑、US$0）；PR base `feat/integrate-premium-ui` 等 Veralyn 審。Daphne 的 8787 **還是 10/28 的版本，沒換**。
+**一句話：** 2026-10-29 `feat/full-backend-coverage` 把 Trend Finder 前端每個功能都接上真 API（16 個 task 做完 15 個，付費冒煙被 hook 擋下沒跑、US$0）；PR https://github.com/minchiaHuang/BuildClub/pull/1 （base `feat/integrate-premium-ui`；開在 fork，因為 upstream 沒有這個分支，PR #4 merge 後改開到 upstream main）等 Veralyn 審。Daphne 的 8787 **還是 10/28 的版本，沒換**。
 
 - **2026-10-29（全功能後端化，夜間無人值守）：** 照 `docs/plans/2026-10-29-full-backend-coverage.md` 用 subagent-driven-development 跑，分支 `feat/full-backend-coverage`（worktree `~/orca/workspaces/BuildClub/full-backend-coverage`），每個 task 一個 Sonnet implementer + reviewer（Task 8、9 用 opus），最後 opus 全分支審查 + 一輪修正。
   - Commit：T1 bc75319 文件／PRD 進 repo；T2 83c9607 Channel 頁；T3 c733bb5 新增客戶；T4 80b2605 needs 補判＋每行作用；T5 47a5080+b5713b3 landing 真實計數、live 不出範例；T6 b64d2d3 pulses 存後端；T7 d2d5376+e7ccc01 多平台同時搜；T8 1fd07f5+78e1480 Annie 分享連結；T9 1c64c27+bd70169 email＋密碼登入；T10 0d3cd84 貼連結找相似；T11 986a3c9 截圖找相似；T12 0b301cc Ask 從真實結果回答；T13 52c1076+f530382 過去搜尋建議；T14 c9ab808 追蹤看板（Approved→Filming→Editing→Posted）；T15 51c6b92 E2E；最終審查修正 a87dc68（README＋Accounts、分享網址改前端組、Plans 也輪詢、Answer 輸入長度上限）。
