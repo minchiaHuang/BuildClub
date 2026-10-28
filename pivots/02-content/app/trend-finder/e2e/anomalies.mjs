@@ -366,6 +366,40 @@ for (const theme of THEMES) {
       }, () => a?.page)
       await a?.ctx.close()
     }
+    // After login the sidebar switcher and the page header name the same client.
+    {
+      let o
+      await c.step('after login the client switcher agrees with the page header', async () => {
+        o = await open(browser, { theme, width })
+        await apiLogin(o.ctx)
+        await o.page.goto(`${base}/?ui=${theme}`, { waitUntil: 'domcontentloaded' })
+        await sidebar(o.page).waitFor()
+        await o.page.waitForTimeout(1500)
+        const sw = await sidebar(o.page).locator('.switcher-btn strong').innerText()
+        check(sw !== 'All clients', 'the switcher says "All clients" while the page shows a client')
+        const body = await visibleText(o.page)
+        check(body.includes(sw), `the switcher says "${sw}" but the page never names it`)
+      }, () => o?.page)
+      await o?.ctx.close()
+    }
+    // A client with no topics must not trigger the automatic "Trending now" search with an empty query.
+    {
+      let o
+      await c.step('client without topics: no search with an empty query', async () => {
+        o = await open(browser, { theme, width })
+        await apiLogin(o.ctx)
+        const asked = []
+        o.page.on('request', (r) => /\/api\/search\?q=(&|$)/.test(r.url()) && asked.push(r.url()))
+        await o.page.goto(`${base}/?ui=${theme}`, { waitUntil: 'domcontentloaded' })
+        await sidebar(o.page).waitFor()
+        await addClient(o.page, `NoTopic ${uniq()}`)
+        await nav(o.page, 'Search')
+        await o.page.waitForTimeout(2000)
+        check(asked.length === 0, `the app asked for a search with an empty query: ${asked[0]}`)
+        check(o.probs.http.length === 0, 'bad HTTP: ' + o.probs.http.join(' | '))
+      }, () => o?.page)
+      await o?.ctx.close()
+    }
     void ideaTitle
   }
 }

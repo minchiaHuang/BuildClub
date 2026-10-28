@@ -588,6 +588,7 @@ export default function App() {
   useEffect(() => {
     if (!live || !access || !clients.length || workspace === 'all' || view !== 'search' || pulseLoading) return
     const topic = clientTopic(client)
+    if (!topic) return // nothing to look up yet: the search would be refused
     const p = pulses[client.id]
     const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
     const key = `${client.id}|${topic}`

@@ -29,8 +29,6 @@ const okHttp = (status, url) =>
   (status === 401 && /\/api\/auth\/(me|login)/.test(url)) ||
   (status === 404 && /cachedOnly=1/.test(url)) ||
   status === 429 ||
-  // KNOWN APP BUG (reported, P3): a client with no topics/examples/niche asks for a cached search with q= and gets 400.
-  (status === 400 && /\/api\/search\?q=&/.test(url)) ||
   !url.startsWith(base)
 
 // One browser context + page for one theme x width, with error collectors.
