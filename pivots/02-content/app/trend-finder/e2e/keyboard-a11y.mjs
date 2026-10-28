@@ -148,8 +148,9 @@ for (const theme of THEMES) {
       if (!inside) problems.push('focus did not move into the Add client dialog when it opened')
       await page.keyboard.press('Escape')
       await dlg.waitFor({ state: 'detached', timeout: 3000 })
-      const back = await page.evaluate(() => document.activeElement?.className ?? '')
-      if (!/switcher-btn/.test(String(back))) problems.push(`after Esc the focus is on "${back || 'body'}", not the button that opened the dialog`)
+      // On a phone the menu closes when the dialog opens, so focus goes to the button that opens the menu.
+      const back = await page.evaluate(() => (document.activeElement?.className ?? '') + '|' + (document.activeElement?.getAttribute('aria-label') ?? ''))
+      if (!(phone ? /\|Open menu$/ : /switcher-btn/).test(String(back))) problems.push(`after Esc the focus is on "${back || 'body'}", not the button that opened the dialog`)
       check(problems.length === 0, problems.join('; '))
     }, P)
 
