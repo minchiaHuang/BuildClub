@@ -2,6 +2,85 @@
 
 Newest first. Dates are when the decision was made (from the Miro board), except sync entries.
 
+## 29 Oct 2026
+
+Source for all entries below: `docs/STATUS.md`.
+
+### Decision
+Back every visible front-end feature with the real backend (new clients, Annie share links, real login, link/screenshot search, Ask, tracking board, and so on). Plan: `docs/plans/2026-10-29-full-backend-coverage.md`; the scope table is in `docs/PRD.md`.
+
+### Why
+Several screens still showed sample data or "Coming soon". No visible feature should run on made-up data. AI stays descriptive only: it explains real videos and never writes scripts.
+
+### Status
+Current.
+
+## 28 Oct 2026
+
+### Decision
+Daphne's site on port 8787 runs with `DAILY_APIFY_USD=0`: cached and pinned searches only, no new Apify work. The 8787 backend now runs from the `integrate-premium-ui` worktree (no `--reload`).
+
+### Why
+The Apify account had about US$0.0006 left for the billing period (a fresh search got a 402), and two days of tests had already cost about US$5. Cached results are enough for Daphne's meeting.
+
+### Status
+Current.
+
+---
+
+### Decision
+Remove the platform toggles (Instagram, YouTube, Reddit, X) from the front end for now. The backend still supports all five platforms.
+
+### Why
+Merging Veralyn's premium UI took her TikTok-first design; the other toggles were parked rather than carried into the new layout. Task 7 of the 29 Oct plan brings them back.
+
+### Status
+Superseded by the 29 Oct plan (Task 7).
+
+---
+
+### Decision
+Save money by simulating "6 videos per author" instead of paying for a test; the simulation used only free read access to Apify datasets.
+
+### Why
+Two days of paid tests cost about US$5, over budget. The simulation showed 6 videos give the same scored-video count as 10 (129 of 210); the real bottleneck for unscored videos is scoring only the top 15 authors.
+
+### Status
+Current.
+
+## 27 Oct 2026 (later entries)
+
+### Decision
+Daily Apify cap `DAILY_APIFY_USD` raised from 1.00 to 2.00. The author-median run gets its own cap, `MAX_USD_PER_MEDIANS` = 0.60; the search itself stays at `MAX_USD_PER_SEARCH` = 0.50.
+
+### Why
+15 authors x 10 videos cost about US$0.56, which the old 0.50 cap cut off at 134 items. A real "miso soup recipe" search cost US$0.668.
+
+### Status
+Current (the median cap is now 0.60 for 6 videos per author; see the next entry).
+
+---
+
+### Decision
+`VIDEOS_PER_AUTHOR` 10 -> 6 (6 videos per account) and `MEDIAN_DAYS` 7 -> 30 (median window reused for 30 days, shared by all five platforms).
+
+### Why
+Cuts a fresh TikTok search from about US$0.68 to about US$0.45 (search about 0.11 plus medians about 0.34). Cost: some accounts may end up with no score; `MIN_VIDEOS` stays 5.
+
+### Status
+Current.
+
+---
+
+### Decision
+Unit costs recalibrated from real Apify charges: a 30-video TikTok search is US$0.12 (`SEARCH_USD["tiktok"]`), and each extra video is US$0.0037 (`APIFY_USD_PER_VIDEO`).
+
+### Why
+The first estimates were about 2.2x too low (real search US$0.112, real 134-video median run US$0.497).
+
+### Status
+Current.
+
 ## 27 Oct 2026
 
 ### Decision

@@ -2,6 +2,7 @@
 
 **一句話：** 2026-10-28 Veralyn 的最新前端（main，含三套主題）已接上 Python 後端（PR #4 → main，PR #3 已關閉）；Daphne 用的 8787 已換成這一版，**不能搜新的關鍵字**（`DAILY_APIFY_USD=0`），只能看快取／pin。
 
+- **2026-10-29（全功能後端化開始）：** 開始執行 `docs/plans/2026-10-29-full-backend-coverage.md`（分支 `feat/full-backend-coverage`，16 個 task）；Task 1 完成：規格正本現在在本地 `docs/PRD.md`（雲端 PRD 只是 10/27 快照），`docs/decision-log.md`、`README.md`、`AGENTS.md` 已對齊現況。驗證：`bash bin/verify.sh`（見 commit）。
 - **2026-10-28 下午（接上最新前端 + 換 Daphne 的網站）：** 使用者決定：PR 整理成一個、Daphne 不能搜新的、只測預設外觀、今天換 Daphne 的網站。
   - main（PR #5–#8：主題系統、Altitude／Unify／Midnight、landing）合進 `feat/integrate-premium-ui`，只有 `index.css` 衝突（兩邊 import 都留）。PR #4 base 改成 main（MERGEABLE），PR #3 關閉（內容都在 #4）。
   - 省錢防護（subagent A）：開頁自動「Trending now」改成只讀快取（`cachedOnly=1`），沒快取就安靜不顯示；按 Refresh 才會真的搜。上限 0 時 429 訊息改成「New Apify work is turned off… Try a saved search, like "tofu"」，`.env`／重啟提示改寫到伺服器 log。

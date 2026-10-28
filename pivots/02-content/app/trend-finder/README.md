@@ -1,41 +1,51 @@
-# Trend Finder (v1 front end)
+# Trend Finder
 
 Clickable prototype of the trending-video research tool for agencies. Built for Daphne at Mercif (design partner) and the hackathon. Plan: `../../research/hackathon-plan-trend-tool.md`.
 
-**All data is sample data.** Every account, number and caption in `src/data/sample.ts` is made up. There is no backend, no scraping and no real AI call yet. The "AI breakdown" text is written by hand per format.
+The app runs in two modes:
+
+- **Live mode** (the Python backend is running): real searches, real AI breakdowns, and clients and saved ideas stored in the backend's SQLite database. The sidebar shows **Live data**.
+- **Sample mode** (no backend): a clickable prototype on made-up data. Every account, number and caption in `src/data/sample.ts` is invented, and the "AI breakdown" text is written by hand per format.
+
+Spec, scope and API table: [`docs/PRD.md`](../../../../docs/PRD.md). Current status: [`docs/STATUS.md`](../../../../docs/STATUS.md).
 
 ## Run it
+
+Front end only (sample mode):
 
 ```bash
 npm install
 npm run dev
 ```
 
-Or start `trend-finder` from `pivots/02-content/.claude/launch.json` (port 5174).
+With the backend (live mode):
 
-## Live TikTok search
-
-Without a key the app runs on sample tofu data. With an Apify key it searches real TikTok videos.
-
-1. Create a free account at [apify.com](https://apify.com) and copy your API token (Console → Settings → API & Integrations).
-2. Copy `.env.example` to `.env` and paste the token after `APIFY_TOKEN=`. `.env` is git-ignored.
-3. Run the local API in a second terminal, next to `npm run dev`:
+1. Create `backend/.venv` from `backend/requirements.txt`.
+2. Copy `.env.example` to `.env` and fill in `APIFY_TOKEN=` (from [apify.com](https://apify.com) Console, Settings, API & Integrations) and `ANTHROPIC_API_KEY=`. `.env` is git-ignored. Never commit it.
+3. Start the API from this folder (default port 8787):
 
    ```bash
-   npm run api
+   backend/.venv/bin/uvicorn server:app --app-dir backend --port 8787 --reload
    ```
 
-   It runs the Python API in `backend/` (set up its `.venv` from `backend/requirements.txt`). `http://localhost:8787/docs` shows its routes. Reload the app: the sidebar label changes to **Live TikTok data**.
+4. In a second terminal run `npm run dev`; Vite forwards `/api/*` to port 8787. `http://localhost:8787/docs` lists every route.
 
-How it works:
+To check the UI without spending any money, use the zero-cost throwaway backend. It needs a built `dist/` (`npm run build`), copies the backend to a temp folder with no `.env`, a dummy token and all daily budgets at 0, and serves the built app:
 
-- The browser calls `/api/search`, which Vite forwards to the local API (`backend/server.py`, port 8787). The API calls the Apify actor `clockworks/tiktok-scraper` with your token, so the token never reaches the browser.
-- Each search fetches up to 30 videos (`RESULTS_PER_SEARCH`). New searches take about 3–4 minutes. Results are cached in `backend/cache/` for 24 hours (`CACHE_HOURS`), so repeats are instant and free. The cache is git-ignored.
-- **Cost:** Apify bills per result. The actor's page listed pricing "from $1.70 / 1,000 results" (checked 26 Oct 2026), so a 30-video search is roughly 5 cents. Check your Apify usage page.
-- **Score in live mode** = views ÷ the account's usual views (median of its latest 6 videos, reused for 30 days), for the top 15 accounts of each TikTok search; about US$0.33 more per search. Accounts with fewer than 5 videos fall back to views ÷ followers.
-- **TikTok only in the UI for now.** Instagram is parked: its sample rows stay in `src/data/sample.ts` but aren't shown. The backend still searches Instagram, YouTube, Reddit and X (`?platform=`).
-- **What's not live yet:** link/screenshot search and the "Ask" answers. Saving or planning a live video runs the AI breakdown (shot list and why it works), about US$0.08 the first time.
-- Live results only use public TikTok data. Check TikTok's and Apify's terms before using this beyond internal testing.
+```bash
+bash bin/isolated-backend.sh 8797      # from the repo root; optional 2nd arg: a jobs/ folder to copy
+```
+
+Use ports other than 8787 and 5195 (it refuses those). Stop it with Ctrl-C; the temp copy is removed.
+
+## How live search works
+
+- The browser calls `/api/search`. The API calls Apify actors (TikTok `clockworks/tiktok-scraper`; Instagram, YouTube, Reddit and X are also supported by the backend via `?platform=`) with your token, so the token never reaches the browser.
+- Each TikTok search fetches up to 30 videos. A brand-new search takes about a minute; the author medians are filled in afterwards in the background. Results are cached in `backend/cache/` for 24 hours (`CACHE_HOURS`), so repeats within a day are free; `fresh=1` forces a new search. The cache is git-ignored. `backend/server.py pin "<search>"` keeps a search permanently for offline demos.
+- **Score in live mode** = views / the account's usual views (median of its latest 6 videos, reused for 30 days), for the top 15 accounts of each TikTok search. Accounts with fewer than 5 videos fall back to views / followers.
+- **Cost** (Apify prices checked 28 Oct 2026): a TikTok search is about US$0.11, and the scores for 15 authors add about US$0.34, so a brand-new TikTok search with scores is about US$0.45. Claude breakdowns cost about US$0.08 the first time you save or plan a video; repeats come from the cache. Daily caps are `DAILY_APIFY_USD` and `DAILY_CLAUDE_USD`; with `DAILY_APIFY_USD=0` only cached and pinned searches work (this is how Daphne's copy on port 8787 runs).
+- **Not live yet:** link search, screenshot search and Ask answers, plus a few other items. See the scope table in `docs/PRD.md`, which says which plan task makes each one live.
+- Live results only use public data. Check each platform's and Apify's terms before using this beyond internal testing.
 
 Clients for testing: **Evergreen Foods** and **MYST Nightclub Sydney**, each with starter searches (edit in Client settings, or `examples` in `src/data/sample.ts`).
 
