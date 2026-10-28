@@ -9,6 +9,7 @@ import { LandingAltitude } from './landing/LandingAltitude'
 import { LandingUnify } from './landing/LandingUnify'
 
 // midnight
+import { LandingMidnight } from './landing/LandingMidnight'
 
 type Landing = ComponentType<{ onLogIn: () => void; onRegister: () => void }>
 // Each design registers its landing page on its own line.
@@ -20,6 +21,7 @@ const landings: Partial<Record<UiTheme, Landing>> = {
   unify: LandingUnify,
 
   // midnight
+  midnight: LandingMidnight,
 }
 
 // MOCK sign-in for the demo. No account or password is checked or stored.
