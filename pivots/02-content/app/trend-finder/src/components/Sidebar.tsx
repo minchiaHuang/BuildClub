@@ -131,8 +131,29 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient, agency 
   )
 }
 
+const PHONE = '(max-width: 860px)'
+
 export function Sidebar(p: Props) {
   const inClient = p.workspace !== 'all'
+  // On phones the sidebar is a slide-over: closed, it is off-screen, so keyboard and screen readers must skip it.
+  const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
+  useEffect(() => {
+    const m = window.matchMedia(PHONE)
+    const onChange = () => setPhone(m.matches)
+    m.addEventListener('change', onChange)
+    return () => m.removeEventListener('change', onChange)
+  }, [])
+  const { open, onClose } = p
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      onClose()
+      document.querySelector<HTMLElement>('.mobile-bar .icon-btn')?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
   const item = (v: View, icon: keyof typeof paths, label: string, count?: number, active = p.view === v) => (
     <button
       className={`side-link ${active ? 'side-on' : ''}`}
@@ -151,7 +172,7 @@ export function Sidebar(p: Props) {
   return (
     <>
       {p.open && <div className="side-scrim" onClick={p.onClose} />}
-      <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label="Main">
+      <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label="Main" inert={phone && !p.open}>
         <div className="side-brand">
           <span className="brand-mark" aria-hidden="true">
             ↗
