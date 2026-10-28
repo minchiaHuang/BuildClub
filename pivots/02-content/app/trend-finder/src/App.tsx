@@ -232,7 +232,10 @@ export default function App() {
           const ids = new Set(add.map((x) => x.id))
           return [...add, ...list.filter((x) => !ids.has(x.id))].slice(0, 600)
         }
-        return { videos: keep(prev.videos, res.videos) as Video[], formats: keep(prev.formats, res.formats) as Format[] }
+        // A repeat search brings placeholder formats; keep the AI breakdown of any video already broken down.
+        const broken = new Map(prev.formats.filter((f) => f.shotList.length).map((f) => [f.id, f]))
+        const formats = res.formats.map((f) => broken.get(f.id) ?? f)
+        return { videos: keep(prev.videos, res.videos) as Video[], formats: keep(prev.formats, formats) as Format[] }
       })
       setLiveResults(res.videos)
       setLiveQuery(q)
@@ -465,7 +468,15 @@ export default function App() {
     }
   }
 
+  // A saved video can lack its breakdown (saved before one existed, or overwritten); fetch it when opened.
+  const openVideoDrawer = (videoId: string) => {
+    setOpenVideoId(videoId)
+    if (savedForClient.has(videoId)) breakDown(videoId)
+  }
+
   const openPlan = (ideaId: string) => {
+    const idea = ideas.find((i) => i.id === ideaId)
+    if (idea) breakDown(idea.videoId)
     setPlanFrom(view)
     setPlanIdeaId(ideaId)
     setView('plan')
@@ -630,7 +641,7 @@ export default function App() {
               setFormatFilter={setFormatFilter}
               savedVideoIds={savedForClient}
               ideaStatus={new Map(shownIdeas.filter((i) => i.clientId === client.id).map((i) => [i.videoId, i.status]))}
-              onOpen={setOpenVideoId}
+              onOpen={openVideoDrawer}
               onToggleSave={toggleSave}
               blockedFormatIds={blockedFormatIds}
             />
