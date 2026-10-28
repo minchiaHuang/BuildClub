@@ -162,3 +162,12 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .platform-soon:disabled { opacity: 0.7; }
 .platform-soon svg { opacity: 0.55; filter: grayscale(0.2); }
 .logo-round { flex: none; border-radius: 50%; }
+
+/* Phone: every tap target at least 40px, without changing how the controls look */
+@media (max-width: 600px) {
+  .icon-btn, .mic-btn { min-width: 40px; min-height: 40px; }
+  .cchip, .side-link { min-height: 40px; }
+  .link-btn, .link-strong { min-height: 40px; display: inline-flex; align-items: center; }
+  .link-strong { display: flex; }
+  .q-chip-x { width: 40px; height: 40px; margin: -10px -12px -10px -10px; }
+}

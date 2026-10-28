@@ -1,7 +1,34 @@
 import { AGENCY_NAME } from '../state'
+import { useUiTheme } from '../lib/theme'
+import { ThemeSwitcher } from './ThemeSwitcher'
+import { LandingAltitude } from './landing/LandingAltitude'
+import { LandingUnify } from './landing/LandingUnify'
+import { LandingMidnight } from './landing/LandingMidnight'
 
 // MOCK sign-in for the demo. No account or password is checked or stored.
 export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
+  const ui = useUiTheme()
+  // The two reference directions get a full landing page (hero + what it does) with Log in / Register.
+  // The design switcher lives on the public website only; the dashboard keeps whichever design was picked here.
+  const page =
+    ui === 'altitude' ? (
+      <LandingAltitude onLogIn={onSignIn} onRegister={onSignIn} />
+    ) : ui === 'unify' ? (
+      <LandingUnify onLogIn={onSignIn} onRegister={onSignIn} />
+    ) : ui === 'midnight' ? (
+      <LandingMidnight onLogIn={onSignIn} onRegister={onSignIn} />
+    ) : (
+      <BaseLogin onSignIn={onSignIn} />
+    )
+  return (
+    <>
+      {page}
+      <ThemeSwitcher />
+    </>
+  )
+}
+
+function BaseLogin({ onSignIn }: { onSignIn: () => void }) {
   return (
     <div className="login">
       <div className="login-card">

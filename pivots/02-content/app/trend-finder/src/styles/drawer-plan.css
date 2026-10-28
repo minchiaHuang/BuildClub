@@ -110,7 +110,8 @@
   .plan-ref { position: static; }
   /* Shrink the whole frame (not just the cover) so the play button, note and shadow stay lined up, and centre it */
   .plan-ref { justify-items: center; text-align: center; }
-  .plan-ref .best-video, .plan-ref .best-video-sample { max-width: 160px; }
+  .plan-ref .best-video, .plan-ref .best-video-sample { max-width: 180px; }
+  .plan-ref .best-video-note { white-space: nowrap; text-align: left; }
   .plan-ref-score { justify-content: center; }
   .plan-ref .tier { justify-self: center; }
   .plan-bar-text { flex-basis: 100%; }
@@ -225,3 +226,5 @@
   .shot-edit li.shot-added, .sent-banner, .copy-btn.is-copied, .copy-btn.is-copied .copy-icon-check path { animation: none; }
   .shot-edit li, .shot-edit .icon-btn, .editor-brief, .plans .idea { transition: none; }
 }
+/* Tablet/laptop with sidebar: the action bar can wrap to two rows, so leave room for it */
+@media (min-width: 561px) and (max-width: 1200px) { .plan { padding-bottom: 168px; } }

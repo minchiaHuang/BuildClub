@@ -2,6 +2,10 @@ import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
 import { SearchBox } from './SearchBox'
+import { useUiTheme } from '../lib/theme'
+import { AltitudeHero } from './themes/AltitudeHero'
+import { UnifyHero } from './themes/UnifyHero'
+import { MidnightHero } from './themes/MidnightHero'
 
 interface Props {
   query: Query
@@ -26,8 +30,29 @@ interface Props {
 
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
+  const ui = useUiTheme()
+  const searchBox = (
+        <SearchBox
+          inputId="keyword"
+          value={query.keyword}
+          onValueChange={(text) => setQuery({ ...query, keyword: text })}
+          onSearch={onSearch}
+          platforms={query.platforms}
+          onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
+          live={live}
+          clientName={clientName}
+          clientExamples={props.clientExamples}
+          chipGroups={props.chipGroups}
+          pulse={props.pulse}
+          onRefreshPulse={props.onRefreshPulse}
+          autoFocus
+        />
+  )
   return (
     <section className="search-screen">
+      {ui === 'altitude' && <AltitudeHero clientName={clientName}>{searchBox}</AltitudeHero>}
+      {ui === 'unify' && <UnifyHero clientName={clientName} />}
+      {ui === 'midnight' && <MidnightHero clientName={clientName} />}
       <div className="search-intro">
         <span className="eyebrow">{clientName} · Search</span>
         {props.planned > 0 && (
@@ -49,21 +74,7 @@ export function SearchScreen(props: Props) {
         </p>
       </div>
 
-      <SearchBox
-        inputId="keyword"
-        value={query.keyword}
-        onValueChange={(text) => setQuery({ ...query, keyword: text })}
-        onSearch={onSearch}
-        platforms={query.platforms}
-        onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
-        live={live}
-        clientName={clientName}
-        clientExamples={props.clientExamples}
-        chipGroups={props.chipGroups}
-        pulse={props.pulse}
-        onRefreshPulse={props.onRefreshPulse}
-        autoFocus
-      />
+      {ui !== 'altitude' && searchBox}
 
       {props.lastSearch && (
         <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>
