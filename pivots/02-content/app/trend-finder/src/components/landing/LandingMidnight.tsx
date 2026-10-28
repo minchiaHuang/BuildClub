@@ -58,7 +58,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
           </span>
           <span className="mn-nav-right">
             <button className="mn-textbtn" onClick={onLogIn}>Log in</button>
-            <button className="mn-whitepill" onClick={onRegister}>Register</button>
+            <button className="mn-whitepill" onClick={onRegister}>Ask for access</button>
           </span>
         </nav>
 
@@ -79,7 +79,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
         <TypingSearch variant="midnight" />
         <div className="mn-hero-cta">
           <button className="mn-blue" onClick={onRegister}>
-            Register <Arrow />
+            Ask for access <Arrow />
           </button>
           <button className="mn-link" onClick={onLogIn}>Log in to your dashboard</button>
           {mode === 'sample' && <span className="mn-demo">Demo: both buttons open the sample agency.</span>}
@@ -135,7 +135,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
         <div className="mn-close">
           <h2>Find the next one first.</h2>
           <div className="mn-close-btns">
-            <button className="mn-blue" onClick={onRegister}>Register <Arrow /></button>
+            <button className="mn-blue" onClick={onRegister}>Ask for access <Arrow /></button>
             <button className="mn-ghost" onClick={onLogIn}>Log in</button>
           </div>
         </div>

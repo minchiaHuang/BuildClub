@@ -243,3 +243,8 @@ class DecideRequest(BaseModel):
     ideaId: str
     decision: Literal["approved", "rejected"]
     reason: Optional[str] = Field(default=None, max_length=1000)
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str

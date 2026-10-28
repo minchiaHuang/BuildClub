@@ -67,7 +67,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
         </div>
         <div className="la-actions">
           <button type="button" className="la-pill la-outline" onClick={onLogIn}>Log in</button>
-          <button type="button" className="la-pill la-solid" onClick={onRegister}>Register</button>
+          <button type="button" className="la-pill la-solid" onClick={onRegister}>Ask for access</button>
         </div>
       </nav>
 
@@ -103,7 +103,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
           </p>
           <TypingSearch variant="altitude" />
           <div className="la-ctas">
-            <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Register free</button>
+            <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Ask for access</button>
             <button type="button" className="la-pill la-outline la-big" onClick={onLogIn}>Log in to dashboard</button>
           </div>
           {mode === 'sample' && <p className="la-note">Demo: both buttons open the sample agency.</p>}
@@ -150,7 +150,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
         <p>Built for agencies managing many clients.</p>
         <div className="la-ctas">
           <button type="button" className="la-pill la-outline" onClick={onLogIn}>Log in</button>
-          <button type="button" className="la-pill la-solid" onClick={onRegister}>Register free</button>
+          <button type="button" className="la-pill la-solid" onClick={onRegister}>Ask for access</button>
         </div>
       </section>
     </main>

@@ -76,7 +76,7 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
         <div className="lu-links"><a href="#">Product</a><a href="#how">How it works</a><a href="#">Customers</a></div>
         <div className="lu-auth">
           <button type="button" className="lu-text" onClick={onLogIn}>Log in</button>
-          <button type="button" className="lu-black" onClick={onRegister}>Register</button>
+          <button type="button" className="lu-black" onClick={onRegister}>Ask for access</button>
         </div>
       </nav>
 
@@ -89,7 +89,7 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             </h1>
             <p className="lu-lede">See which TikToks are getting far more views than usual, and plan a version for each brand you manage.</p>
             <div className="lu-ctas">
-              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Register free</button>
+              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Ask for access</button>
               <button type="button" className="lu-under" onClick={onLogIn}>Log in to your dashboard</button>
             </div>
             {sample && <p className="lu-note">Demo: both buttons open the sample agency.</p>}
@@ -153,7 +153,7 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
           <div className="lu-strip-card">
             <h2 className="lu-h2">Bring your next client a trend <em style={em(0)}>first</em></h2>
             <div className="lu-ctas">
-              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Register free</button>
+              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Ask for access</button>
               <button type="button" className="lu-under" onClick={onLogIn}>Log in</button>
             </div>
           </div>

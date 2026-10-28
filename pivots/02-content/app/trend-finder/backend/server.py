@@ -9,7 +9,9 @@ Pin a cached search so it never expires (offline demos):
 """
 
 import base64
+import contextlib
 import copy
+import getpass
 import hashlib
 import json
 import os
@@ -36,9 +38,10 @@ import share
 import x
 import youtube
 import analyze
+import auth
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
-                    Library, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
+                    Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -111,9 +114,30 @@ def password_ok(header: str) -> bool:
     return scheme.lower() == "basic" and secrets.compare_digest(password.encode(), APP_PASSWORD.encode())
 
 
+# Once an account exists these need no session: the pages (every non-/api path, so the sign-in
+# page and the approver's /review/<token> page can load), health, the landing-page stats, signing
+# in, and the approver's own API. Everything else under /api needs one. Matching is exact, or on
+# the "/api/review/" prefix with its trailing slash, so "/api/reviewX" is not let through.
+PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login")
+PUBLIC_API_PREFIX = "/api/review/"
+
+
+def needs_session(path: str) -> bool:
+    if path != "/api" and not path.startswith("/api/"):
+        return False
+    return path not in PUBLIC_API and not path.startswith(PUBLIC_API_PREFIX)
+
+
 @app.middleware("http")
 async def require_password(request: Request, call_next):
-    if APP_PASSWORD and not password_ok(request.headers.get("authorization", "")):
+    with contextlib.closing(db()) as conn:
+        users = auth.has_users(conn)
+        session = auth.session_user(conn, request.cookies.get(auth.COOKIE), time.time()) if users else None
+        conn.commit()
+    if users:  # accounts replace the shared password: no Basic from here on
+        if needs_session(request.url.path) and session is None:
+            return JSONResponse({"error": "Sign in to continue."}, status_code=401)
+    elif APP_PASSWORD and not password_ok(request.headers.get("authorization", "")):
         return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Trend Finder"'})
     return await call_next(request)
 
@@ -522,6 +546,8 @@ def db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
+    for statement in auth.SCHEMA:
+        conn.execute(statement)
     return conn
 
 
@@ -591,6 +617,53 @@ def put_pulses(pulses: dict[str, Pulse]):
 
 
 # The approver's share link: /api/share (Daphne) and /api/review/<token> (Annie, no login).
+def session_cookie_secure(request: Request) -> bool:
+    return request.headers.get("x-forwarded-proto", "").lower() == "https" or request.url.scheme == "https"
+
+
+@app.post("/api/auth/login")
+def auth_login(body: LoginRequest, request: Request):
+    email, now = auth.normalise(body.email), time.time()
+    if auth.too_many_failures(email, now):
+        return error(429, "Too many tries. Wait a few minutes and try again.")
+    with contextlib.closing(db()) as conn:
+        user = auth.check_login(conn, email, body.password)
+        if user is None:
+            auth.note_failure(email, now)
+            return error(401, "Wrong email or password.")
+        token = auth.start_session(conn, user[0], now)
+        conn.commit()
+    auth.failures.pop(email, None)
+    response = JSONResponse({"email": user[0], "name": user[1], "agency": user[2]})
+    response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_SECONDS, path="/", httponly=True, samesite="lax",
+                        secure=session_cookie_secure(request))
+    return response
+
+
+@app.post("/api/auth/logout", status_code=204)
+def auth_logout(request: Request):
+    with contextlib.closing(db()) as conn:
+        auth.end_session(conn, request.cookies.get(auth.COOKIE))
+        conn.commit()
+    response = Response(status_code=204)
+    response.delete_cookie(auth.COOKIE, path="/")
+    return response
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    # Reached with no account at all (the app then opens as before) or with a live session; the
+    # middleware has already turned back an account-holder without one.
+    with contextlib.closing(db()) as conn:
+        if not auth.has_users(conn):
+            return {"users": False}
+        user = auth.session_user(conn, request.cookies.get(auth.COOKIE), time.time())
+        conn.commit()
+    if user is None:
+        return error(401, "Sign in to continue.")
+    return {"users": True, "email": user[0], "name": user[1], "agency": user[2]}
+
+
 app.include_router(share.make_router(db, load, save))
 
 
@@ -751,9 +824,32 @@ def pin(query: str, platform: str = "tiktok") -> None:
     print(f'Pinned "{query}": it will load without Apify or the internet.')
 
 
+def add_user(args: list[str]) -> None:
+    """add-user <email> "<name>" "<agency>" [--password-stdin]: asks for the password twice, unless it comes on stdin."""
+    stdin = "--password-stdin" in args
+    args = [a for a in args if a != "--password-stdin"]
+    if len(args) != 3:
+        sys.exit('Usage: python backend/server.py add-user <email> "<name>" "<agency>" [--password-stdin]')
+    if stdin:
+        password = sys.stdin.readline().rstrip("\r\n")
+    else:
+        password = getpass.getpass("Password: ")
+        if getpass.getpass("Password again: ") != password:
+            sys.exit("The passwords don't match.")
+    try:
+        with contextlib.closing(db()) as conn, conn:
+            auth.create_user(conn, args[0], args[1], args[2], password)
+    except ValueError as e:
+        sys.exit(str(e))
+    print(f"Added {auth.normalise(args[0])}. They can sign in now.")
+
+
 if __name__ == "__main__":
     platforms = ["tiktok", "instagram", "youtube", "reddit", "x"]
     if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and (sys.argv[3:] == [] or sys.argv[3] in platforms):
         pin(sys.argv[2].strip()[:120], *sys.argv[3:])
+    elif len(sys.argv) >= 2 and sys.argv[1] == "add-user":
+        add_user(sys.argv[2:])
     else:
-        sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]')
+        sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]\n'
+                 '       python backend/server.py add-user <email> "<name>" "<agency>"')

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { IdeaStatus, SavedIdea } from './types'
 import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
 import { formatTrend, hasDate, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
-import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
+import { AGENCY_NAME, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
 import { ResultsScreen } from './components/ResultsScreen'
@@ -24,6 +24,7 @@ import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { NewClientForm } from './components/NewClientForm'
 import { LoginScreen } from './components/LoginScreen'
+import { logout, me, type Account } from './lib/auth'
 import { ChannelScreen } from './components/ChannelScreen'
 import type { Client, Format, Platform, Video } from './types'
 import {
@@ -54,7 +55,18 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
 }
 
 export default function App() {
+  // Demo entry for when the API has no accounts (or isn't there); real sign-in uses the API's session.
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
+  const [auth, setAuth] = useState<'checking' | 'open' | 'signed-out' | 'signed-in'>('checking')
+  const [account, setAccount] = useState<Account | null>(null)
+  useEffect(() => {
+    me().then((a) => {
+      setAuth(a.kind === 'signed-in' ? 'signed-in' : a.kind)
+      if (a.kind === 'signed-in') setAccount(a.account)
+    })
+  }, [])
+  // Nothing but the sign-in page may ask the API for anything until the app is let in.
+  const access = auth === 'open' || auth === 'signed-in'
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
@@ -132,7 +144,7 @@ export default function App() {
     pulses: null,
   })
   useEffect(() => {
-    if (!live) return
+    if (!live || !access) return
     Promise.all([
       loadList<Client>('clients'),
       loadList<SavedIdea>('ideas'),
@@ -171,7 +183,7 @@ export default function App() {
         setSynced(true)
       })
       .catch(() => {})
-  }, [live, setClients, setIdeas, setLiveStore, setPulses])
+  }, [live, access, setClients, setIdeas, setLiveStore, setPulses])
   useEffect(() => {
     if (!synced || clients === onServer.current.clients) return
     onServer.current.clients = clients
@@ -420,7 +432,7 @@ export default function App() {
 
   // Check once a day per client, when its search page opens. Each attempt runs once per session, even if it fails.
   useEffect(() => {
-    if (!live || workspace === 'all' || view !== 'search' || pulseLoading) return
+    if (!live || !access || workspace === 'all' || view !== 'search' || pulseLoading) return
     const topic = clientTopic(client)
     const p = pulses[client.id]
     const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
@@ -429,7 +441,7 @@ export default function App() {
       pulseTried.current.add(key)
       void refreshPulse(client, false)
     }
-  }, [live, workspace, view, client, pulses, pulseLoading, refreshPulse])
+  }, [live, access, workspace, view, client, pulses, pulseLoading, refreshPulse])
 
   const finishReading = useCallback(() => {
     setReading(null)
@@ -632,7 +644,27 @@ export default function App() {
     plans: mine.filter((i) => i.status === 'approved').length,
   }
 
-  if (!signedIn) return <LoginScreen onSignIn={() => setSignedIn(true)} />
+  if (auth === 'checking') return null
+  if (auth === 'signed-out' || (auth === 'open' && !signedIn)) {
+    return (
+      <LoginScreen
+        real={auth === 'signed-out'}
+        onSignIn={(a) => {
+          if (a) {
+            setAccount(a)
+            setAuth('signed-in')
+          } else setSignedIn(true)
+        }}
+      />
+    )
+  }
+  const signOut = () => {
+    if (auth === 'open') return setSignedIn(false)
+    void logout().then(() => {
+      setAccount(null)
+      setAuth('signed-out')
+    })
+  }
 
   const inClient = workspace !== 'all'
 
@@ -645,7 +677,8 @@ export default function App() {
         view={view}
         setView={setView}
         counts={counts}
-        onSignOut={() => setSignedIn(false)}
+        onSignOut={signOut}
+        account={account}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         live={live}
@@ -666,6 +699,7 @@ export default function App() {
         <main className="main">
           {view !== 'channel' && (!inClient || view === 'overview') && (
             <OverviewScreen
+              agency={account?.agency || AGENCY_NAME}
               clients={clients}
               ideas={shownIdeas}
               onOpen={(id, v) => {

@@ -1,5 +1,8 @@
-import { AGENCY_NAME } from '../state'
+import { useState } from 'react'
+import { login, type Account } from '../lib/auth'
+import { useLiveInfo } from '../lib/useLiveInfo'
 import type { ComponentType } from 'react'
+import { AGENCY_NAME } from '../state'
 import { useUiTheme, type UiTheme } from '../lib/theme'
 import { ThemeSwitcher } from './ThemeSwitcher'
 // altitude
@@ -24,13 +27,26 @@ const landings: Partial<Record<UiTheme, Landing>> = {
   midnight: LandingMidnight,
 }
 
-// MOCK sign-in for the demo. No account or password is checked or stored.
-export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
+// Where "Ask for access" writes to. Accounts are made by hand; there is no self-service sign-up.
+const ACCESS_EMAIL = 'hello@buildclub.example'
+const askForAccess = () => {
+  window.location.href = `mailto:${ACCESS_EMAIL}?subject=${encodeURIComponent('Trend Finder access')}`
+}
+
+// `real` is true when the API has accounts: the form then signs in for real. Otherwise it is the
+// no-account demo entry, which checks nothing.
+export function LoginScreen({ real, onSignIn }: { real: boolean; onSignIn: (account?: Account) => void }) {
   const ui = useUiTheme()
-  // Designs with a landing page (hero + what it does) show it, with Log in / Register; the rest get the plain sign-in card.
+  const [formOpen, setFormOpen] = useState(false)
+  // Designs with a landing page (hero + what it does) show it, with Log in / Ask for access; the rest get the plain sign-in card.
   // The design switcher lives on the public website only; the dashboard keeps whichever design was picked here.
   const Landing = landings[ui]
-  const page = Landing ? <Landing onLogIn={onSignIn} onRegister={onSignIn} /> : <BaseLogin onSignIn={onSignIn} />
+  const showLanding = Landing && !(real && formOpen)
+  const page = showLanding ? (
+    <Landing onLogIn={real ? () => setFormOpen(true) : () => onSignIn()} onRegister={askForAccess} />
+  ) : (
+    <BaseLogin real={real} onSignIn={onSignIn} onBack={Landing ? () => setFormOpen(false) : undefined} />
+  )
   return (
     <>
       {page}
@@ -39,7 +55,25 @@ export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
   )
 }
 
-function BaseLogin({ onSignIn }: { onSignIn: () => void }) {
+function BaseLogin({ real, onSignIn, onBack }: { real: boolean; onSignIn: (account?: Account) => void; onBack?: () => void }) {
+  const { mode } = useLiveInfo()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async () => {
+    if (!real) return onSignIn()
+    setBusy(true)
+    setError('')
+    try {
+      onSignIn(await login(email, password))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't sign in. Try again.")
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="login">
       <div className="login-card">
@@ -57,15 +91,39 @@ function BaseLogin({ onSignIn }: { onSignIn: () => void }) {
           className="login-form"
           onSubmit={(e) => {
             e.preventDefault()
-            onSignIn()
+            void submit()
           }}
         >
-          <button type="submit" className="btn btn-primary login-btn">
-            Continue as demo agency
+          {real && (
+            <>
+              <label className="field">
+                <span className="field-label">Email</span>
+                <input type="email" autoComplete="username" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
+              </label>
+              <label className="field">
+                <span className="field-label">Password</span>
+                <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </label>
+              {error && (
+                <p className="error" role="alert">
+                  {error}
+                </p>
+              )}
+            </>
+          )}
+          <button type="submit" className="btn btn-primary login-btn" disabled={busy}>
+            {real ? (busy ? 'Signing in…' : 'Sign in') : 'Continue as demo agency'}
           </button>
-          <p className="small muted login-note">
-            Demo only: sign-in isn't built yet. You'll enter as <strong>{AGENCY_NAME}</strong> with sample clients.
-          </p>
+          {onBack && (
+            <button type="button" className="btn login-btn" onClick={onBack}>
+              Back
+            </button>
+          )}
+          {!real && mode !== 'live' && (
+            <p className="small muted login-note">
+              Demo only: sign-in isn't built yet. You'll enter as <strong>{AGENCY_NAME}</strong> with sample clients.
+            </p>
+          )}
         </form>
       </div>
     </div>

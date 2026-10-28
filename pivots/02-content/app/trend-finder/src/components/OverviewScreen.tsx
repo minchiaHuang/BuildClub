@@ -1,8 +1,8 @@
 import type { Client, SavedIdea } from '../types'
-import { AGENCY_NAME } from '../state'
 import { ProgressRing } from './ClientScreen'
 
 interface Props {
+  agency: string
   clients: Client[]
   ideas: SavedIdea[]
   onOpen: (clientId: string, view: 'saved' | 'approvals' | 'search') => void
@@ -10,7 +10,7 @@ interface Props {
 
 const daysUntil = (iso: string) => Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000)
 
-export function OverviewScreen({ clients, ideas, onOpen }: Props) {
+export function OverviewScreen({ agency, clients, ideas, onOpen }: Props) {
   const rows = clients.map((c) => {
     const mine = ideas.filter((i) => i.clientId === c.id)
     const approved = mine.filter((i) => i.status === 'approved')
@@ -27,7 +27,7 @@ export function OverviewScreen({ clients, ideas, onOpen }: Props) {
   return (
     <section className="overview">
       <header className="page-head">
-        <span className="eyebrow">{AGENCY_NAME} · All clients</span>
+        <span className="eyebrow">{agency} · All clients</span>
         <h1>Where every client stands</h1>
         <p className="muted">This month's video targets, what's waiting for approval, and what's due next.</p>
       </header>
