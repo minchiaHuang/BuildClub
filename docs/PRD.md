@@ -157,17 +157,17 @@ Demo 主線是第 1–5 步，目標一分鐘內走完。
 
 | 端點 | 用途 | 生效 |
 | --- | --- | --- |
-| `POST /api/needs` | 對已有拆解補判「這個客戶拍得出來嗎」所需條件（`Breakdown.needs`），結果寫回 `breakdown.json` | Task 4 完成後生效 |
-| `GET /api/stats` | `{videosScanned, searches}` 真實計數，公開路由（landing 用） | Task 5 完成後生效 |
-| `GET/PUT /api/pulses` | Trending now 存後端 | Task 6 完成後生效 |
-| `POST /api/share`、`DELETE /api/share/{token}` | 為某客戶建立／關閉 Annie 分享連結 | Task 8 完成後生效 |
-| `GET /api/review/{token}`、`POST /api/review/{token}/decide` | Annie 免登入檢視待審點子並按通過／拒絕 | Task 8 完成後生效 |
-| `POST /api/auth/login`、`POST /api/auth/logout`、`GET /api/auth/me` | email＋密碼登入，HttpOnly session cookie（`tf_session`） | Task 9 完成後生效 |
-| `POST /api/like`、`GET /api/like/{job}` | 貼影片連結 → 拆解 → 萃取關鍵字與格式名稱 | Task 10 完成後生效 |
-| `POST /api/like-image` | 上傳截圖（JSON base64）→ AI 讀圖 → 關鍵字與格式名稱 | Task 11 完成後生效 |
-| `POST /api/answer` | 根據真實搜尋結果回答 Ask（只解釋，不寫腳本） | Task 12 完成後生效 |
-| `GET /api/suggest?q=` | 打字建議：過去搜尋、pin、客戶主題 | Task 13 完成後生效 |
-| `SavedIdea.stage`、`postedAt`（沿用 `/api/ideas`） | 追蹤看板階段 | Task 14 完成後生效 |
+| `POST /api/needs` | 對已有拆解補判「這個客戶拍得出來嗎」所需條件（`Breakdown.needs`），結果寫回 `breakdown.json` | 已做（Task 4，2026-10-29） |
+| `GET /api/stats` | `{videosScanned, searches}` 真實計數，公開路由（landing 用） | 已做（Task 5，2026-10-29） |
+| `GET/PUT /api/pulses` | Trending now 存後端 | 已做（Task 6，2026-10-29） |
+| `POST /api/share`、`DELETE /api/share/{token}`、`DELETE /api/share?clientId=` | 為某客戶建立／關閉 Annie 分享連結 | 已做（Task 8，2026-10-29） |
+| `GET /api/review/{token}`、`POST /api/review/{token}/decide` | Annie 免登入檢視待審點子並按通過／拒絕 | 已做（Task 8，2026-10-29） |
+| `POST /api/auth/login`、`POST /api/auth/logout`、`GET /api/auth/me` | email＋密碼登入，HttpOnly session cookie（`tf_session`） | 已做（Task 9，2026-10-29） |
+| `POST /api/like`、`GET /api/like/{job}` | 貼影片連結 → 拆解 → 萃取關鍵字與格式名稱 | 已做（Task 10，2026-10-29） |
+| `POST /api/like-image` | 上傳截圖（JSON base64）→ AI 讀圖 → 關鍵字與格式名稱 | 已做（Task 11，2026-10-29） |
+| `POST /api/answer` | 根據真實搜尋結果回答 Ask（只解釋，不寫腳本） | 已做（Task 12，2026-10-29） |
+| `GET /api/suggest?q=` | 打字建議：過去搜尋、pin、客戶主題 | 已做（Task 13，2026-10-29） |
+| `SavedIdea.stage`、`postedAt`（沿用 `/api/ideas`） | 追蹤看板階段 | 已做（Task 14，2026-10-29） |
 
 Task 7（多平台搜尋）不改路由，只是前端用既有 `/api/search?platform=` 平行查多個平台。Task 9 生效後，除 `/api/health`、`/api/stats`、`/api/auth/login`、`/api/review/*` 與靜態檔外，所有 `/api/*` 需要有效 session。
 
