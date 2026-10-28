@@ -214,8 +214,22 @@ class ReviewClient(BaseModel):
     name: str
 
 
+class ReviewIdea(BaseModel):
+    """A SavedIdea as the approver sees it: without `notes`, Daphne's private note to her editor."""
+    id: str
+    videoId: str
+    clientId: str
+    status: Literal["saved", "waiting", "approved", "rejected"]
+    dueDate: str
+    shots: Optional[list[Shot]] = None
+    noteToApprover: Optional[str] = None
+    sentAt: Optional[int] = None
+    rejectReason: Optional[str] = None
+    decidedAt: Optional[int] = None
+
+
 class ReviewItem(BaseModel):
-    idea: SavedIdea
+    idea: ReviewIdea
     video: Optional[dict] = None
     format: Optional[dict] = None
 

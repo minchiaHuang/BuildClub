@@ -86,3 +86,35 @@ def test_same_client_reuses_token(client, two_clients):
     t3, _ = link(client, "b")
     assert t1 == t2 != t3
     assert body["url"].endswith(f"/review/{t1}")
+
+
+def test_review_hides_editor_notes(client, two_clients):
+    client.put("/api/ideas", json=[idea("ia", "a", notes="secret for editor")])
+    token, _ = link(client, "a")
+    body = client.get(f"/api/review/{token}").json()
+    assert "notes" not in body["ideas"][0]["idea"]
+    r = client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "approved"})
+    assert "notes" not in r.json()
+    assert {i["id"]: i for i in client.get("/api/ideas").json()}["ia"]["notes"] == "secret for editor"
+
+
+def test_unknown_client_gets_no_link(client, two_clients):
+    assert client.post("/api/share", json={"clientId": "nobody"}).status_code == 404
+
+
+def test_turn_off_revokes_every_token_of_the_client(client, two_clients):
+    import json as _json
+    import server
+    t1, _ = link(client, "a")
+    t2 = "second-token-for-a"
+    with server.db() as conn:
+        conn.execute("INSERT INTO store (key, value) VALUES (?, ?)",
+                     ("share:" + t2, _json.dumps({"clientId": "a", "createdAt": 1})))
+    tb, _ = link(client, "b")
+    assert client.get(f"/api/review/{t2}").status_code == 200
+    assert client.delete("/api/share", params={"clientId": "a"}).status_code == 204
+    assert client.get(f"/api/review/{t1}").status_code == 404
+    assert client.get(f"/api/review/{t2}").status_code == 404
+    assert client.get(f"/api/review/{tb}").status_code == 200
+    with server.db() as conn:
+        assert conn.execute("SELECT count(*) FROM store WHERE key LIKE 'share:%'").fetchone()[0] == 1

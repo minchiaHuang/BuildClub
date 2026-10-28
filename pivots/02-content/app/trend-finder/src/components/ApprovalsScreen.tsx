@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, hasScore, outlierScore, times, viewsWord } from '../lib/metrics'
-import { createShareLink, revokeShareLink } from '../lib/share'
+import { createShareLink, revokeClientLinks } from '../lib/share'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -32,8 +32,7 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
       .then(() => flash('Copied'))
       .catch(() => flash("Couldn't copy the link"))
   const turnOffLink = () =>
-    createShareLink(client.id)
-      .then((l) => revokeShareLink(l.token))
+    revokeClientLinks(client.id)
       .then(() => flash('Link turned off'))
       .catch(() => flash("Couldn't turn off the link"))
 

@@ -16,8 +16,15 @@ export async function revokeShareLink(token: string): Promise<void> {
   if (!r.ok) throw new Error("Couldn't turn off the link.")
 }
 
+// Turns off every link this client has. Never creates one.
+export async function revokeClientLinks(clientId: string): Promise<void> {
+  const r = await fetch(`/api/share?clientId=${encodeURIComponent(clientId)}`, { method: 'DELETE' })
+  if (!r.ok) throw new Error("Couldn't turn off the link.")
+}
+
 export interface ReviewItem {
-  idea: SavedIdea
+  // The API leaves out `notes`, Daphne's private note to her editor.
+  idea: Omit<SavedIdea, 'notes'>
   // Missing when the saved video's breakdown isn't on the API.
   video?: Video
   format?: Format

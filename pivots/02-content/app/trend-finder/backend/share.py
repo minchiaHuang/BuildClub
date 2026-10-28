@@ -3,6 +3,7 @@
 A token only ever shows that client's waiting ideas, and lets the approver change nothing but
 status, rejectReason and decidedAt of one of them. Storage is the server's key/value store."""
 
+import json
 import secrets
 import threading
 import time
@@ -10,11 +11,13 @@ import time
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
-from models import DecideRequest, ReviewList, SavedIdea, ShareCreated, ShareLink, ShareRequest
+from models import DecideRequest, ReviewIdea, ReviewList, SavedIdea, ShareCreated, ShareLink, ShareRequest
 
 PREFIX = "share:"
 # Every read-modify-write of the ideas list (Daphne's PUT, Annie's decision) takes this lock.
 ideas_lock = threading.Lock()
+# Creating and revoking links scan then write the share rows, so they take turns.
+share_lock = threading.Lock()
 
 DECISION_FIELDS = ("status", "rejectReason", "decidedAt")
 
@@ -57,21 +60,37 @@ def make_router(db, load, save) -> APIRouter:
         data = load(PREFIX + token)
         return data if isinstance(data, dict) and "clientId" in data else None
 
-    @router.post("/api/share", response_model=ShareCreated)
-    def create_share(body: ShareRequest, request: Request):
-        base = str(request.base_url).rstrip("/")
+    def keys_of(client_id: str) -> list:
         with db() as conn:
             rows = conn.execute("SELECT key, value FROM store WHERE key LIKE 'share:%'").fetchall()
-        import json
-        token = next((k[len(PREFIX):] for k, v in rows if json.loads(v).get("clientId") == body.clientId), None)
-        if token is None:
-            token = secrets.token_urlsafe(24)  # 192 bits
-            save(PREFIX + token, ShareLink(clientId=body.clientId, createdAt=int(time.time() * 1000)))
+        return [k for k, v in rows if json.loads(v).get("clientId") == client_id]
+
+    @router.post("/api/share", response_model=ShareCreated)
+    def create_share(body: ShareRequest, request: Request):
+        if not any(c["id"] == body.clientId for c in load("clients") or []):
+            return JSONResponse({"error": "No such client."}, status_code=404)
+        base = str(request.base_url).rstrip("/")
+        with share_lock:
+            keys = keys_of(body.clientId)
+            if keys:
+                token = keys[0][len(PREFIX):]
+            else:
+                token = secrets.token_urlsafe(24)  # 192 bits
+                save(PREFIX + token, ShareLink(clientId=body.clientId, createdAt=int(time.time() * 1000)))
         return ShareCreated(token=token, url=f"{base}/review/{token}")
+
+    # Turns off every link a client has, without ever minting one.
+    @router.delete("/api/share", status_code=204)
+    def revoke_client_shares(clientId: str):
+        with share_lock:
+            keys = keys_of(clientId)
+            with db() as conn:
+                conn.executemany("DELETE FROM store WHERE key = ?", [(k,) for k in keys])
+        return Response(status_code=204)
 
     @router.delete("/api/share/{token}", status_code=204)
     def revoke_share(token: str):
-        with db() as conn:
+        with share_lock, db() as conn:
             conn.execute("DELETE FROM store WHERE key = ?", (PREFIX + token,))
         return Response(status_code=204)
 
@@ -89,10 +108,10 @@ def make_router(db, load, save) -> APIRouter:
         for idea in load("ideas") or []:
             if idea["clientId"] == link["clientId"] and idea["status"] == "waiting":
                 video = videos.get(idea["videoId"])
-                items.append({"idea": idea, "video": video, "format": formats.get((video or {}).get("formatId"))})
+                items.append({"idea": {k: v for k, v in idea.items() if k != "notes"}, "video": video, "format": formats.get((video or {}).get("formatId"))})
         return {"client": {"name": name}, "ideas": items}
 
-    @router.post("/api/review/{token}/decide", response_model=SavedIdea, response_model_exclude_none=True)
+    @router.post("/api/review/{token}/decide", response_model=ReviewIdea, response_model_exclude_none=True)
     def decide(token: str, body: DecideRequest):
         link = link_of(token)
         if link is None:
@@ -104,6 +123,6 @@ def make_router(db, load, save) -> APIRouter:
                 return JSONResponse({"error": "This idea isn't waiting for review."}, status_code=404)
             ideas, decided = result
             save("ideas", [SavedIdea(**i) for i in ideas])
-        return decided
+        return {k: v for k, v in decided.items() if k != "notes"}
 
     return router

@@ -14,7 +14,7 @@ export function ReviewPage({ token }: { token: string }) {
     loadReview(token)
       .then((r) => {
         setReview(r)
-        setIdeas(r ? r.ideas.map((i) => i.idea) : [])
+        setIdeas(r ? r.ideas.map((i) => ({ ...i.idea, notes: '' })) : [])
       })
       .catch((e: Error) => setFailed(e.message))
   }, [token])
