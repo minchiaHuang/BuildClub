@@ -1,3 +1,5 @@
+import json
+
 import analyze
 import server
 from test_analyze import RESULT, fake_prepare, wait
@@ -24,7 +26,7 @@ def test_live_searches_stop_at_the_daily_cap(client, monkeypatch):
     r = client.get("/api/search", params={"q": "tofu", "fresh": "1"})
     assert r.status_code == 429
     assert "budget" in r.json()["error"]
-    assert "DAILY_APIFY_USD" in r.json()["detail"]
+    assert ".env" not in r.json()["error"] and "detail" not in r.json()
     assert calls == []  # refused before Apify is called
 
 
@@ -62,7 +64,7 @@ def test_breakdowns_stop_at_the_cap_but_finished_ones_stay_free(client, monkeypa
     assert client.post("/api/analyze", json={"url": URL}).status_code == 200  # same link: already done
     r = client.post("/api/analyze", json={"url": "https://www.tiktok.com/@a/video/2"})
     assert r.status_code == 429
-    assert "DAILY_CLAUDE_USD" in r.json()["detail"]
+    assert "detail" not in r.json()
 
 
 def test_account_medians_are_skipped_when_they_would_go_over_the_cap(client, monkeypatch):
@@ -80,3 +82,21 @@ def test_only_accounts_actually_fetched_are_paid_for(client, monkeypatch):
     server.save_medians({"a": 400})
     assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 200
     assert server.load(f"spend:{server.today()}") == {"apify": server.SEARCH_USD["tiktok"]}
+
+
+def test_a_zero_cap_says_searches_are_off_and_names_saved_ones(client, monkeypatch, capsys):
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0)
+    server.PINNED_DIR.mkdir()
+    (server.PINNED_DIR / "a.json").write_text(json.dumps({"query": "tofu", "videos": []}))
+    r = client.get("/api/search", params={"q": "never cached"})
+    assert r.status_code == 429
+    msg = r.json()["error"]
+    assert "turned off" in msg and "Saved searches and finished breakdowns still work" in msg and '"tofu"' in msg
+    assert ".env" not in msg and "restart" not in msg
+    assert "DAILY_APIFY_USD" in capsys.readouterr().out  # the operator hint goes to the log
+
+
+def test_a_zero_cap_without_saved_searches_still_explains(client, monkeypatch):
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", 0)
+    r = client.get("/api/search", params={"q": "never cached"})
+    assert r.status_code == 429 and "turned off" in r.json()["error"]

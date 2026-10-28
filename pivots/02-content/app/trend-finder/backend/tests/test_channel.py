@@ -165,7 +165,7 @@ def test_over_the_cap_is_429_before_any_subprocess(client, decoder, monkeypatch)
     monkeypatch.setitem(server.CHANNEL_CAPS, "claude", 0)
     r = client.post("/api/channel", json={"platform": "youtube", "handle": "@chan"})
     assert r.status_code == 429
-    assert "DAILY_CLAUDE_USD" in r.json()["detail"]
+    assert "detail" not in r.json()
     assert decoder.calls == []
 
 
@@ -183,11 +183,11 @@ def test_jev_and_scrapecreators_have_their_own_caps(client, decoder, monkeypatch
         lambda w, n: server.spend(w, n, server.CHANNEL_CAPS[w]), lambda w: server.budget_left(w, server.CHANNEL_CAPS[w])))
     monkeypatch.setitem(server.CHANNEL_CAPS, "jev", 0)
     r = client.post("/api/channel", json={"platform": "youtube", "handle": "chan"})
-    assert r.status_code == 429 and "DAILY_JEV_USD" in r.json()["detail"]
+    assert r.status_code == 429 and "turned off" in r.json()["error"]
     monkeypatch.setitem(server.CHANNEL_CAPS, "jev", 1)
     monkeypatch.setitem(server.CHANNEL_CAPS, "scrapecreators", 0)
     r = client.post("/api/channel", json={"platform": "instagram", "handle": "chan"})
-    assert r.status_code == 429 and "DAILY_SCRAPECREATORS_CREDITS" in r.json()["detail"]
+    assert r.status_code == 429 and "turned off" in r.json()["error"]
     assert decoder.calls == []
 
 

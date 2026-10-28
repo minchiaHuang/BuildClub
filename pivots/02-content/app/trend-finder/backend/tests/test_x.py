@@ -145,7 +145,7 @@ def test_cached_only_never_searches(client, actor):
 def test_over_the_cap_is_429_before_any_call(client, actor, monkeypatch):
     monkeypatch.setattr(server, "DAILY_APIFY_USD", server.SEARCH_USD["x"] - 0.001)
     r = x_search(client)
-    assert r.status_code == 429 and "DAILY_APIFY_USD" in r.json()["detail"]
+    assert r.status_code == 429 and "budget" in r.json()["error"]
     assert actor.calls == []
 
 

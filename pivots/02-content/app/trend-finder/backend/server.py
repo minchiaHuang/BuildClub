@@ -565,10 +565,28 @@ def spend(wallet: str, usd: float, cap: float) -> bool:
     return True
 
 
+def saved_searches(limit: int = 3) -> list[str]:
+    """Queries of the pinned demo searches, which load without spending anything."""
+    names = []
+    for f in sorted(PINNED_DIR.glob("*.json")):
+        try:
+            q = json.loads(f.read_text()).get("query")
+        except (OSError, ValueError):
+            continue
+        if q and q not in names:
+            names.append(q)
+    return names[:limit]
+
+
 def over_budget(name: str, cap: float, env: str, unit: str = "US$") -> JSONResponse:
+    print(f"[budget] {name} budget used up; to allow more, raise {env} in .env and restart the API.", flush=True)
+    if cap <= 0:
+        saved = saved_searches() if name == "Apify" else []
+        names = ", ".join('"' + q + '"' for q in saved)
+        hint = f" Try a saved search, like {names}." if saved else ""
+        return error(429, f"New {name} work is turned off. Saved searches and finished breakdowns still work.{hint}")
     return error(429, f"Today's {name} budget ({unit}{cap:.2f}) is used up. Saved searches and finished "
-                      "breakdowns still work, and the budget resets at midnight.",
-                 f"To allow more, raise {env} in .env and restart the API.")
+                      "breakdowns still work, and the budget resets at midnight.")
 
 
 # A breakdown takes minutes, so it runs in the background and the front end polls for progress.
