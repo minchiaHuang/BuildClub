@@ -58,6 +58,7 @@
 - **下一步：**
   - **（2026-10-29 新增，使用者決定）** ① 何時把 8787 換成這一版、先建 Daphne 帳號（順序見最上面）；② 真的 `ACCESS_EMAIL`；③ 付費冒煙要不要跑、怎麼跑（hook 擋住）；④ live 第一次啟動會把範例客戶寫進 `/api/clients`（分支前就有，與「live 不出範例資料」衝突）要不要修；⑤ 新增客戶的主題用逗號分隔（沿用 Settings 欄位）可否；⑥ AGENTS.md 前端擁有權那行已放寬（PR 審元件）可否。
   - **（2026-10-29 早上，使用者已決定）** ① 付費冒煙通過後再換 8787（不等 Veralyn 審完）；② `ACCESS_EMAIL` 先保留 placeholder，換 8787 前再定；③ 付費冒煙由使用者用瀏覽器登入 8798，hook 不動；④ 要修：live 第一次啟動不寫範例客戶；⑤ 新增客戶的主題改成標籤輸入（Enter 加一個），Settings 一起改才一致；⑥ AGENTS.md 放寬的寫法保留。做的順序：④ → ⑤ → ③ 冒煙 → ① 換 8787。
+  - **④ 已修（2026-10-29）：** live 的 API 沒有客戶時，瀏覽器裡的範例客戶會被濾掉，畫面只顯示「Add your first client」（不能取消），加完才進 app；瀏覽器自己建的客戶照留。改到 `App.tsx`、`NewClientForm.tsx`、`e2e/full-flow.mjs`（第 2 步改成先加第一個客戶，並確認看不到 Evergreen Foods）。驗證：verify 綠、`tsc -b`／eslint 乾淨，隔離後端 8797 跑 E2E：1440 寬 13/13、390 寬 3/3。
   - **（2026-10-29 延後的小問題）** 清單在 PR 說明；重點：登入失敗只按 email 計次（可被鎖帳號）、分享連結不過期、session token 明文存、`GET /api/search?fresh=1` 跨站連結可觸發付費搜尋（有每日上限）、Overview 算 posted 但客戶頁圓環仍算 approved。
   - `.env` 有一行空的重複 `TYPESAFE_API_KEY=`（.env 是 symlink，請使用者自己刪）。
   - IG hover 播放要後端提供影片檔網址才做得到。

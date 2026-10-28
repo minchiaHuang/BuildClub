@@ -51,6 +51,9 @@ import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
 import { withScreenTransition } from './lib/motion'
 
+// Stands in for the current client while a live API has none yet.
+const noClient: Client = { id: '', name: '', niche: '', audience: '', monthlyTarget: 8, examples: [], topics: [], cannot: [] }
+
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
   ratio: (a, b) => viewsPerFollower(b) - viewsPerFollower(a),
@@ -172,6 +175,10 @@ export default function App() {
         if (savedClients?.length) {
           setClients(savedClients)
           onServer.current.clients = savedClients
+        } else {
+          // Nothing saved on the API yet: keep only clients made in this browser, not the sample ones.
+          const sampleIds = new Set(sampleClients.map((c) => c.id))
+          setClients((prev) => prev.filter((c) => !sampleIds.has(c.id)))
         }
         if (savedIdeas) {
           setIdeas(savedIdeas)
@@ -271,7 +278,8 @@ export default function App() {
   }, [view])
 
   // Inside a client, everything (saving, fit checks, plans) is for that client.
-  const client = clients.find((c) => c.id === workspace) ?? clients[0]
+  // A live API with no clients yet has an empty list until the first one is added (see below).
+  const client = clients.find((c) => c.id === workspace) ?? clients[0] ?? noClient
 
   const setWorkspace = (w: Workspace) => {
     setWorkspaceRaw(w)
@@ -513,7 +521,7 @@ export default function App() {
 
   // Check once a day per client, when its search page opens. Each attempt runs once per session, even if it fails.
   useEffect(() => {
-    if (!live || !access || workspace === 'all' || view !== 'search' || pulseLoading) return
+    if (!live || !access || !clients.length || workspace === 'all' || view !== 'search' || pulseLoading) return
     const topic = clientTopic(client)
     const p = pulses[client.id]
     const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
@@ -522,7 +530,7 @@ export default function App() {
       pulseTried.current.add(key)
       void refreshPulse(client, false)
     }
-  }, [live, access, workspace, view, client, pulses, pulseLoading, refreshPulse])
+  }, [live, access, clients.length, workspace, view, client, pulses, pulseLoading, refreshPulse])
 
   const finishReading = useCallback(() => {
     setReading(null)
@@ -752,6 +760,9 @@ export default function App() {
       setAuth('signed-out')
     })
   }
+
+  // First run on a live API: the agency adds its own first client before anything else.
+  if (!clients.length) return <NewClientForm first existingIds={[]} onAdd={onAddClient} />
 
   const inClient = workspace !== 'all'
 

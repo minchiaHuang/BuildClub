@@ -6,16 +6,19 @@ import { ClientFields } from './ClientFields'
 interface Props {
   existingIds: string[]
   onAdd: (c: Client) => void
-  onCancel: () => void
+  // Left out for the first client, which can't be skipped.
+  onCancel?: () => void
+  first?: boolean
 }
 
 const blank: Client = { id: '', name: '', niche: '', audience: '', monthlyTarget: 8, examples: [], topics: [], cannot: [] }
 
-export function NewClientForm({ existingIds, onAdd, onCancel }: Props) {
+export function NewClientForm({ existingIds, onAdd, onCancel, first }: Props) {
   const [draft, setDraft] = useState<Client>(blank)
   const name = draft.name.trim()
 
   useEffect(() => {
+    if (!onCancel) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -37,14 +40,16 @@ export function NewClientForm({ existingIds, onAdd, onCancel }: Props) {
   }
 
   return (
-    <div className="modal-scrim" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <div className="modal-scrim" onMouseDown={(e) => e.target === e.currentTarget && onCancel?.()}>
       <form className="modal" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onSubmit={submit}>
-        <h2 id="new-client-title">Add client</h2>
+        <h2 id="new-client-title">{first ? 'Add your first client' : 'Add client'}</h2>
         <ClientFields client={draft} onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} />
         <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            Cancel
-          </button>
+          {onCancel && (
+            <button type="button" className="btn btn-ghost" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
           <button type="submit" className="btn btn-primary" disabled={!name}>
             Add client
           </button>

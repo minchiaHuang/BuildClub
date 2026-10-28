@@ -66,8 +66,16 @@ if (WIDTH >= 600) {
     await page.getByText('Wrong email or password.').waitFor()
     await page.getByLabel('Password').fill(PASSWORD)
     await page.getByRole('button', { name: 'Sign in' }).click()
-    // The app opens on the first client's search page; the agency name sits by the signed-in person.
+    // A live API with no clients asks for the first one; the sample clients never appear.
+    const first = page.getByRole('dialog', { name: 'Add your first client' })
+    await first.waitFor()
+    check(!(await text()).includes('Evergreen Foods'), 'a sample client shows on a live API')
+    check((await first.getByRole('button', { name: 'Cancel' }).count()) === 0, 'the first client can be skipped')
+    await page.getByLabel('Client name').fill('Starter Co')
+    await first.getByRole('button', { name: 'Add client' }).click()
+    // The agency name sits by the signed-in person.
     await sidebar().waitFor()
+    check(!(await sidebar().innerText()).includes('Evergreen Foods'), 'a sample client is in the switcher')
     check((await sidebar().innerText()).includes(AGENCY), `sidebar does not show "${AGENCY}"`)
     await sidebar().locator('.switcher-btn').click()
     await page.getByRole('menuitem', { name: /All clients/ }).click()
