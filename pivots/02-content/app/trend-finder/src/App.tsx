@@ -96,6 +96,7 @@ export default function App() {
   const [scoring, setScoring] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   // Platforms that returned nothing in the last search (daily cap, upstream error), shown above the results.
+  const [searchEmpty, setSearchEmpty] = useState<Platform[]>([])
   const [searchFailed, setSearchFailed] = useState<{ platform: Platform; message: string }[]>([])
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
 
@@ -273,6 +274,7 @@ export default function App() {
         throw new Error(res.failed.map((f) => `${platformName[f.platform]}: ${f.message}`).join(' '))
       }
       setSearchFailed(res.failed)
+      setSearchEmpty(res.empty)
       setLiveStore((prev) => {
         const keep = (list: { id: string }[], add: { id: string }[]) => {
           const ids = new Set(add.map((x) => x.id))
@@ -660,6 +662,7 @@ export default function App() {
           {inClient && view === 'results' && (
             <ResultsScreen
               failed={live ? searchFailed : []}
+              empty={live ? searchEmpty : []}
               query={query}
               setQuery={setQuery}
               interp={interp}

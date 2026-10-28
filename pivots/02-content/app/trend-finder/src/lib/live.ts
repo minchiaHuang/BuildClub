@@ -139,6 +139,8 @@ export interface SearchAll {
   formats: Format[]
   // Platforms whose search failed (daily cap, upstream error, nothing saved); the others still count.
   failed: { platform: Platform; message: string }[]
+  // Platforms that answered with no videos.
+  empty: Platform[]
   // Platforms still working out account medians; poll them with cachedOnly.
   pending: Platform[]
 }
@@ -158,17 +160,19 @@ export async function searchAll(
   const formats: Format[] = []
   const failed: SearchAll['failed'] = []
   const pending: Platform[] = []
+  const empty: Platform[] = []
   settled.forEach((r, i) => {
     const platform = platforms[i]
     if (r.status === 'rejected') {
       failed.push({ platform, message: r.reason instanceof Error ? r.reason.message : 'Search failed.' })
       return
     }
+    if (!r.value.videos.length) empty.push(platform)
     videos.push(...r.value.videos)
     formats.push(...r.value.formats)
     if (r.value.mediansPending) pending.push(platform)
   })
-  return { videos: videos.sort(byScore), formats, failed, pending }
+  return { videos: videos.sort(byScore), formats, failed, empty, pending }
 }
 
 // The AI breakdown of one real video (Breakdown in backend/models.py).

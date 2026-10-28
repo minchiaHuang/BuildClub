@@ -37,6 +37,8 @@ interface Props {
   live: boolean
   // Platforms whose search failed in this live search; the rest still show.
   failed: { platform: Platform; message: string }[]
+  // Platforms that answered with no videos.
+  empty: Platform[]
   patterns: React.ReactNode
   results: Video[]
   trends: FormatTrend[]
@@ -196,6 +198,12 @@ export function ResultsScreen(p: Props) {
       {p.failed.map((f) => (
         <p key={f.platform} className="error" role="alert">
           {platformName[f.platform]}: {f.message}
+        </p>
+      ))}
+
+      {p.empty.map((pl) => (
+        <p key={pl} className="error" role="alert">
+          {platformName[pl]}: No videos found.
         </p>
       ))}
 
