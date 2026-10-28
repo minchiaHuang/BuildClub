@@ -7,6 +7,7 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 // unify
 
 // midnight
+import { LandingMidnight } from './landing/LandingMidnight'
 
 type Landing = ComponentType<{ onLogIn: () => void; onRegister: () => void }>
 // Each design registers its landing page on its own line.
@@ -16,6 +17,7 @@ const landings: Partial<Record<UiTheme, Landing>> = {
   // unify
 
   // midnight
+  midnight: LandingMidnight,
 }
 
 // MOCK sign-in for the demo. No account or password is checked or stored.

@@ -15,3 +15,5 @@
 /* unify */
 
 /* midnight */
+@import './styles/theme-midnight.css';
+@import './styles/landing-midnight.css';

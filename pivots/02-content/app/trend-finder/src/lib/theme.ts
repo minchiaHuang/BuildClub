@@ -11,6 +11,7 @@ export const uiThemes: { id: UiTheme; label: string }[] = [
   // unify
 
   // midnight
+  { id: 'midnight', label: 'Midnight' },
 ]
 
 const KEY = 'trend-finder.ui-theme'

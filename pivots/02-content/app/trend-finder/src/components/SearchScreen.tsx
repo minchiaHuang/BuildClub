@@ -9,6 +9,7 @@ import { useUiTheme, type UiTheme } from '../lib/theme'
 // unify
 
 // midnight
+import { MidnightHero } from './themes/MidnightHero'
 
 // A design can put its own hero above the search. If it holds the search box itself (holdsSearch), the box goes inside it.
 type Hero = { Hero: ComponentType<{ clientName: string; children?: ReactNode }>; holdsSearch?: boolean }
@@ -18,6 +19,7 @@ const heroes: Partial<Record<UiTheme, Hero>> = {
   // unify
 
   // midnight
+  midnight: { Hero: MidnightHero },
 }
 
 interface Props {

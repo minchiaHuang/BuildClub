@@ -1,0 +1,49 @@
+/* Midnight direction (Ref 3). Everything scoped under :root[data-ui="midnight"]. Dark regardless of OS setting. */
+:root[data-ui="midnight"],
+:root[data-ui="midnight"]:where(*) {
+  --bg: #050a17;
+  --surface: #0f1729;
+  --surface-2: #162038;
+  --surface-3: #1f2b47;
+  --fg: #eef1f7;
+  --muted: #9aa3b5;          /* 7.5:1 on --bg, 6.6:1 on --surface */
+  --line: #1c2640;
+  --line-strong: #2c3a5c;
+  --frost: rgb(8 14 30 / 0.88);
+  --scrim: rgb(0 0 0 / 0.62);
+
+  --accent: #3b6cf6;          /* white text 4.7:1 */
+  --accent-hover: #2f5ce0;
+  --accent-fg: #ffffff;
+  --accent-soft: #16244a;
+
+  --hot: #ff9466;  --hot-soft: #3a1d14;  --hot-fg: #1a0b04;
+  --early: #5fd896; --early-soft: #0f2e22; --early-fg: #04140c;
+  --rising: #f2c25c; --rising-soft: #33280f;
+  --late: #a5adbd; --late-soft: #1a2236;
+  --no: #ff8c80; --no-soft: #3a1a1a;
+
+  --tiktok: #f2f2f4;
+  --instagram: #ec74b8;
+
+  --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.5), 0 28px 70px rgb(0 0 0 / 0.6);
+  --focus-ring: 0 0 0 3px rgb(59 108 246 / 0.5);
+  color-scheme: dark;
+}
+:root[data-ui="midnight"] body {
+  background: radial-gradient(1200px 600px at 50% -200px, #0f1d40 0%, transparent 70%), var(--bg);
+  color: var(--fg);
+}
+/* The landing keeps the reference's light grey page around the dark panel. */
+:root[data-ui="midnight"] body:has(.landing-midnight) { background: #e9eaee; }
+
+/* Search page: compact hero replaces the intro heading, the progress line stays. */
+:root[data-ui="midnight"] .search-intro .eyebrow,
+:root[data-ui="midnight"] .search-intro h1,
+:root[data-ui="midnight"] .search-intro .lede { display: none; }
+:root[data-ui="midnight"] .search-intro:not(:has(.progress-line)) { display: none; }
+:root[data-ui="midnight"] .search-intro { margin: -16px 0 -12px; justify-items: center; }
+
