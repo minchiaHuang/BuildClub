@@ -117,6 +117,8 @@ export default function App() {
   // In live mode the API keeps clients and saved ideas too. Its copy wins on load; after that,
   // every change is saved back. If the API can't load them, this browser's copy is used.
   const [synced, setSynced] = useState(false)
+  // Counts saves started and finished, so a read that overlapped one can be thrown away.
+  const writes = useRef(0)
   // What the API already holds, so the copy just loaded from it isn't written straight back.
   const onServer = useRef<{
     clients: Client[] | null
@@ -178,8 +180,45 @@ export default function App() {
   useEffect(() => {
     if (!synced || ideas === onServer.current.ideas) return
     onServer.current.ideas = ideas
-    saveList('ideas', ideas).catch(() => {})
+    writes.current += 1
+    saveList('ideas', ideas)
+      .catch(() => {})
+      .finally(() => {
+        writes.current += 1
+      })
   }, [synced, ideas])
+
+  // Annie answers on her own link, so the API's ideas are re-read every 20 s and when this window gets
+  // focus, but only on the screens that show her answers. Skipped while this tab has changes of its own
+  // that the API hasn't taken yet, or when a save finished while the read was in flight.
+  const ideasNow = useRef(ideas)
+  useEffect(() => {
+    ideasNow.current = ideas
+  }, [ideas])
+  const watchingAnswers = view === 'approvals' || view === 'overview' || workspace === 'all'
+  useEffect(() => {
+    if (!live || !synced || !watchingAnswers) return
+    let stopped = false
+    const refresh = () => {
+      const before = writes.current
+      loadList<SavedIdea>('ideas')
+        .then((fresh) => {
+          if (stopped || !fresh || writes.current !== before) return
+          if (ideasNow.current !== onServer.current.ideas) return
+          if (JSON.stringify(fresh) === JSON.stringify(ideasNow.current)) return
+          onServer.current.ideas = fresh
+          setIdeas(fresh)
+        })
+        .catch(() => {})
+    }
+    const timer = window.setInterval(refresh, 20_000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [live, synced, watchingAnswers, setIdeas])
 
   useEffect(() => {
     if (!synced || pulses === onServer.current.pulses) return
@@ -559,7 +598,9 @@ export default function App() {
   const decide = (ideaId: string, approved: boolean, reason?: string) =>
     setIdeas((prev) =>
       prev.map((i) =>
-        i.id === ideaId ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason } : i,
+        i.id === ideaId
+          ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason, decidedAt: Date.now() }
+          : i,
       ),
     )
 
@@ -738,6 +779,7 @@ export default function App() {
               onGoSaved={() => setView('saved')}
               onPlan={openPlan}
               onReview={() => setView('review')}
+              live={live}
             />
           )}
 

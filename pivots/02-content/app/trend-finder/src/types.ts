@@ -99,4 +99,6 @@ export interface SavedIdea {
   noteToApprover?: string
   sentAt?: number
   rejectReason?: string
+  // When the approver answered (ms). Stops an older tab from putting the idea back to waiting.
+  decidedAt?: number
 }

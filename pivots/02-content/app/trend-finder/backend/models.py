@@ -3,7 +3,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SearchVideo(BaseModel):
@@ -79,6 +79,7 @@ class SavedIdea(BaseModel):
     noteToApprover: Optional[str] = None
     sentAt: Optional[int] = None
     rejectReason: Optional[str] = None
+    decidedAt: Optional[int] = None
 
 
 class Pattern(BaseModel):
@@ -192,3 +193,39 @@ class AnalyzeJob(BaseModel):
     step: str = ""
     result: Optional[Breakdown] = None
     error: Optional[str] = None
+
+
+class ShareRequest(BaseModel):
+    clientId: str
+
+
+class ShareLink(BaseModel):
+    """What the store keeps under share:<token>."""
+    clientId: str
+    createdAt: int
+
+
+class ShareCreated(BaseModel):
+    token: str
+    url: str
+
+
+class ReviewClient(BaseModel):
+    name: str
+
+
+class ReviewItem(BaseModel):
+    idea: SavedIdea
+    video: Optional[dict] = None
+    format: Optional[dict] = None
+
+
+class ReviewList(BaseModel):
+    client: ReviewClient
+    ideas: list[ReviewItem]
+
+
+class DecideRequest(BaseModel):
+    ideaId: str
+    decision: Literal["approved", "rejected"]
+    reason: Optional[str] = Field(default=None, max_length=1000)

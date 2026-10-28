@@ -32,6 +32,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 import assist
 import channels
 import reddit
+import share
 import x
 import youtube
 import analyze
@@ -557,7 +558,11 @@ def get_ideas():
 
 @app.put("/api/ideas", response_model=list[SavedIdea], response_model_exclude_none=True)
 def put_ideas(ideas: list[SavedIdea]):
-    save("ideas", ideas)
+    # Annie may have decided since this tab last loaded; keep her newer answer.
+    with share.ideas_lock:
+        merged = share.merge_ideas(load("ideas"), [i.model_dump(exclude_none=True) for i in ideas])
+        ideas = [SavedIdea(**i) for i in merged]
+        save("ideas", ideas)
     return ideas
 
 
@@ -583,6 +588,10 @@ def get_pulses():
 def put_pulses(pulses: dict[str, Pulse]):
     save("pulses", pulses)
     return pulses
+
+
+# The approver's share link: /api/share (Daphne) and /api/review/<token> (Annie, no login).
+app.include_router(share.make_router(db, load, save))
 
 
 budget_lock = threading.Lock()
