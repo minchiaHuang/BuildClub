@@ -27,3 +27,23 @@ def test_counts_cached_and_pinned_videos(offline, client):
 def test_empty_when_nothing_saved(offline, client):
     server.stats_cache.clear()
     assert client.get("/api/stats").json() == {"videosScanned": 0, "searches": 0}
+
+
+def test_suggest_matches_past_and_client_topics(offline, client):
+    put(offline / "cache", "Crispy Tofu", ["a1"])
+    put(offline / "pinned", "tofu ramen", ["a2"])
+    put(offline / "pinned", "crispy tofu", ["a3"], platform="instagram")  # same words as the cached one: once
+    put(offline / "cache", "kimchi", ["a4"])
+    server.save("clients", [server.Client(id="c1", name="N", niche="n", audience="a", monthlyTarget=1,
+                                          examples=["silken tofu bowls"], topics=["tofu skincare"], cannot=[])])
+
+    queries = client.get("/api/suggest", params={"q": "TOFU"}).json()["queries"]
+    assert queries[0] == "tofu ramen"  # pinned first
+    assert sorted(q.lower() for q in queries) == sorted(["tofu ramen", "crispy tofu", "tofu skincare", "silken tofu bowls"])
+    assert client.get("/api/suggest", params={"q": ""}).json() == {"queries": []}
+
+
+def test_suggest_limit_8(offline, client):
+    for i in range(12):
+        put(offline / "cache", f"tofu {i}", [f"v{i}"])
+    assert len(client.get("/api/suggest", params={"q": "tofu"}).json()["queries"]) == 8

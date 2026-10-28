@@ -477,6 +477,16 @@ def health():
             "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
+def saved_files():
+    """(file name, parsed search, is pinned) for every saved search; the same search in both folders has the same file name."""
+    for folder in (CACHE_DIR, PINNED_DIR):
+        for f in sorted(folder.glob("*.json")):
+            try:
+                yield f.name, json.loads(f.read_text()), folder == PINNED_DIR
+            except (OSError, ValueError):
+                continue
+
+
 STATS_SECONDS = 60
 stats_cache: dict = {}
 
@@ -487,18 +497,28 @@ def stats():
     now = time.time()
     if stats_cache.get("at", 0) > now - STATS_SECONDS:
         return stats_cache["value"]
-    searches: dict = {}
-    for folder in (CACHE_DIR, PINNED_DIR):
-        for f in sorted(folder.glob("*.json")):
-            try:
-                saved = json.loads(f.read_text())
-            except (OSError, ValueError):
-                continue
-            searches[f.name] = saved  # the same search in both folders has the same file name
+    searches = {name: saved for name, saved, _ in saved_files()}
     seen = {(s.get("platform"), v.get("id")) for s in searches.values() for v in s.get("videos", []) if v.get("id")}
     value = {"videosScanned": len(seen), "searches": len(searches)}
     stats_cache.update(at=now, value=value)
     return value
+
+
+@app.get("/api/suggest")
+def suggest_queries(q: str = ""):
+    """Past searches and client topics that contain what is being typed: pinned first, each once, at most 8."""
+    needle = q.strip().lower()
+    if not needle:
+        return {"queries": []}
+    files = list(saved_files())
+    names = [s.get("query") for _, s, pinned in files if pinned] + [s.get("query") for _, s, pinned in files if not pinned]
+    for c in load("clients") or []:
+        names += [*(c.get("topics") or []), *c.get("examples", [])]
+    out: list[str] = []
+    for name in names:
+        if isinstance(name, str) and needle in name.lower() and name.lower() not in {o.lower() for o in out}:
+            out.append(name)
+    return {"queries": out[:8]}
 
 
 @app.get("/api/search", response_model=SearchResult)
