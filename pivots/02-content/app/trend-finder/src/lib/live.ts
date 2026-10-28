@@ -86,7 +86,7 @@ function toVideo(item: LiveItem, query: string, platform: Platform): Video {
     thumbnail: item.cover,
     caption: item.text,
     music: item.music,
-    hashtags: item.hashtags,
+    hashtags: item.hashtags ?? [],
     comments: platform === 'reddit' ? item.comments : undefined,
   }
 }
@@ -94,7 +94,7 @@ function toVideo(item: LiveItem, query: string, platform: Platform): Video {
 // Live videos aren't sorted into hand-written formats, so each gets its own "format"
 // built from what we actually know about it. Shot lists stay empty until we can read video frames.
 function toFormat(item: LiveItem, v: Video): Format {
-  const tags = item.hashtags.slice(0, 5).map((h) => `#${h}`)
+  const tags = (item.hashtags ?? []).slice(0, 5).map((h) => `#${h}`)
   return {
     id: v.formatId,
     name: v.hook,
