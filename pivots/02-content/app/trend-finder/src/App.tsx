@@ -39,6 +39,7 @@ import {
   saveLibrary,
   saveList,
   savePulses,
+  likeImage,
   likeVideo,
   searchAll,
   searchLive,
@@ -329,6 +330,38 @@ export default function App() {
         shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '' },
       like.breakdown,
     )
+    setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
+    setSearching(null)
+    await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
+  }
+
+  // An uploaded screenshot: the AI says what it shows, then we search for its first keyword.
+  const runImageSearch = async (file: File) => {
+    const seq = ++searchSeq.current
+    const clientId = workspace
+    const previewUrl = URL.createObjectURL(file)
+    setSearchError(null)
+    setSearchDone(null)
+    setSearching({ q: file.name, platforms: [], step: 'Looking at your screenshot' })
+    let like
+    try {
+      like = await likeImage(file)
+    } catch (e) {
+      if (seq !== searchSeq.current) return
+      const message = e instanceof Error ? e.message : 'Could not read that image.'
+      setSearching(null)
+      setSearchError(message)
+      if (here.current.view !== 'search' || here.current.workspace !== clientId) setSearchDone({ text: file.name, clientId, error: message })
+      return
+    }
+    if (seq !== searchSeq.current) return
+    const source = interpretMedia('', { name: file.name, url: previewUrl }, formats)?.source ?? null
+    const format: Format = {
+      id: `like-image-${file.name}`, name: like.formatName, short: like.formatName, tags: [], audiences: [],
+      summary: like.description,
+      why: { hook: '', first3s: '', length: '', format: like.formatName, sound: '' },
+      shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '',
+    }
     setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
     setSearching(null)
     await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
@@ -751,6 +784,7 @@ export default function App() {
               query={query}
               setQuery={setQuery}
               onSearch={runSearch}
+              onImage={live ? runImageSearch : undefined}
               clientName={client.name}
               live={live}
               clientExamples={client.examples}
@@ -782,6 +816,7 @@ export default function App() {
               formats={formats}
               allVideos={videos}
               onSearch={runSearch}
+              onImage={live ? runImageSearch : undefined}
               onRemoveChip={removeChip}
               clientName={client.name}
               onPlan={planFromVideo}

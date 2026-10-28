@@ -57,6 +57,9 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
           </div>
         )}
 
+        {real && source.kind === 'image' ? (
+          <p>{format.summary}</p>
+        ) : (
         <dl className="why why-compact">
           <div>
             <dt>Hook</dt>
@@ -71,6 +74,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
             <dd>{format.why.format}</dd>
           </div>
         </dl>
+        )}
 
         {best && (
           <div className="like-actions">

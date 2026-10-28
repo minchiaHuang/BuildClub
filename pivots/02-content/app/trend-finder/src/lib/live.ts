@@ -244,6 +244,31 @@ export async function likeVideo(url: string, onStep: (step: string) => void): Pr
   }
 }
 
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+export interface LikeImageResult {
+  keywords: string[]
+  formatName: string
+  description: string
+}
+
+// "Find videos like this screenshot": sends the picture (base64 in JSON) and returns what it shows
+// and search keywords. The same picture a second time is free.
+export async function likeImage(file: File): Promise<LikeImageResult> {
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is too big. Use one under 5 MB.')
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  const r = await fetch('/api/like-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: btoa(binary), mediaType: file.type }),
+  })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(body.error ?? 'Could not read that image. Try again.')
+  return body as LikeImageResult
+}
+
 // The breakdown fills the same Format fields the sample data has.
 export const applyBreakdown = (f: Format, b: Breakdown): Format => ({
   ...f,

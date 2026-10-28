@@ -30,6 +30,7 @@ interface Props {
   query: Query
   setQuery: (q: Query) => void
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   clientName: string
   // Live mode searches real TikTok videos; otherwise the sample tofu data.
   live: boolean
@@ -56,6 +57,7 @@ export function SearchScreen(props: Props) {
           value={query.keyword}
           onValueChange={(text) => setQuery({ ...query, keyword: text })}
           onSearch={onSearch}
+          onImage={props.onImage}
           platforms={query.platforms}
           onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
           live={live}

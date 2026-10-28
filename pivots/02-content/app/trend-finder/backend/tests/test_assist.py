@@ -1,4 +1,7 @@
+import base64
 import json
+
+import pytest
 
 import analyze
 import assist
@@ -81,3 +84,50 @@ def test_like_keywords_cached(client, monkeypatch):
 def test_like_bad_url_400(client):
     r = client.post("/api/like", json={"url": "https://example.com/video"})
     assert r.status_code == 400
+
+
+IMG = base64.b64encode(b"\x89PNG fake screenshot bytes").decode()
+IMG_ANSWER = 'JSON: {"keywords": ["latte art", "cafe asmr"], "formatName": "Cafe ASMR", "description": "A barista pours latte art."}'
+
+
+def test_like_image_cached_by_hash(client, monkeypatch):
+    calls = []
+
+    def fake(model, system, content, max_tokens):
+        calls.append((model, content))
+        return IMG_ANSWER
+
+    monkeypatch.setattr(assist, "call_claude", fake)
+    body = {"image": IMG, "mediaType": "image/png"}
+    first = client.post("/api/like-image", json=body)
+    second = client.post("/api/like-image", json=body)
+    assert first.status_code == 200 and second.json() == first.json()
+    assert first.json() == {"keywords": ["latte art", "cafe asmr"], "formatName": "Cafe ASMR",
+                            "description": "A barista pours latte art."}
+    assert len(calls) == 1 and calls[0][0] == "claude-haiku-5-5"
+    image_block = calls[0][1][0]
+    assert image_block == {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": IMG}}
+    assert server.load(f"spend:{server.today()}")["claude"] == server.IMAGE_USD  # the second upload was free
+
+
+def test_like_image_too_big_413(client, monkeypatch):
+    monkeypatch.setattr(assist, "call_claude", lambda *a: pytest.fail("Claude must not be called"))
+    big = base64.b64encode(b"x" * (5 * 1024 * 1024 + 1)).decode()
+    r = client.post("/api/like-image", json={"image": big, "mediaType": "image/jpeg"})
+    assert r.status_code == 413
+    just_fits = base64.b64encode(b"x" * (5 * 1024 * 1024)).decode()
+    monkeypatch.setattr(assist, "call_claude", lambda *a: IMG_ANSWER)
+    assert client.post("/api/like-image", json={"image": just_fits, "mediaType": "image/jpeg"}).status_code == 200
+
+
+def test_like_image_bad_type_422(client, monkeypatch):
+    monkeypatch.setattr(assist, "call_claude", lambda *a: pytest.fail("Claude must not be called"))
+    assert client.post("/api/like-image", json={"image": IMG, "mediaType": "image/gif"}).status_code == 422
+    assert client.post("/api/like-image", json={"image": "!!not base64!!", "mediaType": "image/png"}).status_code == 400
+
+
+def test_like_image_prompt_forbids_writing_scripts(client, monkeypatch):
+    systems = []
+    monkeypatch.setattr(assist, "call_claude", lambda model, system, *a: systems.append(system) or IMG_ANSWER)
+    client.post("/api/like-image", json={"image": IMG, "mediaType": "image/webp"})
+    assert "Do not write a script" in systems[0]

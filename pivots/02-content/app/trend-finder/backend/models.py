@@ -156,6 +156,17 @@ class LikeRequest(BaseModel):
     url: str
 
 
+class LikeImageRequest(BaseModel):
+    image: str  # base64 of the file, without a data: prefix
+    mediaType: Literal["image/png", "image/jpeg", "image/webp"]
+
+
+class LikeImageResult(BaseModel):
+    keywords: list[str]
+    formatName: str
+    description: str
+
+
 class LikeJob(BaseModel):
     status: Literal["queued", "running", "done", "failed"]
     step: str = ""

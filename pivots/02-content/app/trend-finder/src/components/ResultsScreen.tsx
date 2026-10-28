@@ -31,6 +31,7 @@ interface Props {
   formats: Format[]
   allVideos: Video[]
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   onRemoveChip: (chip: Chip) => void
   likeThis: React.ReactNode
   // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
@@ -167,6 +168,7 @@ export function ResultsScreen(p: Props) {
         value={draft}
         onValueChange={setDraft}
         onSearch={p.onSearch}
+        onImage={p.onImage}
         platforms={p.query.platforms}
         onPlatformsChange={(platforms) => p.setQuery({ ...p.query, platforms })}
         live={p.live}

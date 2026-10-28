@@ -52,13 +52,37 @@ def like_terms(breakdown: dict) -> tuple[list[str], str]:
               'Answer with JSON only: {"keywords": [1 to 3 short search phrases], "formatName": "a 2 to 4 word name '
               'for the video\'s format"}.')
     answer = call_claude(CHEAP_MODEL, system, [{"type": "text", "text": json.dumps(facts, ensure_ascii=False)}], 300)
+    keywords, name, _ = parse_terms(answer)
+    return keywords, name
+
+
+def parse_terms(answer: str) -> tuple[list[str], str, str]:
+    """(keywords, formatName, description) from an answer holding a JSON object. Raises ValueError without keywords."""
     found = re.search(r"\{.*\}", answer, re.S)
     try:
         data = json.loads(found.group(0)) if found else {}
     except ValueError:
         data = {}
-    keywords = [k.strip() for k in data.get("keywords", []) if isinstance(k, str) and k.strip()][:3]
-    name = data.get("formatName")
+    if not isinstance(data, dict):
+        data = {}
+    raw = data.get("keywords")
+    keywords = [k.strip() for k in raw if isinstance(k, str) and k.strip()][:3] if isinstance(raw, list) else []
     if not keywords:
         raise ValueError("no keywords in the answer")
-    return keywords, name.strip() if isinstance(name, str) and name.strip() else keywords[0]
+    name, description = data.get("formatName"), data.get("description")
+    return (keywords, name.strip() if isinstance(name, str) and name.strip() else keywords[0],
+            description.strip() if isinstance(description, str) else "")
+
+
+def like_image_terms(image: str, media_type: str) -> tuple[list[str], str, str]:
+    """Search keywords, a format name and a one-sentence description of what a screenshot of a video shows."""
+    system = ("You look at a screenshot of a video and say what it shows, so someone can search for similar "
+              "videos. Only describe what is visible: the subject, the setting, the style. Do not write a script, "
+              "captions or any new content, and do not guess at what is not shown. "
+              'Answer with JSON only: {"keywords": [1 to 3 short search phrases], "formatName": "a 2 to 4 word name '
+              'for the video\'s format", "description": "one sentence on what the screenshot shows"}.')
+    content = [
+        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image}},
+        {"type": "text", "text": "What does this screenshot show?"},
+    ]
+    return parse_terms(call_claude(CHEAP_MODEL, system, content, 300))

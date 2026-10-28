@@ -9,6 +9,7 @@ Pin a cached search so it never expires (offline demos):
 """
 
 import base64
+import binascii
 import contextlib
 import copy
 import getpass
@@ -40,7 +41,7 @@ import youtube
 import analyze
 import auth
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
-from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
+from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
                     Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
@@ -97,6 +98,8 @@ REDDIT_USD_PER_SUB = 0.02
 APIFY_USD_PER_VIDEO = 0.0037  # TikTok actor; account medians cost this per video fetched (134 videos: 0.497)
 ANALYZE_USD = 0.08  # one Claude breakdown
 NEEDS_USD = 0.01  # one small Claude call that fills in a finished breakdown's needs
+IMAGE_USD = 0.02  # one small Claude call that reads a screenshot
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # decoded; the base64 request body is about a third bigger
 LIKE_USD = 0.01  # one small Claude call that turns a finished breakdown into search keywords
 
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
@@ -773,6 +776,34 @@ def get_like(job_id: str):
         terms = {"keywords": keywords, "formatName": name}
         saved.write_text(json.dumps(terms, indent=2, ensure_ascii=False), encoding="utf-8")
     return {"status": "done", "step": "Done", "breakdown": breakdown, **terms}
+
+
+@app.post("/api/like-image", response_model=LikeImageResult)
+def like_image(body: LikeImageRequest):
+    """Find videos like a screenshot: Claude describes what it shows. Free for a picture seen before."""
+    data = body.image.strip()
+    if len(data) * 3 // 4 > MAX_IMAGE_BYTES + 3:  # cheap check before decoding a huge string
+        return error(413, "That image is too big. Use one under 5 MB.")
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError):
+        return error(400, "That image could not be read. Try another file.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        return error(413, "That image is too big. Use one under 5 MB.")
+    key = f"likeimg:{hashlib.sha1(raw).hexdigest()}"
+    cached = load(key)
+    if cached:
+        return cached
+    if not spend("claude", IMAGE_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+    try:
+        keywords, name, description = assist.like_image_terms(data, body.mediaType)
+    except Exception as e:
+        return error(502, "Could not read that image. Try again.", str(e))
+    result = {"keywords": keywords, "formatName": name, "description": description}
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, json.dumps(result)))
+    return result
 
 
 @app.post("/api/needs", response_model=NeedsResult)
