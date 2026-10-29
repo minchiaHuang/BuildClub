@@ -28,7 +28,7 @@ async function stop(page) {
     const el = document.activeElement
     let prevRing = null
     const p = window.__prev
-    if (p && p !== el && p.isConnected && window.__prevSig) prevRing = { name: window.__prevName, ring: sig(p) !== window.__prevSig || (!!p.parentElement && p.parentElement.matches(':focus-within')) }
+    if (p && p !== el && p.isConnected && window.__prevSig) prevRing = { name: window.__prevName, frame: !!window.__prevFrame, ring: sig(p) !== window.__prevSig || (!!p.parentElement && p.parentElement.matches(':focus-within')) }
     if (!el || el === document.body) return { body: true, prevRing }
     const r = el.getBoundingClientRect()
     const vis = r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight + 2000 && r.left > -5
@@ -41,11 +41,13 @@ async function stop(page) {
 function kb(page, c) {
   const st = { stops: [], tabs: 0, offscreen: [], noRing: new Map() }
   const note = (s) => {
-    if (s.prevRing && !s.prevRing.ring && s.prevRing.name) st.noRing.set(s.prevRing.name.slice(0, 60), (st.noRing.get(s.prevRing.name.slice(0, 60)) ?? 0) + 1)
+    // A cross-origin iframe (the TikTok / YouTube player embed) draws its own focus inside the frame; the page cannot
+    // style a ring on it, so it is not judged here.
+    if (s.prevRing && !s.prevRing.ring && s.prevRing.name && !s.prevRing.frame) st.noRing.set(s.prevRing.name.slice(0, 60), (st.noRing.get(s.prevRing.name.slice(0, 60)) ?? 0) + 1)
     if (s.offscreenX && !s.inDialog) st.offscreen.push(s.name?.slice(0, 50))
   }
   const press = async (key) => {
-    await page.evaluate(`(() => { const nm = ${NAME_FN}, sig = ${SIG_FN}; const e = document.activeElement; window.__prev = e; window.__prevName = e && e !== document.body ? nm(e) : ''; window.__prevSig = e && e !== document.body ? sig(e) : '' })()`)
+    await page.evaluate(`(() => { const nm = ${NAME_FN}, sig = ${SIG_FN}; const e = document.activeElement; window.__prev = e; window.__prevName = e && e !== document.body ? nm(e) : ''; window.__prevFrame = !!e && e.tagName === 'IFRAME'; window.__prevSig = e && e !== document.body ? sig(e) : '' })()`)
     await page.keyboard.press(key)
     await page.waitForTimeout(220) // let :focus transitions finish so the blurred style of the previous stop is final
     const s = await stop(page)
