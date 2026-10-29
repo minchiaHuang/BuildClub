@@ -1,5 +1,5 @@
 import type { Format, IdeaStage, SavedIdea, Video } from '../types'
-import { formatDay } from '../lib/dates'
+import { dueLabel, formatDay } from '../lib/dates'
 import { Thumb } from './Thumb'
 
 const STAGES: { id: IdeaStage; label: string }[] = [
@@ -40,11 +40,11 @@ export function TrackingBoard({ ideas, videoById, formatById, onMove, onOpen }: 
                       <Thumb video={v} />
                       <span className="idea-body">
                         <strong>{formatById.get(v.formatId)?.name}</strong>
-                        <span className="small muted">
-                          {col.id === 'posted' && idea.postedAt
-                            ? `Posted ${formatDay(idea.postedAt)}`
-                            : `Due ${formatDay(idea.dueDate)}`}
-                        </span>
+                        {col.id === 'posted' ? (
+                          <span className="small muted">{idea.postedAt ? `Posted ${formatDay(idea.postedAt)}` : `Due ${formatDay(idea.dueDate)}`}</span>
+                        ) : (
+                          <span className={`small ${dueLabel(idea.dueDate).late ? 'due-soon' : 'muted'}`}>{dueLabel(idea.dueDate).text}</span>
+                        )}
                       </span>
                     </button>
                     <div className="board-moves">

@@ -1,6 +1,6 @@
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, hasScore, times, outlierScore, viewsWord } from '../lib/metrics'
-import { formatDay } from '../lib/dates'
+import { dueLabel } from '../lib/dates'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -116,12 +116,14 @@ export function ClientScreen(p: Props) {
               <li key={idea.id} className="idea">
                 <Thumb video={v} />
                 <div className="idea-body">
-                  <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
+                  <span className={`status status-${idea.status}`}>{idea.stage === 'posted' ? 'Posted' : statusLabel[idea.status]}</span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">
                     Reference: "{v.hook}" · {v.handle} · {compact(v.views)} {viewsWord(v)}{hasScore(v) && ` · ${times(outlierScore(v))}`}
                   </span>
-                  {idea.status === 'approved' && <span className="small">Due {formatDay(idea.dueDate)}</span>}
+                  {idea.status === 'approved' && idea.stage !== 'posted' && (
+                    <span className={`small ${dueLabel(idea.dueDate).late ? 'due-soon' : ''}`}>{dueLabel(idea.dueDate).text}</span>
+                  )}
                 </div>
                 <div className="idea-actions">
                   <button className="btn btn-ghost" onClick={() => p.onPlan(idea.id)}>

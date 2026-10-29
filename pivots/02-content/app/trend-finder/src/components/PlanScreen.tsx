@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
-import { formatDay } from '../lib/dates'
+import { dueLabel, formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
 
 interface Props {
@@ -123,7 +123,7 @@ export function PlanScreen(p: Props) {
       <header className="plan-head">
         <div className="plan-head-row">
           <span className="eyebrow">Plan for {client.name}</span>
-          <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
+          <span className={`status status-${idea.status}`}>{idea.stage === 'posted' ? 'Posted' : statusLabel[idea.status]}</span>
         </div>
         <h1 ref={heading} tabIndex={-1}>
           {format.name}
@@ -406,7 +406,9 @@ export function PlanScreen(p: Props) {
                 ? 'Brief copied. Paste it to your editor with the footage.'
                 : copied === 'failed'
                   ? "Couldn't copy. Your browser blocked the clipboard."
-                  : `Approved. Due ${formatDay(idea.dueDate)}.`}
+                  : idea.stage === 'posted'
+                    ? 'Posted.'
+                    : `Approved. ${dueLabel(idea.dueDate).text}.`}
             </span>
             <button className="btn btn-ghost" onClick={onPlanAnother}>
               Plan another video

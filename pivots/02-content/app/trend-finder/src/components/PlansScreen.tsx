@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Client, Format, IdeaStage, SavedIdea, Video } from '../types'
-import { formatDay } from '../lib/dates'
+import { dueLabel } from '../lib/dates'
 import { Thumb } from './Thumb'
 import { TrackingBoard } from './TrackingBoard'
 
@@ -22,6 +22,9 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onMove, onGoAppr
   const approved = ideas
     .filter((i) => i.clientId === client.id && i.status === 'approved')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+
+  // Posted ideas are done: they stay on the Board but leave the "Ready to film" list.
+  const toFilm = approved.filter((i) => i.stage !== 'posted')
 
   return (
     <section className="plans">
@@ -51,9 +54,17 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onMove, onGoAppr
         </div>
       ) : mode === 'board' ? (
         <TrackingBoard ideas={approved} videoById={videoById} formatById={formatById} onMove={onMove} onOpen={onOpen} />
+      ) : toFilm.length === 0 ? (
+        <div className="empty">
+          <h2>Nothing left to film</h2>
+          <p>Everything approved has been posted. See it on the Board.</p>
+          <button className="btn btn-primary" onClick={() => setMode('board')}>
+            Open the Board
+          </button>
+        </div>
       ) : (
         <ul className="idea-list">
-          {approved.map((idea) => {
+          {toFilm.map((idea) => {
             const v = videoById.get(idea.videoId)
             if (!v) return null
             const f = formatById.get(v.formatId)
@@ -61,9 +72,7 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onMove, onGoAppr
               <li key={idea.id} className="idea">
                 <Thumb video={v} />
                 <div className="idea-body">
-                  <span className="plan-due">
-                    Due <strong>{formatDay(idea.dueDate)}</strong>
-                  </span>
+                  <span className={`plan-due ${dueLabel(idea.dueDate).late ? 'due-soon' : ''}`}>{dueLabel(idea.dueDate).text}</span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">
                     {shotCount(idea, f) ? `${shotCount(idea, f)} shots · ${f?.props.length ?? 0} props` : 'Shots still to write'}

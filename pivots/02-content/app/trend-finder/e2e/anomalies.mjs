@@ -566,6 +566,50 @@ for (const theme of THEMES) {
         await o.ctx.close()
       }
     })
+    await c.step('overdue ideas say so, and posted ideas leave Plans, its badge and "Next due"', async () => {
+      const o = await fresh((o) =>
+        approveSome(o, (mine, due) => {
+          const base0 = mine[0]
+          const mk = (n, extra) => ({ ...base0, id: `${base0.id}-c${n}`, status: 'approved', decidedAt: Date.now(), ...extra })
+          return [
+            mk(1, { stage: 'filming', dueDate: due(-3) }), // overdue, still to film
+            mk(2, { stage: 'posted', postedAt: Date.now(), dueDate: due(-10) }), // done, long past its due date
+            mk(3, { stage: 'approved', dueDate: due(5) }),
+          ]
+        }),
+      )
+      try {
+        const page = o.page
+        // Plans: two to film (one overdue), the posted one gone from the list; the badge counts the same two.
+        await nav(page, 'Plans')
+        await page.getByRole('heading', { name: 'Ready to film' }).waitFor()
+        const items = await page.locator('ul.idea-list > li').count()
+        check(items === 2, `Plans lists ${items} ideas, expected 2 (the posted one should not be there)`)
+        const t = await visibleText(page)
+        check(/Overdue · due \d{1,2} [A-Z][a-z]{2}/.test(t), 'Plans: the overdue idea is not marked overdue')
+        check(/\bDue \d{1,2} [A-Z][a-z]{2}/.test(t), 'Plans: the on-time idea lost its "Due" date')
+        const badge = await sidebar(page).locator('.side-link', { hasText: 'Plans' }).locator('.side-count').innerText()
+        check(badge.trim() === '2', `the Plans badge says ${badge}, expected 2`)
+        // The Board still shows the posted one.
+        await page.getByRole('button', { name: 'Board', exact: true }).click()
+        check((await page.locator('.board-card').count()) === 3, 'the Board should still list all 3 approved ideas')
+        // Saved ideas: the posted idea reads "Posted", not "Approved".
+        await nav(page, 'Saved ideas')
+        await page.locator('.idea .status').first().waitFor()
+        const st = await page.locator('.idea .status').allInnerTexts()
+        check(st.filter((x) => x === 'Posted').length === 1, `Saved ideas statuses: ${JSON.stringify(st)}, expected one Posted`)
+        check(/Overdue · due/.test(await visibleText(page)), 'Saved ideas: the overdue idea is not marked overdue')
+        // Overview: the next due idea is the overdue one (3 days), in red; the posted one (10 days) doesn't count.
+        await switcher(page)
+        await page.getByRole('menuitem', { name: /All clients/ }).click()
+        const cell = page.locator('tr', { hasText: client }).locator('td').nth(4).locator('span')
+        const text = (await cell.innerText()).trim()
+        check(text === 'Overdue 3 days', `Overview "Next due" says "${text}", expected "Overdue 3 days"`)
+        check(/due-soon/.test((await cell.getAttribute('class')) ?? ''), 'an overdue "Next due" is not red')
+      } finally {
+        await o.ctx.close()
+      }
+    })
     await scenario('empty search box and empty client name: the disabled buttons say why', async (o) => {
       const page = o.page
       await nav(page, 'Search')

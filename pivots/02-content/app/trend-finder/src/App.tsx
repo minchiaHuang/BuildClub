@@ -842,7 +842,7 @@ export default function App() {
   const counts = {
     saved: mine.length,
     waiting: mine.filter((i) => i.status === 'waiting').length,
-    plans: mine.filter((i) => i.status === 'approved').length,
+    plans: mine.filter((i) => i.status === 'approved' && i.stage !== 'posted').length,
   }
 
   if (auth === 'checking') return null
