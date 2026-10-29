@@ -29,6 +29,7 @@ export function ClientFields({ client, onChange }: { client: Client; onChange: (
           <input
             id="client-audience"
             list="audience-options"
+            placeholder="e.g. young professionals"
             value={client.audience}
             onChange={(e) => onChange({ audience: e.target.value })}
           />

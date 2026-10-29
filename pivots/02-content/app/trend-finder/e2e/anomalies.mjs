@@ -1,7 +1,7 @@
 // Layer 3: abnormal states. page.route() fakes /api/* answers; every scenario expects a message the user can read, a way to
 // recover, no white screen and no lost data.
 //   OUT=/some/dir [THEME=base] [WIDTH=1440,390] node e2e/anomalies.mjs http://127.0.0.1:8799
-import { addClient, apiLogin, base, check, launch, login, makeReporter, nav, noHScroll, open, searchFor, selectClient, sidebar, uniq, visibleText, demoVideo, themes, widths } from './lib/harness.mjs'
+import { addClient, apiLogin, base, check, launch, login, makeReporter, nav, noHScroll, open, searchFor, selectClient, sidebar, switcher, uniq, visibleText, demoVideo, themes, widths } from './lib/harness.mjs'
 
 const THEMES = process.env.THEME ? themes() : ['base']
 const WIDTHS = process.env.WIDTH ? widths() : [1440, 390]
@@ -397,6 +397,21 @@ for (const theme of THEMES) {
         await o.page.waitForTimeout(2000)
         check(asked.length === 0, `the app asked for a search with an empty query: ${asked[0]}`)
         check(o.probs.http.length === 0, 'bad HTTP: ' + o.probs.http.join(' | '))
+      }, () => o?.page)
+      await o?.ctx.close()
+    }
+    // The "Main audience" box is a text field with suggestions (it looks like a drop-down in Chrome), so it needs a hint.
+    {
+      let o
+      await c.step('Add client: the Main audience field says what to type', async () => {
+        o = await open(browser, { theme, width })
+        await apiLogin(o.ctx)
+        await o.page.goto(`${base}/?ui=${theme}`, { waitUntil: 'domcontentloaded' })
+        await sidebar(o.page).waitFor()
+        await switcher(o.page)
+        await o.page.getByRole('menuitem', { name: /Add client/ }).click()
+        const ph = await o.page.getByRole('dialog').getByLabel('Main audience').getAttribute('placeholder')
+        check(ph && ph.trim().length > 3, 'the Main audience field is blank with no placeholder')
       }, () => o?.page)
       await o?.ctx.close()
     }

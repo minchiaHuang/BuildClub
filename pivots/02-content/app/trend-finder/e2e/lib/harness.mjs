@@ -1,6 +1,6 @@
 // Shared helpers for the layer 2/3/4 sweep scripts (journeys, anomalies, keyboard-a11y).
 // Free to run: only against `bash bin/isolated-backend.sh 8799 --demo-data --user test@example.com:pw-for-e2e`.
-// Env: OUT (screenshots), THEME (base|altitude|unify|midnight, comma list ok), WIDTH (comma list ok). Unset = whole matrix.
+// Env: OUT (screenshots), ONLY (regex of step titles to run), THEME (base|altitude|unify|midnight, comma list ok), WIDTH (comma list ok). Unset = whole matrix.
 import { chromium } from '/Users/tommy/.hermes/hermes-agent/node_modules/playwright-core/index.mjs'
 import { mkdirSync } from 'node:fs'
 
@@ -69,6 +69,8 @@ export function makeReporter(name) {
         dir,
         label,
         async step(title, fn, shotPage) {
+          // ONLY=<regex> runs just the matching steps (plus "setup" ones), for quick checks while fixing something.
+          if (process.env.ONLY && !/^setup/i.test(title) && !new RegExp(process.env.ONLY, 'i').test(title)) return true
           const id = String(++n).padStart(2, '0')
           const file = `${dir}/${id}-${slug(title)}.png`
           let ok = true
