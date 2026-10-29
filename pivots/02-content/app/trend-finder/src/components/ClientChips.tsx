@@ -67,7 +67,7 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
         </div>
       )}
 
-      {groups.map((g) => (
+      {groups.filter((g) => g.chips.length > 0).map((g) => (
         <div key={g.id} className="chip-group">
           <span className="chip-group-title">{g.title}</span>
           <div className="chip-row">

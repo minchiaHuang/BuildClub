@@ -429,6 +429,17 @@ for (const theme of THEMES) {
       const color = await page.locator('.plan-watch').first().evaluate((a) => getComputedStyle(a).color)
       check(!['rgb(0, 0, 238)', 'rgb(85, 26, 139)', 'rgb(0, 102, 204)'].includes(color), `the Watch link uses the browser's default colour ${color}`)
     })
+    await scenario('client with no niche, audience or starter searches: no dangling labels', async (o) => {
+      const page = o.page
+      await nav(page, 'Saved ideas')
+      const sub = await page.locator('.client-head').innerText()
+      check(!/Audience:\s*(\n|$)/.test(sub) && !/^\s*·/m.test(sub), `the Saved ideas subtitle has empty parts: "${sub.replace(/\s+/g, ' ').slice(0, 120)}"`)
+      await nav(page, 'Search')
+      await page.waitForTimeout(800)
+      const titles = await page.locator('.chip-group').evaluateAll((gs) => gs.map((g) => ({ t: g.querySelector('.chip-group-title')?.textContent, n: g.querySelectorAll('.cchip').length, skel: !!g.querySelector('.cchip-skeleton') })))
+      const empty = titles.filter((g) => g.n === 0 && !g.skel)
+      check(empty.length === 0, `a chip label is shown with no chips: ${JSON.stringify(empty)}`)
+    })
     await scenario('plan without an AI breakdown says the shots are up to her', async (o) => {
       const page = o.page
       // A video the zero-budget API has no cached breakdown for: /api/analyze answers 429 and the shot list stays empty.
