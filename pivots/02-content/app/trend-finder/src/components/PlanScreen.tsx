@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
 
 interface Props {
@@ -93,7 +94,7 @@ export function PlanScreen(p: Props) {
   // Everything the editor needs in one paste: reference, shots, props and notes.
   const brief = [
     `${format.name} for ${client.name}`,
-    `Due: ${idea.dueDate}`,
+    `Due: ${formatDay(idea.dueDate)}`,
     `Reference: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
     '',
     'Shots:',
@@ -151,7 +152,7 @@ export function PlanScreen(p: Props) {
           </span>
           <div>
             <strong>{APPROVER} approved this</strong>
-            <span>Film it by {idea.dueDate}, then copy the brief below for your editor.</span>
+            <span>Film it by {formatDay(idea.dueDate)}, then copy the brief below for your editor.</span>
           </div>
         </div>
       )}
@@ -405,7 +406,7 @@ export function PlanScreen(p: Props) {
                 ? 'Brief copied. Paste it to your editor with the footage.'
                 : copied === 'failed'
                   ? "Couldn't copy. Your browser blocked the clipboard."
-                  : `Approved. Due ${idea.dueDate}.`}
+                  : `Approved. Due ${formatDay(idea.dueDate)}.`}
             </span>
             <button className="btn btn-ghost" onClick={onPlanAnother}>
               Plan another video

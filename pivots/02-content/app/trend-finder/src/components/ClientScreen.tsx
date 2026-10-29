@@ -1,5 +1,6 @@
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, hasScore, times, outlierScore, viewsWord } from '../lib/metrics'
+import { formatDay } from '../lib/dates'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -120,7 +121,7 @@ export function ClientScreen(p: Props) {
                   <span className="small muted">
                     Reference: "{v.hook}" · {v.handle} · {compact(v.views)} {viewsWord(v)}{hasScore(v) && ` · ${times(outlierScore(v))}`}
                   </span>
-                  {idea.status === 'approved' && <span className="small">Due {idea.dueDate}</span>}
+                  {idea.status === 'approved' && <span className="small">Due {formatDay(idea.dueDate)}</span>}
                 </div>
                 <div className="idea-actions">
                   <button className="btn btn-ghost" onClick={() => p.onPlan(idea.id)}>

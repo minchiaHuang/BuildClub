@@ -1,7 +1,7 @@
 // Layer 3: abnormal states. page.route() fakes /api/* answers; every scenario expects a message the user can read, a way to
 // recover, no white screen and no lost data.
 //   OUT=/some/dir [THEME=base] [WIDTH=1440,390] node e2e/anomalies.mjs http://127.0.0.1:8799
-import { addClient, apiLogin, base, check, launch, login, makeReporter, nav, noHScroll, open, pickPlatforms, searchFor, selectClient, sidebar, switcher, uniq, visibleText, demoVideo, themes, widths } from './lib/harness.mjs'
+import { addClient, apiLogin, base, check, launch, login, makeReporter, nav, noHScroll, open, pickPlatforms, searchFor, seedIdeas, selectClient, sidebar, switcher, uniq, visibleText, demoVideo, themes, widths } from './lib/harness.mjs'
 
 const THEMES = process.env.THEME ? themes() : ['base']
 const WIDTHS = process.env.WIDTH ? widths() : [1440, 390]
@@ -538,6 +538,33 @@ for (const theme of THEMES) {
       await page.getByRole('heading', { name: 'Shots' }).waitFor()
       await page.waitForTimeout(1500)
       check(/AI breakdown isn't available for this video, so add the shots yourself/.test(await visibleText(page)), 'the empty Shots section gives no explanation')
+    })
+    // Rewrites the test client's saved ideas (`f` gets them in saved order and a due-date maker) and keeps everyone else's.
+    const approveSome = async (o, f) => {
+      const cid = (await (await o.ctx.request.get(`${base}/api/clients`)).json()).find((x) => x.name === client)?.id
+      const day = 86_400_000
+      const due = (n) => new Date(Date.now() + n * day).toISOString().slice(0, 10)
+      await seedIdeas(o.ctx, (list) => f(list.filter((i) => i.clientId === cid), due).concat(list.filter((i) => i.clientId !== cid)))
+    }
+    await c.step('dates read like "31 Oct" everywhere, never 2026-10-31 or 31/10/2026', async () => {
+      const o = await fresh((o) =>
+        approveSome(o, (mine, due) =>
+          mine.map((i, n) => (n === 0 ? { ...i, status: 'approved', stage: 'approved', dueDate: due(5), decidedAt: Date.now() } : i)),
+        ),
+      )
+      try {
+        const page = o.page
+        const bad = (t) => /\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.exec(t)?.[0]
+        for (const name of ['Plans', 'Saved ideas']) {
+          await nav(page, name)
+          await page.waitForTimeout(400)
+          const t = await visibleText(page)
+          check(!bad(t), `${name}: a raw date is shown: ${bad(t)}`)
+          check(/\b\d{1,2} [A-Z][a-z]{2}\b/.test(t), `${name}: no "31 Oct" style date found`)
+        }
+      } finally {
+        await o.ctx.close()
+      }
     })
     await scenario('empty search box and empty client name: the disabled buttons say why', async (o) => {
       const page = o.page

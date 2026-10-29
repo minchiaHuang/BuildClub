@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Client, Format, IdeaStage, SavedIdea, Video } from '../types'
+import { formatDay } from '../lib/dates'
 import { Thumb } from './Thumb'
 import { TrackingBoard } from './TrackingBoard'
 
@@ -61,7 +62,7 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onMove, onGoAppr
                 <Thumb video={v} />
                 <div className="idea-body">
                   <span className="plan-due">
-                    Due <strong>{idea.dueDate}</strong>
+                    Due <strong>{formatDay(idea.dueDate)}</strong>
                   </span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">

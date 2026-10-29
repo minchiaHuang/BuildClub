@@ -173,6 +173,13 @@ export async function apiLogin(ctx, email = EMAIL, password = PASSWORD) {
   check(r.ok(), `api login ${r.status()}`)
 }
 
+// Rewrites the saved ideas through the API: `change` gets the list and returns the new one (no If-Match, so it just saves).
+export async function seedIdeas(ctx, change) {
+  const list = await (await ctx.request.get(base + '/api/ideas')).json()
+  const r = await ctx.request.put(base + '/api/ideas', { data: change(list) })
+  check(r.ok(), `seed ideas ${r.status()}`)
+}
+
 export const platformBtn = (page, name) => page.getByRole('group', { name: 'Platforms' }).getByRole('button', { name })
 
 // Sets exactly TikTok + Instagram.

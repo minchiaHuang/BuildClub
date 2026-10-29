@@ -1,4 +1,5 @@
 import type { Format, IdeaStage, SavedIdea, Video } from '../types'
+import { formatDay } from '../lib/dates'
 import { Thumb } from './Thumb'
 
 const STAGES: { id: IdeaStage; label: string }[] = [
@@ -41,8 +42,8 @@ export function TrackingBoard({ ideas, videoById, formatById, onMove, onOpen }: 
                         <strong>{formatById.get(v.formatId)?.name}</strong>
                         <span className="small muted">
                           {col.id === 'posted' && idea.postedAt
-                            ? `Posted ${new Date(idea.postedAt).toLocaleDateString()}`
-                            : `Due ${idea.dueDate}`}
+                            ? `Posted ${formatDay(idea.postedAt)}`
+                            : `Due ${formatDay(idea.dueDate)}`}
                         </span>
                       </span>
                     </button>
