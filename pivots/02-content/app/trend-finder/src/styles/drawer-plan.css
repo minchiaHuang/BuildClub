@@ -144,14 +144,15 @@
 .shot-edit li:hover + li::before, .shot-edit li:focus-within + li::before,
 .shot-edit li:hover::before, .shot-edit li:focus-within::before { border-color: transparent; }
 .shot-edit li:has(.shot-time) { grid-template-columns: 64px minmax(0, 1fr); padding: 12px; }
-.shot-edit input { background: transparent; border-color: transparent; padding: 6px 8px; border-radius: var(--radius-xs); width: 100%; }
-.shot-edit input:hover:not(:disabled):not(:focus) { border-color: var(--line-strong); }
-.shot-edit input:focus { background: var(--surface); }
+.shot-edit input, .shot-edit textarea { background: transparent; border-color: transparent; padding: 6px 8px; border-radius: var(--radius-xs); width: 100%; }
+.plan-main .shot-edit textarea { padding: 6px 8px; border-radius: var(--radius-xs); box-shadow: none; resize: none; overflow: hidden; line-height: 1.4; }
+.shot-edit input:hover:not(:disabled):not(:focus), .shot-edit textarea:hover:not(:disabled):not(:focus) { border-color: var(--line-strong); }
+.shot-edit input:focus, .shot-edit textarea:focus { background: var(--surface); }
 .shot-time-input { font-size: var(--text-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
 .shot-fields { display: grid; gap: 0; }
-.shot-fields input:first-child { font-weight: 500; }
-.shot-fields input:last-child { font-size: var(--text-sm); color: var(--muted); }
-.shot-fields input:last-child:focus { color: var(--fg); }
+.shot-fields input:first-child, .shot-fields textarea:first-child { font-weight: 500; }
+.shot-fields input:last-child, .shot-fields textarea:last-child { font-size: var(--text-sm); color: var(--muted); }
+.shot-fields input:last-child:focus, .shot-fields textarea:last-child:focus { color: var(--fg); }
 .shot-edit .icon-btn { margin-top: 2px; }
 @media (hover: hover) {
   .shot-edit .icon-btn { opacity: 0; transition: opacity var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }

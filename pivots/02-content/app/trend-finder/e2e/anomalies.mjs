@@ -480,6 +480,18 @@ for (const theme of THEMES) {
       await page.locator('.tile').first().waitFor({ timeout: 5000 }).catch(() => {})
       check((await page.locator('.tile').count()) > 0, 'Plan another video lands on an empty search box instead of the last results')
     })
+    await scenario('a long shot description wraps in its box instead of being cut off', async (o) => {
+      const page = o.page
+      await openPlan(page)
+      const box = page.getByLabel('Shot 1: what we film')
+      await box.fill('Close-up of the tofu being lifted out of the pot with chopsticks while the steam rises and the camera pulls back to show the whole table '.repeat(2))
+      await page.waitForTimeout(300)
+      const cut = await box.evaluate((el) => el.scrollHeight - el.clientHeight)
+      check(cut <= 1, `the shot text is cut off: ${cut}px of it is hidden`)
+      const wide = await box.evaluate((el) => el.scrollWidth - el.clientWidth)
+      check(wide <= 1, `the shot text scrolls sideways by ${wide}px`)
+      await noHScroll(page)
+    })
     await scenario('plan for a client with no audience: the default note has no empty "Fits ." and the watch link is not browser blue', async (o) => {
       const page = o.page
       await openPlan(page)

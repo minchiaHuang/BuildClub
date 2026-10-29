@@ -33,6 +33,14 @@ const ago = (ts?: number) => {
   return mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : `${Math.round(mins / 60)}h ago`
 }
 
+// A shot is one line that wraps: the box grows with its text instead of cutting it off, and Enter doesn't add a line.
+const grow = (el: HTMLTextAreaElement | null) => {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`
+}
+const noNewline = (e: React.KeyboardEvent) => e.key === 'Enter' && e.preventDefault()
+
 export function PlanScreen(p: Props) {
   const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother } = p
   // Last removed shot, so an accidental ✕ can be undone.
@@ -210,19 +218,25 @@ export function PlanScreen(p: Props) {
                         onChange={(e) => updateShot(i, { time: e.target.value })}
                       />
                       <div className="shot-fields">
-                        <input
+                        <textarea
                           id={`shot-desc-${i}`}
+                          rows={1}
+                          ref={(el) => grow(el)}
                           aria-label={`Shot ${i + 1}: what we film`}
                           value={s.shot}
                           placeholder="What we film"
                           onChange={(e) => updateShot(i, { shot: e.target.value })}
+                          onKeyDown={noNewline}
                         />
-                        <input
+                        <textarea
                           id={`shot-text-${i}`}
+                          rows={1}
+                          ref={(el) => grow(el)}
                           aria-label={`Shot ${i + 1}: text on screen`}
                           value={s.text ?? ''}
                           placeholder="Text on screen (optional)"
                           onChange={(e) => updateShot(i, { text: e.target.value || undefined })}
+                          onKeyDown={noNewline}
                         />
                       </div>
                       <button
