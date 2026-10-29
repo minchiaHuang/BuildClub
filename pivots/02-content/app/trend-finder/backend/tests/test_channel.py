@@ -170,11 +170,13 @@ def test_over_the_cap_is_429_before_any_subprocess(client, decoder, monkeypatch)
 
 
 @pytest.mark.parametrize("platform,key", [("youtube", "TYPESAFE_API_KEY"), ("instagram", "SCRAPECREATORS_API_KEY")])
-def test_a_missing_key_is_400_before_any_subprocess(client, decoder, monkeypatch, platform, key):
+def test_a_missing_key_is_400_before_any_subprocess(client, decoder, monkeypatch, capsys, platform, key):
     monkeypatch.delenv(key)
     r = client.post("/api/channel", json={"platform": platform, "handle": "@chan"})
     assert r.status_code == 400
-    assert key in r.json()["error"]
+    # The user is told it isn't set up; the key name and the .env hint go to the server log only.
+    assert r.json()["error"] == "Channel summaries aren't set up on this server yet."
+    assert key in capsys.readouterr().out
     assert decoder.calls == []
 
 

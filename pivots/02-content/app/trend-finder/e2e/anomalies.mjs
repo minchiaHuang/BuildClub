@@ -492,6 +492,18 @@ for (const theme of THEMES) {
       check(wide <= 1, `the shot text scrolls sideways by ${wide}px`)
       await noHScroll(page)
     })
+    await scenario('Channel summaries without server keys: a user-facing message, no .env hint', async (o) => {
+      const page = o.page
+      await nav(page, 'Channel')
+      await page.locator('#channel-handle').fill('@somechannel')
+      await page.getByRole('button', { name: 'Decode channel' }).click()
+      await page.waitForTimeout(1500)
+      const t = await visibleText(page)
+      check(!/\.env|TYPESAFE_API_KEY|restart the API/i.test(t), 'the Channel screen shows a developer hint (.env / key name): ' + (t.match(/.{30}(\.env|TYPESAFE_API_KEY).{30}/)?.[0] ?? ''))
+      const r = await o.ctx.request.post(base + '/api/channel', { data: { platform: 'youtube', handle: '@somechannel' } })
+      const body = await r.json().catch(() => ({}))
+      check(!/\.env|TYPESAFE_API_KEY/.test(String(body.error ?? '')), `the API error still names .env / the key: "${body.error}"`)
+    })
     await scenario('plan for a client with no audience: the default note has no empty "Fits ." and the watch link is not browser blue', async (o) => {
       const page = o.page
       await openPlan(page)
