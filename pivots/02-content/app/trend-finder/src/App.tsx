@@ -590,8 +590,12 @@ export default function App() {
     setView('results')
   }
 
-  // Start the next video from a clean search page (new idea), keeping the last results one click away.
+  // Start the next video: back to the results she was picking from; with none (e.g. after a reload), a clean search page.
   const planAnother = () => {
+    if (lastSearch) {
+      setView('results')
+      return
+    }
     setQuery((q) => ({ ...q, keyword: '' }))
     setView('search')
   }

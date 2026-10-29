@@ -459,6 +459,27 @@ for (const theme of THEMES) {
       const d = await page.getByRole('dialog').innerText()
       check(!/[\d,.]+[kM]?\s?×/.test(d), 'the video drawer shows a x score for an unscored account')
     })
+    await scenario('"Plan another video" returns to the last results', async (o) => {
+      const page = o.page
+      await nav(page, 'Search')
+      await searchFor(page, 'tofu')
+      const ids = await page.locator('.tile-main').evaluateAll((els) => els.map((e) => e.dataset.videoId))
+      const other = ids.find((i) => i.startsWith('tt-') && i !== demoVideo)
+      await page.locator(`[data-video-id="${other}"]`).click()
+      const dlg = page.getByRole('dialog')
+      await dlg.getByRole('button', { name: /^Save to/ }).click()
+      await dlg.getByRole('button', { name: /Saved to/ }).waitFor({ timeout: 30_000 })
+      await dlg.getByRole('button', { name: /^Plan this for/ }).click()
+      await page.getByLabel('Shot 1: what we film').or(page.getByRole('button', { name: '+ Add a shot' })).first().waitFor()
+      if (!(await page.getByLabel('Shot 1: what we film').count())) {
+        await page.getByRole('button', { name: '+ Add a shot' }).click()
+        await page.getByLabel('Shot 1: what we film').fill('Close-up of the pour')
+      }
+      await page.getByRole('button', { name: /^Send to .* for approval/ }).click()
+      await page.getByRole('button', { name: 'Plan another video' }).first().click()
+      await page.locator('.tile').first().waitFor({ timeout: 5000 }).catch(() => {})
+      check((await page.locator('.tile').count()) > 0, 'Plan another video lands on an empty search box instead of the last results')
+    })
     await scenario('plan for a client with no audience: the default note has no empty "Fits ." and the watch link is not browser blue', async (o) => {
       const page = o.page
       await openPlan(page)
