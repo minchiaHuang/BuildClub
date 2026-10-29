@@ -62,7 +62,7 @@ export function NewClientForm({ existingIds, onAdd, onCancel, first }: Props) {
               Cancel
             </button>
           )}
-          <button type="submit" className="btn btn-primary" disabled={!name}>
+          <button type="submit" className="btn btn-primary" disabled={!name} title={name ? undefined : 'Enter a client name first.'}>
             Add client
           </button>
         </div>

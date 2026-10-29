@@ -87,7 +87,12 @@ export function SearchBox(p: Props) {
             onListeningChange={setListening}
           />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={!p.value.trim()}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!p.value.trim()}
+          title={p.value.trim() ? undefined : 'Type what to search for first.'}
+        >
           {/https?:\/\//.test(p.value) ? 'Find more like this' : 'Find trending videos'}
         </button>
       </div>

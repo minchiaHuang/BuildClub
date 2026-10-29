@@ -400,6 +400,52 @@ for (const theme of THEMES) {
       }, () => o?.page)
       await o?.ctx.close()
     }
+    // Why a button is off: Send needs a real shot, and says so; the empty search / client name buttons carry a title.
+    await scenario('Send for approval: blank shots do not count, and the reason is shown', async (o) => {
+      const page = o.page
+      await openPlan(page)
+      const send = page.getByRole('button', { name: /^Send to .* for approval/ })
+      const sendable = async () => !(await send.isDisabled())
+      // No breakdown (the zero-budget API refuses it): the empty Shots section says so.
+      const rows = () => page.locator('.shot-edit li').count()
+      while ((await rows()) > 0) await page.getByRole('button', { name: /^Remove shot 1$/ }).click()
+      check(!(await sendable()), 'Send is enabled with no shots at all')
+      check(/at least one shot/i.test((await send.getAttribute('title')) ?? ''), 'disabled Send has no title saying why')
+      check(await page.locator('#send-hint').isVisible(), 'the reason for the disabled Send is not visible next to it')
+      await page.getByRole('button', { name: '+ Add a shot' }).click()
+      await page.waitForTimeout(300)
+      check(!(await sendable()), 'Send is enabled while the only shot is blank')
+      await page.getByLabel('Shot 1: what we film').fill('   ')
+      check(!(await sendable()), 'Send is enabled for a whitespace-only shot')
+      await page.getByLabel('Shot 1: what we film').fill('Pour the sauce')
+      check(await sendable(), 'Send stays disabled with a real shot')
+      check((await page.locator('#send-hint').count()) === 0, 'the reason stays after the shot was filled in')
+    })
+    await scenario('plan without an AI breakdown says the shots are up to her', async (o) => {
+      const page = o.page
+      // A video the zero-budget API has no cached breakdown for: /api/analyze answers 429 and the shot list stays empty.
+      await nav(page, 'Search')
+      await searchFor(page, 'tofu')
+      const ids = await page.locator('.tile-main').evaluateAll((els) => els.map((e) => e.dataset.videoId))
+      const other = ids.find((i) => i.startsWith('tt-') && i !== demoVideo)
+      await page.locator(`[data-video-id="${other}"]`).click()
+      const dlg = page.getByRole('dialog')
+      await dlg.getByRole('button', { name: /^Save to/ }).click()
+      await dlg.getByRole('button', { name: /Saved to/ }).waitFor({ timeout: 30_000 })
+      await dlg.getByRole('button', { name: /^Plan this for/ }).click()
+      await page.getByRole('heading', { name: 'Shots' }).waitFor()
+      await page.waitForTimeout(1500)
+      check(/AI breakdown isn't available for this video, so add the shots yourself/.test(await visibleText(page)), 'the empty Shots section gives no explanation')
+    })
+    await scenario('empty search box and empty client name: the disabled buttons say why', async (o) => {
+      const page = o.page
+      await nav(page, 'Search')
+      await searchBox(page).fill('')
+      check(/search for/i.test((await findBtn(page).getAttribute('title')) ?? ''), 'disabled "Find trending videos" has no title')
+      await switcher(page)
+      await page.getByRole('menuitem', { name: /Add client/ }).click()
+      check(/client name/i.test((await page.getByRole('dialog').getByRole('button', { name: 'Add client' }).getAttribute('title')) ?? ''), 'disabled "Add client" has no title')
+    })
     // The "Main audience" box is a text field with suggestions (it looks like a drop-down in Chrome), so it needs a hint.
     {
       let o

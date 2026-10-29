@@ -60,10 +60,26 @@ export function PlanScreen(p: Props) {
     // Bring the confirmation into view.
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  // Rows that are still blank don't count as shots.
+  const canSend = shots.some((s) => s.shot.trim())
+  const sendHint = 'Add at least one shot (what we film) before sending.'
   const sendButton = (
-    <button className="btn btn-primary" disabled={shots.length === 0} onClick={send}>
-      Send to {APPROVER} for approval
-    </button>
+    <>
+      {!canSend && (
+        <span id="send-hint" className="plan-bar-hint">
+          {sendHint}
+        </span>
+      )}
+      <button
+        className="btn btn-primary"
+        disabled={!canSend}
+        title={canSend ? undefined : sendHint}
+        aria-describedby={canSend ? undefined : 'send-hint'}
+        onClick={send}
+      >
+        Send to {APPROVER} for approval
+      </button>
+    </>
   )
   // Everything the editor needs in one paste: reference, shots, props and notes.
   const brief = [
@@ -175,6 +191,11 @@ export function PlanScreen(p: Props) {
                 : `Locked while ${APPROVER} reviews it. Withdraw it to make changes.`}
             </p>
             {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
+            {shots.length === 0 && editable && format.shotList.length === 0 && !format.why.first3s.startsWith('Breaking down') && (
+              <p className="small muted" role="status">
+                The AI breakdown isn't available for this video, so add the shots yourself.
+              </p>
+            )}
             <ol className="shot-edit">
               {shots.map((s, i) => (
                 <li key={i} className={i === addedAt ? 'shot-added' : undefined}>
@@ -334,7 +355,7 @@ export function PlanScreen(p: Props) {
       <div className="plan-bar">
         {idea.status === 'saved' && (
           <>
-            <span className="plan-bar-text">Ready? {APPROVER} will see the video, your shot list and your note.</span>
+            {canSend && <span className="plan-bar-text">Ready? {APPROVER} will see the video, your shot list and your note.</span>}
             <button className="btn btn-ghost" onClick={onBack}>
               Save for later
             </button>

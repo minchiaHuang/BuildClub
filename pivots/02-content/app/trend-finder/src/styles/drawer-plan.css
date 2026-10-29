@@ -119,7 +119,7 @@
 }
 /* Phone: buttons share one row at equal width; a status line without actions is kept for screen readers only */
 @media (max-width: 560px) {
-  .plan { padding-bottom: 128px; }
+  .plan { padding-bottom: 168px; }
   .plan-bar { gap: 8px; padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
   .plan-bar .btn { flex: 1 1 0; min-width: 0; white-space: normal; text-align: center; text-wrap: balance; line-height: 1.25; padding: 10px 12px; min-height: 44px; align-self: stretch; }
   /* Three actions (waiting): a touch smaller so each label fits on two lines */
@@ -173,6 +173,9 @@
 }
 @media (max-width: 860px) { .plan-bar { left: 0; padding-bottom: max(14px, env(safe-area-inset-bottom)); } }
 .plan-bar-text { margin-right: auto; font-size: 14px; color: var(--muted); }
+/* Why the main button is off: stays visible on phones, unlike a plain status line */
+.plan-bar-hint { margin-right: auto; font-size: var(--text-sm); color: var(--muted); }
+@media (max-width: 760px) { .plan-bar-hint { flex-basis: 100%; } }
 
 /* Copy brief: a copy icon that turns into a drawn check */
 .copy-btn { min-width: 0; }
