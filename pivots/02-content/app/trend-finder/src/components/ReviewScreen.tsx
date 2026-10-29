@@ -35,6 +35,8 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
   const [passing, setPassing] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [leaving, setLeaving] = useState<Leaving | null>(null)
+  // What she has answered in this visit, newest last, for the confirmation line and the "All decided" list.
+  const [decided, setDecided] = useState<{ id: string; title: string; approved: boolean }[]>([])
   const timers = useRef<number[]>([])
   const pending = useRef<Leaving | null>(null)
   const decideRef = useRef(onDecide)
@@ -42,6 +44,10 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     decideRef.current = onDecide
   }, [onDecide])
   const waiting = ideas.filter((i) => i.clientId === client.id && i.status === 'waiting')
+  // An answer that didn't save puts its card back, and then it no longer counts as decided.
+  const answered = decided.filter((d) => !waiting.some((i) => i.id === d.id))
+  const lastAnswer = answered[answered.length - 1]
+  const answerText = (d: { title: string; approved: boolean }) => `${d.approved ? 'Approved' : 'Sent back'}: ${d.title}`
 
   // Keyboard users: after a decision, focus moves to the next card (or the previous one, or the heading when none are left).
   const stackRef = useRef<HTMLDivElement>(null)
@@ -70,9 +76,17 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     [],
   )
 
+  const record = (id: string, approved: boolean) => {
+    const idea = ideas.find((i) => i.id === id)
+    const v = idea && videoById.get(idea.videoId)
+    const f = v && formatById.get(v.formatId)
+    setDecided((prev) => [...prev, { id, title: f?.name ?? 'this plan', approved }])
+  }
+
   const finish = (d: Leaving) => {
     pending.current = null
     setLeaving(null)
+    record(d.id, d.approved)
     onDecide(d.id, d.approved, d.reason)
   }
 
@@ -87,6 +101,7 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     setPassing(null)
     setReason('')
     if (reducedMotion()) {
+      record(id, approved)
       onDecide(id, approved, why)
       return
     }
@@ -120,6 +135,9 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
       <header className="page-head review-head">
         <span className="eyebrow">{client.name} · For Annie</span>
         <h1 ref={headRef} tabIndex={-1}>{waiting.length ? `${waiting.length} to review` : 'Nothing to review'}</h1>
+        <p className="small review-status" role="status">
+          {lastAnswer ? answerText(lastAnswer) : ''}
+        </p>
         {waiting.length > 0 && <p className="small muted">Press Approve, or Not this one to send it back.</p>}
       </header>
 
@@ -127,6 +145,13 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
         <div className="empty">
           <h2>All decided</h2>
           <p>New plans sent for approval will show up here.</p>
+          {answered.length > 0 && (
+            <ul className="review-decided">
+              {answered.map((d) => (
+                <li key={d.id}>{answerText(d)}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

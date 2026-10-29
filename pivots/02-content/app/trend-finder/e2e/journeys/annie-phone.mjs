@@ -54,6 +54,8 @@ for (const { theme, width } of matrix()) {
     t0 = Date.now()
     await a.page.locator('.review-card').first().getByRole('button', { name: 'Approve' }).click()
     await a.page.waitForFunction(() => document.querySelectorAll('.review-card').length === 1)
+    const said = await a.page.locator('.review-head [role=status]').innerText()
+    check(/^Approved: \S/.test(said), `no visible confirmation after Approve; the status line says "${said}"`)
   }, () => a?.page)
   await c.step('Annie sends one back with a reason', async () => {
     const card = a.page.locator('.review-card').first()
@@ -64,6 +66,10 @@ for (const { theme, width } of matrix()) {
     await card.getByRole('button', { name: 'Send back' }).click()
     await a.page.locator('.review-card').first().waitFor({ state: 'detached' })
     check(!/Something went wrong/.test(await visibleText(a.page)), 'error shown after answering')
+    const said = await a.page.locator('.review-head [role=status]').innerText()
+    check(/^Sent back: \S/.test(said), `no visible confirmation after Send back; the status line says "${said}"`)
+    const list = await a.page.locator('.review-decided li').allInnerTexts()
+    check(list.length === 2 && /^Approved: /.test(list[0]) && /^Sent back: /.test(list[1]), `the "All decided" screen does not list both answers: ${JSON.stringify(list)}`)
   }, () => a?.page)
   await c.step('Annie reload: answered cards stay gone', async () => {
     await a.page.reload({ waitUntil: 'domcontentloaded' })
