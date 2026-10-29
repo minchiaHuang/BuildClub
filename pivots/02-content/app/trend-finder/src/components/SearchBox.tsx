@@ -105,6 +105,8 @@ export function SearchBox(p: Props) {
             accept="image/png,image/jpeg,image/webp"
             className="sr-only"
             aria-label="Upload a screenshot"
+            // The visible "Upload screenshot" button opens this input, so it is not a second Tab stop.
+            tabIndex={-1}
             onChange={(e) => {
               const file = e.target.files?.[0]
               e.target.value = ''

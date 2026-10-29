@@ -83,7 +83,8 @@ async function scan(page, c, screen, width) {
     const imgs = [...document.querySelectorAll('img')].filter((i) => vis(i) && !i.hasAttribute('alt') && i.getAttribute('role') !== 'presentation').map((i) => (i.src || '').slice(-40))
     const roleImg = [...document.querySelectorAll('[role=img]')].filter((i) => vis(i) && !nm(i)).map((i) => i.className)
     const iframes = [...document.querySelectorAll('iframe')].filter((i) => vis(i) && !i.title && !i.getAttribute('aria-label')).map((i) => (i.src || '').slice(0, 60))
-    const small = q.filter((e) => { const r = e.getBoundingClientRect(); const inline = getComputedStyle(e).display === 'inline'; return (r.width < 40 || r.height < 40) && !(e.tagName === 'INPUT' && (e.type === 'checkbox' || e.type === 'radio') && e.closest('label') && e.closest('label').getBoundingClientRect().height >= 40) })
+    // A file input taken out of the Tab order is opened by its visible button, which is the tap target.
+    const small = q.filter((e) => !e.matches('input[type=file][tabindex="-1"]')).filter((e) => { const r = e.getBoundingClientRect(); const inline = getComputedStyle(e).display === 'inline'; return (r.width < 40 || r.height < 40) && !(e.tagName === 'INPUT' && (e.type === 'checkbox' || e.type === 'radio') && e.closest('label') && e.closest('label').getBoundingClientRect().height >= 40) })
       .map((e) => { const r = e.getBoundingClientRect(); const lab = e.closest('label'); return { name: nm(e).slice(0, 40) || e.className, w: Math.round(r.width), h: Math.round(r.height), tag: e.tagName.toLowerCase(), cls: String(e.className).slice(0, 30), inline: getComputedStyle(e).display === 'inline' } })
     return { unnamed, imgs, roleImg, iframes, small, n: q.length }
   })()`)
@@ -204,6 +205,9 @@ for (const theme of THEMES) {
       await page.keyboard.press('Enter')
       await page.getByRole('combobox', { name: /Search a niche/ }).waitFor()
       await page.waitForTimeout(400)
+      // The hidden file input sits behind the visible "Upload screenshot" button: one Tab stop, not two.
+      const fileTab = await page.locator('input[type=file]').first().getAttribute('tabindex')
+      check(fileTab === '-1', `the hidden screenshot file input is its own Tab stop (tabindex=${fileTab})`)
       await K.tabTo(/^Instagram \[/)
       const was = await page.evaluate(() => document.activeElement.getAttribute('aria-pressed'))
       await page.keyboard.press('Space')
