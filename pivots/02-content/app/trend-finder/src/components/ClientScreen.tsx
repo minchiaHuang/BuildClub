@@ -70,9 +70,11 @@ export function ClientScreen(p: Props) {
         <div>
           <span className="eyebrow">{client.name} · Saved ideas</span>
           <h1>Saved ideas</h1>
-          <p className="muted">
-            {client.niche} · Audience: {client.audience}
-          </p>
+          {(client.niche || client.audience) && (
+            <p className="muted">
+              {[client.niche, client.audience && `Audience: ${client.audience}`].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </div>
         <div className="target">
           <ProgressRing value={progress} size={56} stroke={6} />
