@@ -41,7 +41,7 @@ interface Props {
   chipGroups: ChipGroup[]
   pulse: PulseInfo
   onRefreshPulse: () => void
-  // Videos sent or approved for this client this month, and the monthly target.
+  // Videos sent for approval or approved for this client (not limited to this month), and the monthly target.
   planned: number
   target: number
   // The last search that had results, to offer a way back.
@@ -80,7 +80,7 @@ export function SearchScreen(props: Props) {
             <strong>
               {props.planned} of {props.target}
             </strong>{' '}
-            videos planned for {clientName} this month
+            videos sent or approved for {clientName}
             <span className="progress-mini" aria-hidden="true">
               <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
             </span>

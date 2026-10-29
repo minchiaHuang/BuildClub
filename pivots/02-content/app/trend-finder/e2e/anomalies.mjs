@@ -610,6 +610,25 @@ for (const theme of THEMES) {
         await o.ctx.close()
       }
     })
+    await c.step('"x of N" labels say what they count, with no "this month" the number does not use', async () => {
+      const o = await fresh((o) => approveSome(o, (mine) => mine.map((i) => ({ ...i, status: 'approved', stage: 'approved', decidedAt: Date.now() }))))
+      try {
+        const page = o.page
+        await nav(page, 'Saved ideas')
+        await page.waitForTimeout(500)
+        const saved = await visibleText(page)
+        check(/videos approved/.test(saved) && !/approved this month/.test(saved), 'Saved: the "x of N" label is still "approved this month"')
+        await nav(page, 'Search')
+        await page.getByText(/videos sent or approved for/).first().waitFor({ timeout: 5000 })
+        const search = await visibleText(page)
+        check(/videos sent or approved for/.test(search) && !/planned for .* this month/.test(search), 'Search: the "x of N" label still says planned this month')
+        await switcher(page)
+        await page.getByRole('menuitem', { name: /All clients/ }).click()
+        await page.getByRole('columnheader', { name: 'Posted this month' }).waitFor({ timeout: 5000 })
+      } finally {
+        await o.ctx.close()
+      }
+    })
     await scenario('empty search box and empty client name: the disabled buttons say why', async (o) => {
       const page = o.page
       await nav(page, 'Search')

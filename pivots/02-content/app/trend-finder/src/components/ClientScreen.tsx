@@ -83,7 +83,7 @@ export function ClientScreen(p: Props) {
             <span className="target-num">
               {approved} <span className="muted">of {client.monthlyTarget}</span>
             </span>
-            <span className="small muted">videos approved this month</span>
+            <span className="small muted">videos approved</span>
           </div>
         </div>
       </header>

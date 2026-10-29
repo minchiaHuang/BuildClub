@@ -65,7 +65,7 @@ export function OverviewScreen({ agency, clients, ideas, onOpen }: Props) {
           <thead>
             <tr>
               <th>Client</th>
-              <th>This month</th>
+              <th>Posted this month</th>
               <th className="num">Saved</th>
               <th className="num">Waiting</th>
               <th>Next due</th>
