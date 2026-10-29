@@ -169,7 +169,7 @@ for (const theme of THEMES) {
         const dOver = await dlg.evaluate((d) => d.scrollWidth - d.clientWidth)
         check(dOver <= 2, `drawer scrolls sideways by ${dOver}px`)
         check(await dlg.getByRole('button', { name: 'Close' }).isVisible(), 'Close button is not visible with a long title')
-        const inView = await dlg.getByRole('button', { name: /^Saved? to/ }).isVisible()
+        const inView = await dlg.getByRole('button', { name: /Saved? to/ }).isVisible()
         check(inView, 'Save button is not reachable with a long title')
         await dlg.getByRole('button', { name: /^Plan this for/ }).click()
         await page.getByLabel('Shot 1: what we film').waitFor()
