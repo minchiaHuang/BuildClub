@@ -6,10 +6,11 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, hasDate, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { PlatformLogo } from './PlatformToggles'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
@@ -197,9 +198,9 @@ export function ResultsScreen(p: Props) {
         ))}
       </div>
 
-      {p.failed.map((f) => (
-        <p key={f.platform} className="error" role="alert">
-          {platformName[f.platform]}: {f.message}
+      {groupFailures(p.failed).map((g) => (
+        <p key={g.platforms.join()} className="error" role="alert">
+          {platformList(g.platforms)}: <ErrorText text={g.message} onSearch={p.onSearch} />
         </p>
       ))}
 

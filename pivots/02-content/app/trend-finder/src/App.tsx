@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { IdeaStage, IdeaStatus, SavedIdea } from './types'
 import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
-import { formatTrend, hasDate, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
+import { formatTrend, groupFailures, hasDate, outlierScore, platformList, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { AGENCY_NAME, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
@@ -497,7 +497,7 @@ export default function App() {
       if (seq !== searchSeq.current) return
       // Every platform failed: nothing to show, so it is an error like before.
       if (res.failed.length === platforms.length) {
-        throw new Error(res.failed.map((f) => `${platformName[f.platform]}: ${f.message}`).join(' '))
+        throw new Error(groupFailures(res.failed).map((g) => `${platformList(g.platforms)}: ${g.message}`).join(' '))
       }
       setSearchFailed(res.failed)
       setSearchEmpty(res.empty)

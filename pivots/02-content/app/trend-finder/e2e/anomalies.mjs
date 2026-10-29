@@ -1,7 +1,7 @@
 // Layer 3: abnormal states. page.route() fakes /api/* answers; every scenario expects a message the user can read, a way to
 // recover, no white screen and no lost data.
 //   OUT=/some/dir [THEME=base] [WIDTH=1440,390] node e2e/anomalies.mjs http://127.0.0.1:8799
-import { addClient, apiLogin, base, check, launch, login, makeReporter, nav, noHScroll, open, searchFor, selectClient, sidebar, switcher, uniq, visibleText, demoVideo, themes, widths } from './lib/harness.mjs'
+import { addClient, apiLogin, base, check, launch, login, makeReporter, nav, noHScroll, open, pickPlatforms, searchFor, selectClient, sidebar, switcher, uniq, visibleText, demoVideo, themes, widths } from './lib/harness.mjs'
 
 const THEMES = process.env.THEME ? themes() : ['base']
 const WIDTHS = process.env.WIDTH ? widths() : [1440, 390]
@@ -420,6 +420,25 @@ for (const theme of THEMES) {
       await page.getByLabel('Shot 1: what we film').fill('Pour the sauce')
       check(await sendable(), 'Send stays disabled with a real shot')
       check((await page.locator('#send-hint').count()) === 0, 'the reason stays after the shot was filled in')
+    })
+    await scenario('search -> 429 on TikTok and Instagram: the refusal is shown once, saved searches are buttons', async (o) => {
+      const page = o.page
+      await nav(page, 'Search')
+      await pickPlatforms(page, ['TikTok', 'Instagram'])
+      const sentence = 'New Apify work is turned off. Saved searches and finished breakdowns still work.'
+      let asked = 0
+      await page.route(liveSearch, (r) => { asked++; return json(r, 429, { error: `${sentence} Try a saved search, like "tofu".` }) })
+      await startSearch(page, 'pasta')
+      await page.getByRole('alert').first().waitFor()
+      const text = await visibleText(page)
+      const n = text.split('New Apify work is turned off').length - 1
+      check(n === 1, `the same refusal sentence is shown ${n} times`)
+      const chip = page.getByRole('alert').getByRole('button', { name: '"tofu"' })
+      check(await chip.count(), 'the suggested saved search "tofu" is not a button')
+      const before = asked
+      await chip.click()
+      await page.waitForTimeout(800)
+      check(asked > before, 'clicking the "tofu" suggestion did not run that search')
     })
     await scenario('plan for a client with no audience: the default note has no empty "Fits ." and the watch link is not browser blue', async (o) => {
       const page = o.page

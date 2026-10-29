@@ -1,6 +1,7 @@
 import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 import type { ComponentType, ReactNode } from 'react'
 import { useUiTheme, type UiTheme } from '../lib/theme'
@@ -103,7 +104,7 @@ export function SearchScreen(props: Props) {
 
       {error && (
         <p className="error" role="alert">
-          {error}
+          <ErrorText text={error} onSearch={props.onSearch} />
         </p>
       )}
       <p className="hint">

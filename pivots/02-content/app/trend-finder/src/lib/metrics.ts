@@ -98,6 +98,21 @@ export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, eve
 
 export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', reddit: 'Reddit', x: 'X' }
 
+// Platforms whose search failed with the very same sentence share one line: "TikTok and Instagram: <sentence>".
+export function groupFailures(failed: { platform: Platform; message: string }[]): { platforms: Platform[]; message: string }[] {
+  const groups: { platforms: Platform[]; message: string }[] = []
+  for (const f of failed) {
+    const g = groups.find((x) => x.message === f.message)
+    if (g) g.platforms.push(f.platform)
+    else groups.push({ platforms: [f.platform], message: f.message })
+  }
+  return groups
+}
+export function platformList(platforms: Platform[]): string {
+  const names = platforms.map((p) => platformName[p])
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] ?? '')
+}
+
 export function clientFit(format: Format, client: Client) {
   if (!format.needsKnown && format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }
   const blockers = format.needs.filter((n) => client.cannot.includes(n))
