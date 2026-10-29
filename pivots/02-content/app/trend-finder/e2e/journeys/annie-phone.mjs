@@ -32,6 +32,11 @@ for (const { theme, width } of matrix()) {
     check(await card.locator('.review-ref').count(), 'no reference video block')
     const ref = card.locator('.review-ref')
     check((await ref.locator('iframe, img, video, a').count()) > 0, 'reference block has no video/thumbnail/link')
+    // She can open the original video: a "Watch the video" link and the thumbnail both go to its page, in a new tab.
+    const watch = card.getByRole('link', { name: /^Watch the video/ })
+    check((await watch.count()) === 1, 'no "Watch the video" link on the review card')
+    check((await watch.getAttribute('target')) === '_blank' && /^https?:\/\//.test((await watch.getAttribute('href')) ?? ''), 'the watch link does not open the video in a new tab')
+    check((await ref.locator('a.review-ref-thumb').getAttribute('href')) === (await watch.getAttribute('href')), 'the thumbnail does not link to the video')
     check((await card.innerText()).includes('Good for the lunch rush.'), 'Daphne\'s note is missing')
     check((await card.locator('.review-shots li').count()) >= 1, 'shot list is empty')
     await noHScroll(a.page)

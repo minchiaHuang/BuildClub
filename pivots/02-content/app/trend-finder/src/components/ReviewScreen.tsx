@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
-import { compact, outlierScore, times } from '../lib/metrics'
+import { compact, outlierScore, platformName, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -277,12 +277,24 @@ function ReviewCard(p: CardProps) {
           </span>
 
           <div className="review-ref">
-            <Thumb video={v} />
+            {v.url ? (
+              // The text link below is the named one; the picture is a second, larger way to the same page.
+              <a className="review-ref-thumb" href={v.url} target="_blank" rel="noreferrer" tabIndex={-1} aria-hidden="true">
+                <Thumb video={v} />
+              </a>
+            ) : (
+              <Thumb video={v} />
+            )}
             <div>
               <strong>{f.name}</strong>
               <span className="small muted">
                 Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
               </span>
+              {v.url && (
+                <a className="plan-watch" href={v.url} target="_blank" rel="noreferrer">
+                  Watch the video on {platformName[v.platform]} ↗
+                </a>
+              )}
             </div>
           </div>
 
