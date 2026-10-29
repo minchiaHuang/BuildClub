@@ -421,6 +421,14 @@ for (const theme of THEMES) {
       check(await sendable(), 'Send stays disabled with a real shot')
       check((await page.locator('#send-hint').count()) === 0, 'the reason stays after the shot was filled in')
     })
+    await scenario('plan for a client with no audience: the default note has no empty "Fits ." and the watch link is not browser blue', async (o) => {
+      const page = o.page
+      await openPlan(page)
+      const note = await page.locator('#note-to-approver').inputValue()
+      check(!/^Fits\s*\./i.test(note), `the default note to Annie starts with an empty clause: "${note.slice(0, 40)}"`)
+      const color = await page.locator('.plan-watch').first().evaluate((a) => getComputedStyle(a).color)
+      check(!['rgb(0, 0, 238)', 'rgb(85, 26, 139)', 'rgb(0, 102, 204)'].includes(color), `the Watch link uses the browser's default colour ${color}`)
+    })
     await scenario('plan without an AI breakdown says the shots are up to her', async (o) => {
       const page = o.page
       // A video the zero-budget API has no cached breakdown for: /api/analyze answers 429 and the shot list stays empty.

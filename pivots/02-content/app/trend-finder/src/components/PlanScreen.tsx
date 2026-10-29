@@ -52,7 +52,8 @@ export function PlanScreen(p: Props) {
   const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
-  const defaultNote = `Fits ${client.audience.toLowerCase()}. ${fit.text}`
+  const audience = client.audience.trim().toLowerCase()
+  const defaultNote = audience ? `Fits ${audience}. ${fit.text}` : fit.text
   const note = idea.noteToApprover ?? defaultNote
 
   const send = () => {

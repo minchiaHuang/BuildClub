@@ -31,6 +31,12 @@
   text-underline-offset: 3px; transition: color var(--dur-fast) var(--ease);
 }
 .link-btn:hover { color: var(--fg); text-decoration-color: currentColor; }
+/* "Watch on <platform>" links: the page's text colour with an underline, like .link-btn, not the browser's blue */
+.plan-watch {
+  color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+.plan-watch:hover { color: var(--fg); text-decoration-color: currentColor; }
 .link-strong { background: none; border: 0; padding: 0; font-weight: 600; text-align: left; display: block; transition: color var(--dur-fast) var(--ease); }
 .link-strong:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 
