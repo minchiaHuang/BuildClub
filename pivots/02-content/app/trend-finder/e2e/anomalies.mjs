@@ -629,6 +629,40 @@ for (const theme of THEMES) {
         await o.ctx.close()
       }
     })
+    if (width === 1440) {
+      // Narrow window (768): the nav is a slide-over drawer; choosing a workspace in it must close it.
+      let o
+      await c.step('768: choosing "All clients" in the drawer switcher closes the drawer', async () => {
+        o = await open(browser, { theme, width: 768 })
+        await apiLogin(o.ctx)
+        await o.page.goto(`${base}/?ui=${theme}`, { waitUntil: 'domcontentloaded' })
+        await o.page.getByRole('button', { name: 'Open menu' }).waitFor()
+        await switcher(o.page)
+        await o.page.getByRole('menuitem', { name: /All clients/ }).click()
+        await o.page.waitForTimeout(500)
+        const isOpen = await sidebar(o.page).evaluate((el) => el.classList.contains('sidebar-open'))
+        check(!isOpen, 'the nav drawer stays open over the page after choosing a workspace')
+      }, () => o?.page)
+      await o?.ctx.close()
+      // Desktop: the switcher menu closes on Esc and on an outside click, and never blocks a nav link.
+      await c.step('desktop: the client switcher menu closes on Esc and on outside click and leaves the nav links clickable', async () => {
+        o = await fresh()
+        const page = o.page
+        const menu = page.getByRole('menu')
+        await switcher(page)
+        await menu.waitFor()
+        await page.keyboard.press('Escape')
+        check((await menu.count()) === 0, 'Esc does not close the client switcher')
+        await switcher(page)
+        await menu.waitFor()
+        await page.locator('main, .main, #root').first().click({ position: { x: 700, y: 400 } })
+        check((await menu.count()) === 0, 'an outside click does not close the client switcher')
+        // With the menu closed again, the nav links under where it was are clickable.
+        await sidebar(page).getByRole('navigation').getByRole('button', { name: 'Saved ideas' }).click({ timeout: 5000 })
+        await page.getByRole('heading', { name: 'Saved ideas', exact: true }).waitFor({ timeout: 5000 })
+      }, () => o?.page)
+      await o?.ctx.close()
+    }
     await scenario('empty search box and empty client name: the disabled buttons say why', async (o) => {
       const page = o.page
       await nav(page, 'Search')

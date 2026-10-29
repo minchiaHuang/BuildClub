@@ -180,7 +180,7 @@ export function Sidebar(p: Props) {
           Trend Finder
         </div>
 
-        <ClientSwitcher agency={p.account?.agency || AGENCY_NAME} clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} onAddClient={() => { p.onClose(); p.onAddClient() }} />
+        <ClientSwitcher agency={p.account?.agency || AGENCY_NAME} clients={p.clients} workspace={p.workspace} setWorkspace={(w) => { p.setWorkspace(w); p.onClose() }} onAddClient={() => { p.onClose(); p.onAddClient() }} />
 
         <nav className="side-nav">
           {inClient ? (
