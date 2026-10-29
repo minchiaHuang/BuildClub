@@ -1,7 +1,7 @@
 import type { Format, Video } from '../types'
 import type { MediaSource } from '../lib/parseQuery'
 import type { FormatTrend } from '../lib/metrics'
-import { outlierScore, plural, platformName, stageText, times } from '../lib/metrics'
+import { meanScore, outlierScore, plural, platformName, stageText, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -24,7 +24,7 @@ const verdicts = {
 
 export function LikeThisCard({ source, format, trend, matches, clientName, real, onPlan }: Props) {
   const best = [...matches].sort((a, b) => outlierScore(b) - outlierScore(a))[0]
-  const avg = matches.reduce((s, v) => s + outlierScore(v), 0) / Math.max(matches.length, 1)
+  const avg = meanScore(matches)
   const verdict = trend ? verdicts[trend.stage] : null
 
   return (

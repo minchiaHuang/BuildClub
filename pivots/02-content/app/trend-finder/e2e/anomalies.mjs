@@ -440,6 +440,25 @@ for (const theme of THEMES) {
       await page.waitForTimeout(800)
       check(asked > before, 'clicking the "tofu" suggestion did not run that search')
     })
+    await scenario('accounts with 0 followers and no usual views get no x score', async (o) => {
+      const page = o.page
+      await nav(page, 'Search')
+      await page.route(liveSearch, async (route) => {
+        const resp = await route.fetch()
+        const body = await resp.json()
+        body.videos.forEach((v) => { v.followers = 0; v.medianViews = null })
+        await route.fulfill({ response: resp, json: body })
+      })
+      await startSearch(page)
+      await page.locator('.tile').first().waitFor({ timeout: 30_000 })
+      await page.waitForTimeout(800)
+      const t = await visibleText(page)
+      const hit = t.match(/.{15}[\d,.]+[kM]?\s?×.{10}/)
+      check(!hit, `a x score is shown for an account with 0 followers and no usual views: "${hit?.[0]}"`)
+      await page.locator('.tile-main').first().click()
+      const d = await page.getByRole('dialog').innerText()
+      check(!/[\d,.]+[kM]?\s?×/.test(d), 'the video drawer shows a x score for an unscored account')
+    })
     await scenario('plan for a client with no audience: the default note has no empty "Fits ." and the watch link is not browser blue', async (o) => {
       const page = o.page
       await openPlan(page)

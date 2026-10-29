@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
-import { compact, outlierScore, platformName, times } from '../lib/metrics'
+import { compact, hasScore, outlierScore, platformName, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -313,7 +313,7 @@ function ReviewCard(p: CardProps) {
             <div>
               <strong>{f.name}</strong>
               <span className="small muted">
-                Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
+                Reference: "{v.hook}" · {compact(v.views)} views{hasScore(v) && ` · ${times(outlierScore(v))} usual`}
               </span>
               {v.url && (
                 <a className="plan-watch" href={v.url} target="_blank" rel="noreferrer">

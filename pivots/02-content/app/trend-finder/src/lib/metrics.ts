@@ -1,14 +1,19 @@
 import type { Client, Format, Platform, Video } from '../types'
 
-// A Reddit post whose subreddit has no usual upvotes yet has no score (0), so it sorts after the scored ones
-// instead of beating them on raw upvotes.
-export const outlierScore = (v: Video) =>
-  v.platform === 'reddit' && v.medianViews === null ? 0 : v.views / Math.max(v.medianViews ?? v.followers, 1)
-// Live Instagram results have neither the account's usual views nor its followers, so there is
-// nothing to compare against: show views only, no × score. (outlierScore is then just views, which still sorts.)
+// Views over the account's usual views, or over its followers when the usual is unknown. With neither (an account
+// with 0 or unknown followers and no usual views) there is nothing to compare against, so the score is 0 and the
+// screens show views only, no × score. A Reddit post whose subreddit has no usual upvotes yet likewise has no score.
+export const outlierScore = (v: Video) => (hasScore(v) ? v.views / Math.max(v.medianViews || v.followers, 1) : 0)
 // Reddit shows no views, so its posts are compared by upvotes (stored in `views`).
 export const viewsWord = (v: Video) => (v.platform === 'reddit' ? 'upvotes' : 'views')
-export const hasScore = (v: Video) => v.medianViews !== null || v.followers > 0
+// Live Instagram results have neither the account's usual views nor its followers, and some accounts report 0
+// followers: there is nothing to compare against, so show views only, no × score.
+export const hasScore = (v: Video) => (v.medianViews ?? 0) > 0 || (v.platform !== 'reddit' && v.followers > 0)
+// Average score over the videos that have one (0 when none do).
+export const meanScore = (vids: Video[]) => {
+  const scored = vids.filter(hasScore)
+  return scored.length ? scored.reduce((s, v) => s + outlierScore(v), 0) / scored.length : 0
+}
 // Plain-English label for a score, so people don't have to read the number.
 export type Tier = 'breakout' | 'strong' | 'normal'
 export const tierOf = (score: number): Tier => (score >= 100 ? 'breakout' : score >= 10 ? 'strong' : 'normal')

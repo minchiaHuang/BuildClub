@@ -1,6 +1,6 @@
 import type { Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
 import type { Answer } from './answer'
-import { UNKNOWN_DAYS, hasScore, outlierScore } from './metrics'
+import { UNKNOWN_DAYS, hasScore, meanScore, outlierScore } from './metrics'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
 interface LiveItem {
@@ -449,7 +449,7 @@ export function findPatterns(videos: Video[], query: string): Pattern[] {
       kind: g.kind,
       label: g.label,
       accounts: new Set(g.vids.map((v) => v.handle)).size,
-      avgScore: g.vids.reduce((s, v) => s + outlierScore(v), 0) / g.vids.length,
+      avgScore: meanScore(g.vids),
       videoIds: g.vids.map((v) => v.id),
     }))
     .filter((p) => p.accounts >= 2)

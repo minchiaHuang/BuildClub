@@ -86,7 +86,7 @@ export function ResultsScreen(p: Props) {
   // Best to copy: the top-scoring video whose format several accounts are using (early or rising),
   // that isn't already sent or approved and that this client can film. Falls back to the top score.
   const trendOf = (v: Video) => p.trends.find((t) => t.format.id === v.formatId)
-  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))
+  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a) || b.views - a.views)
   const open = ranked.filter((v) => {
     const s = p.ideaStatus.get(v.id)
     return s !== 'waiting' && s !== 'approved' && !p.blockedFormatIds.has(v.formatId)
@@ -272,7 +272,7 @@ export function ResultsScreen(p: Props) {
                   {hasDate(best) && ` · ${agoShort(best.daysAgo)} ago`}
                 </span>
                 {/* Usual → this video, so the jump reads without decoding the × score. Keyed so it animates once per pick. */}
-                <BestCompare key={best.id} video={best} />
+                {hasScore(best) && <BestCompare key={best.id} video={best} />}
                 <div className="best-actions">
                   <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
                     {bestStatus && bestStatus !== 'saved'
