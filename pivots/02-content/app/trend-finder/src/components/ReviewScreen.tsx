@@ -120,7 +120,7 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
       <header className="page-head review-head">
         <span className="eyebrow">{client.name} · For Annie</span>
         <h1 ref={headRef} tabIndex={-1}>{waiting.length ? `${waiting.length} to review` : 'Nothing to review'}</h1>
-        {waiting.length > 0 && <p className="small muted">Swipe right to approve, left to send back.</p>}
+        {waiting.length > 0 && <p className="small muted">Press Approve, or Not this one to send it back.</p>}
       </header>
 
       {waiting.length === 0 && (

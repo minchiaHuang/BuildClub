@@ -32,6 +32,7 @@ for (const { theme, width } of matrix()) {
     check(await card.locator('.review-ref').count(), 'no reference video block')
     const ref = card.locator('.review-ref')
     check((await ref.locator('iframe, img, video, a').count()) > 0, 'reference block has no video/thumbnail/link')
+    check(!/swipe/i.test(await a.page.locator('.review-head').innerText()), 'the hint still talks about swiping, but the page has buttons')
     // She can open the original video: a "Watch the video" link and the thumbnail both go to its page, in a new tab.
     const watch = card.getByRole('link', { name: /^Watch the video/ })
     check((await watch.count()) === 1, 'no "Watch the video" link on the review card')
