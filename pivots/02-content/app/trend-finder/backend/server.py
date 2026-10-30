@@ -29,7 +29,7 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 import assist
@@ -607,18 +607,32 @@ def put_clients(clients: list[Client]):
     return clients
 
 
+def etag(rev: int) -> str:
+    return f'"{rev}"'
+
+
 @app.get("/api/ideas", response_model=Optional[list[SavedIdea]], response_model_exclude_none=True)
-def get_ideas():
+def get_ideas(response: Response):
+    response.headers["ETag"] = etag(share.ideas_rev(load))
     return load("ideas")
 
 
+# A PUT with If-Match must carry the revision its tab last read; an older one gets 409 with the current
+# list, so a stale tab can't overwrite another tab's edit or delete an idea it never saw.
+# Without If-Match the PUT works as before.
 @app.put("/api/ideas", response_model=list[SavedIdea], response_model_exclude_none=True)
-def put_ideas(ideas: list[SavedIdea]):
-    # Annie may have decided since this tab last loaded; keep her newer answer.
+def put_ideas(ideas: list[SavedIdea], response: Response, if_match: Optional[str] = Header(None)):
     with share.ideas_lock:
+        rev = share.ideas_rev(load)
+        if if_match is not None and if_match.strip().removeprefix("W/").strip('"') != str(rev):
+            current = [SavedIdea(**i).model_dump(exclude_none=True) for i in load("ideas") or []]
+            return JSONResponse({"error": "The ideas changed somewhere else.", "ideas": current},
+                                status_code=409, headers={"ETag": etag(rev)})
+        # Annie may have decided since this tab last loaded; keep her newer answer.
         merged = share.merge_ideas(load("ideas"), [i.model_dump(exclude_none=True) for i in ideas])
         ideas = [SavedIdea(**i) for i in merged]
         save("ideas", ideas)
+        response.headers["ETag"] = etag(share.bump_ideas_rev(db, load))
     return ideas
 
 

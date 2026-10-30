@@ -87,7 +87,12 @@ export function SearchBox(p: Props) {
             onListeningChange={setListening}
           />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={!p.value.trim()}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!p.value.trim()}
+          title={p.value.trim() ? undefined : 'Type what to search for first.'}
+        >
           {/https?:\/\//.test(p.value) ? 'Find more like this' : 'Find trending videos'}
         </button>
       </div>
@@ -100,6 +105,8 @@ export function SearchBox(p: Props) {
             accept="image/png,image/jpeg,image/webp"
             className="sr-only"
             aria-label="Upload a screenshot"
+            // The visible "Upload screenshot" button opens this input, so it is not a second Tab stop.
+            tabIndex={-1}
             onChange={(e) => {
               const file = e.target.files?.[0]
               e.target.value = ''

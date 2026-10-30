@@ -20,6 +20,20 @@ ideas_lock = threading.Lock()
 share_lock = threading.Lock()
 
 DECISION_FIELDS = ("status", "rejectReason", "decidedAt")
+# Counts every change to the ideas list, so a tab holding an older copy can be told to reload (If-Match).
+REV_KEY = "ideas:rev"
+
+
+def ideas_rev(load) -> int:
+    return int(load(REV_KEY) or 0)
+
+
+def bump_ideas_rev(db, load) -> int:
+    """Call with ideas_lock held, right after the list is saved."""
+    rev = ideas_rev(load) + 1
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (REV_KEY, json.dumps(rev)))
+    return rev
 
 
 def merge_ideas(stored: list, incoming: list) -> list:
@@ -123,6 +137,7 @@ def make_router(db, load, save) -> APIRouter:
                 return JSONResponse({"error": "This idea isn't waiting for review."}, status_code=404)
             ideas, decided = result
             save("ideas", [SavedIdea(**i) for i in ideas])
+            bump_ideas_rev(db, load)
         return {k: v for k, v in decided.items() if k != "notes"}
 
     return router

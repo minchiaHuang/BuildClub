@@ -46,7 +46,7 @@ export function PatternStrip({ patterns, active, onPick }: Props) {
                 </span>
                 <strong className="pattern-label">{p.label}</strong>
                 <span className="trend-text">
-                  {p.accounts} accounts · avg {times(p.avgScore)}
+                  {p.accounts} accounts{p.avgScore > 0 && ` · avg ${times(p.avgScore)}`}
                 </span>
               </button>
             )

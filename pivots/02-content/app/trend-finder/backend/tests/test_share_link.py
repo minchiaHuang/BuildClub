@@ -118,3 +118,13 @@ def test_turn_off_revokes_every_token_of_the_client(client, two_clients):
     assert client.get(f"/api/review/{tb}").status_code == 200
     with server.db() as conn:
         assert conn.execute("SELECT count(*) FROM store WHERE key LIKE 'share:%'").fetchone()[0] == 1
+
+
+def test_decide_bumps_ideas_revision(client, two_clients):
+    token, _ = link(client, "a")
+    rev = client.get("/api/ideas").headers["etag"]
+    client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "approved"})
+    assert client.get("/api/ideas").headers["etag"] != rev
+    stale = client.put("/api/ideas", json=[idea("ia", "a")], headers={"If-Match": rev})
+    assert stale.status_code == 409
+    assert {i["id"]: i["status"] for i in stale.json()["ideas"]}["ia"] == "approved"

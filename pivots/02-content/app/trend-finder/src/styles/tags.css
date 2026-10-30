@@ -91,8 +91,7 @@
   .mn-pill { --size: 0.62; }
   .mn-panel-compact .mn-pill { --size: 0.6; }
 }
-/* Phone: the hero pills float behind the headline (and dim) so they never cover its words */
-@media (max-width: 640px) {
-  .mn-pill { z-index: 1 !important; opacity: 0.55; }
-  .mn-headline { z-index: 4; }
+/* Phone and tablet: there is no room beside the headline, so the hero pills would sit on its words. Leave them out. */
+@media (max-width: 860px) {
+  .mn-stage .mn-pill, .la-sky-tags { display: none; }
 }

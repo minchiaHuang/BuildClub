@@ -337,7 +337,9 @@ class ChannelJobs:
         need = ["TYPESAFE_API_KEY"] + (["SCRAPECREATORS_API_KEY"] if platform == "instagram" and not fetched else [])
         missing = [k for k in need if not os.environ.get(k)]
         if missing:
-            raise ValueError(f"Channel summaries need {' and '.join(missing)} in .env. Add it and restart the API.")
+            # The .env hint is for whoever runs the server; the user only learns it isn't set up.
+            print(f"[channel] channel summaries need {' and '.join(missing)} in .env; add it and restart the API.", flush=True)
+            raise ValueError("Channel summaries aren't set up on this server yet.")
 
     def _check_budget(self, platform: str, work: Path, fetched: bool) -> None:
         need = {"jev": JEV_MIN_USD}

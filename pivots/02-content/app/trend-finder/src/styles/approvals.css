@@ -77,6 +77,9 @@
 .client-table tr:last-child td { border-bottom: 0; }
 .client-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .client-table .pill, .client-table td .small { white-space: nowrap; }
+.client-table .btn { white-space: nowrap; }
+/* Tablet: tighter cells so the whole row, "Find ideas" included, fits without scrolling */
+@media (max-width: 900px) { .client-table th, .client-table td { padding-left: 10px; padding-right: 10px; } }
 .progress { display: flex; align-items: center; gap: 10px; min-width: 140px; }
 .progress .small { font-variant-numeric: tabular-nums; }
 .due-soon { color: var(--hot); font-weight: 600; }
@@ -131,6 +134,10 @@
 
 .review-ref { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: center; }
 .review-ref .thumb { border-radius: var(--radius-sm); }
+.review-ref-thumb { display: block; }
+.review-status { margin: 0; font-weight: 600; }
+.review-status:empty { display: none; }
+.review-decided { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--text-sm); }
 .review-ref > div { display: grid; gap: 4px; min-width: 0; }
 .review-ref strong { font-size: var(--text-md); letter-spacing: -0.01em; }
 .review-card .quote { font-size: var(--text-base); }

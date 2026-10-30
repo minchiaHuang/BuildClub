@@ -17,6 +17,18 @@ export function NewClientForm({ existingIds, onAdd, onCancel, first }: Props) {
   const [draft, setDraft] = useState<Client>(blank)
   const name = draft.name.trim()
 
+  // Focus starts on the first field; when the dialog closes it goes back to the sidebar control that opened it
+  // (the menu item itself is gone by then, so: the phone's menu button, or the client switcher).
+  useEffect(() => {
+    document.getElementById('client-name')?.focus()
+    if (first) return
+    return () => {
+      const bar = document.querySelector<HTMLElement>('.mobile-bar')
+      const target = bar && getComputedStyle(bar).display !== 'none' ? bar.querySelector<HTMLElement>('.icon-btn') : document.querySelector<HTMLElement>('.switcher-btn')
+      target?.focus()
+    }
+  }, [first])
+
   useEffect(() => {
     if (!onCancel) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
@@ -50,7 +62,7 @@ export function NewClientForm({ existingIds, onAdd, onCancel, first }: Props) {
               Cancel
             </button>
           )}
-          <button type="submit" className="btn btn-primary" disabled={!name}>
+          <button type="submit" className="btn btn-primary" disabled={!name} title={name ? undefined : 'Enter a client name first.'}>
             Add client
           </button>
         </div>

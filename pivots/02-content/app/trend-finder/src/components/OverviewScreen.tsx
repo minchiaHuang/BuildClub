@@ -1,4 +1,5 @@
 import type { Client, SavedIdea } from '../types'
+import { daysFromToday } from '../lib/dates'
 import { ProgressRing } from './ClientScreen'
 
 interface Props {
@@ -13,15 +14,14 @@ const startOfMonth = () => {
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime()
 }
 
-const daysUntil = (iso: string) => Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000)
-
 export function OverviewScreen({ agency, clients, ideas, onOpen }: Props) {
   const monthStart = startOfMonth()
   const rows = clients.map((c) => {
     const mine = ideas.filter((i) => i.clientId === c.id)
     const approved = mine.filter((i) => i.status === 'approved')
     const waiting = mine.filter((i) => i.status === 'waiting').length
-    const nextDue = approved.map((i) => i.dueDate).sort()[0]
+    // Posted ideas are done, so they can't be what is due next.
+    const nextDue = approved.filter((i) => i.stage !== 'posted').map((i) => i.dueDate).sort()[0]
     const done = mine.filter((i) => i.postedAt !== undefined && i.postedAt >= monthStart).length
     return { c, saved: mine.length, approved: approved.length, done, waiting, nextDue }
   })
@@ -65,7 +65,7 @@ export function OverviewScreen({ agency, clients, ideas, onOpen }: Props) {
           <thead>
             <tr>
               <th>Client</th>
-              <th>This month</th>
+              <th>Posted this month</th>
               <th className="num">Saved</th>
               <th className="num">Waiting</th>
               <th>Next due</th>
@@ -73,10 +73,10 @@ export function OverviewScreen({ agency, clients, ideas, onOpen }: Props) {
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ c, saved, done, waiting, nextDue }) => {
+            {rows.map(({ c, saved, approved, done, waiting, nextDue }) => {
               const pct = Math.min(done / c.monthlyTarget, 1) * 100
               const behind = pct < 50
-              const due = nextDue ? daysUntil(nextDue) : null
+              const due = nextDue ? daysFromToday(nextDue) : null
               return (
                 <tr key={c.id}>
                   <td>
@@ -105,10 +105,10 @@ export function OverviewScreen({ agency, clients, ideas, onOpen }: Props) {
                   </td>
                   <td>
                     {due === null ? (
-                      <span className="muted small">Nothing approved yet</span>
+                      <span className="muted small">{approved ? 'Nothing left to film' : 'Nothing approved yet'}</span>
                     ) : (
-                      <span className={`small ${due < 3 ? 'due-soon' : ''}`}>
-                        {due <= 0 ? 'Today' : due === 1 ? 'Tomorrow' : `In ${due} days`}
+                      <span className={`small ${due < 0 ? 'due-soon' : ''}`}>
+                        {due < 0 ? `Overdue ${-due} ${due === -1 ? 'day' : 'days'}` : due === 0 ? 'Today' : due === 1 ? 'Tomorrow' : `In ${due} days`}
                       </span>
                     )}
                   </td>

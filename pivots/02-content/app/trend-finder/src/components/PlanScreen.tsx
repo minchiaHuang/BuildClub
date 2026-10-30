@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { dueLabel, formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
 
 interface Props {
@@ -33,6 +34,14 @@ const ago = (ts?: number) => {
   return mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : `${Math.round(mins / 60)}h ago`
 }
 
+// A shot is one line that wraps: the box grows with its text instead of cutting it off, and Enter doesn't add a line.
+const grow = (el: HTMLTextAreaElement | null) => {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`
+}
+const noNewline = (e: React.KeyboardEvent) => e.key === 'Enter' && e.preventDefault()
+
 export function PlanScreen(p: Props) {
   const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother } = p
   // Last removed shot, so an accidental ✕ can be undone.
@@ -41,12 +50,20 @@ export function PlanScreen(p: Props) {
   // Index of a shot just added with "+ Add a shot", so only that row plays its enter animation.
   const [addedAt, setAddedAt] = useState<number | null>(null)
 
+  // Keyboard focus lands on the heading when the plan opens or its status changes (the button that had focus is gone).
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true })
+  }, [idea.id, idea.status])
+
   const shots = idea.shots ?? format.shotList
-  const editable = idea.status === 'saved' || idea.status === 'approved'
+  // A plan sent back by the approver is open again: the bar asks her to edit it and resend.
+  const editable = idea.status !== 'waiting'
   const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
-  const defaultNote = `Fits ${client.audience.toLowerCase()}. ${fit.text}`
+  const audience = client.audience.trim().toLowerCase()
+  const defaultNote = audience ? `Fits ${audience}. ${fit.text}` : fit.text
   const note = idea.noteToApprover ?? defaultNote
 
   const send = () => {
@@ -54,15 +71,31 @@ export function PlanScreen(p: Props) {
     // Bring the confirmation into view.
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  // Rows that are still blank don't count as shots.
+  const canSend = shots.some((s) => s.shot.trim())
+  const sendHint = 'Add at least one shot (what we film) before sending.'
   const sendButton = (
-    <button className="btn btn-primary" disabled={shots.length === 0} onClick={send}>
-      Send to {APPROVER} for approval
-    </button>
+    <>
+      {!canSend && (
+        <span id="send-hint" className="plan-bar-hint">
+          {sendHint}
+        </span>
+      )}
+      <button
+        className="btn btn-primary"
+        disabled={!canSend}
+        title={canSend ? undefined : sendHint}
+        aria-describedby={canSend ? undefined : 'send-hint'}
+        onClick={send}
+      >
+        Send to {APPROVER} for approval
+      </button>
+    </>
   )
   // Everything the editor needs in one paste: reference, shots, props and notes.
   const brief = [
     `${format.name} for ${client.name}`,
-    `Due: ${idea.dueDate}`,
+    `Due: ${formatDay(idea.dueDate)}`,
     `Reference: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
     '',
     'Shots:',
@@ -91,9 +124,11 @@ export function PlanScreen(p: Props) {
       <header className="plan-head">
         <div className="plan-head-row">
           <span className="eyebrow">Plan for {client.name}</span>
-          <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
+          <span className={`status status-${idea.status}`}>{idea.stage === 'posted' ? 'Posted' : statusLabel[idea.status]}</span>
         </div>
-        <h1>{format.name}</h1>
+        <h1 ref={heading} tabIndex={-1}>
+          {format.name}
+        </h1>
       </header>
 
       {idea.status === 'waiting' && (
@@ -118,7 +153,7 @@ export function PlanScreen(p: Props) {
           </span>
           <div>
             <strong>{APPROVER} approved this</strong>
-            <span>Film it by {idea.dueDate}, then copy the brief below for your editor.</span>
+            <span>Film it by {formatDay(idea.dueDate)}, then copy the brief below for your editor.</span>
           </div>
         </div>
       )}
@@ -149,7 +184,7 @@ export function PlanScreen(p: Props) {
             {video.url && (
               <>
                 {' · '}
-                <a href={video.url} target="_blank" rel="noreferrer">
+                <a className="plan-watch" href={video.url} target="_blank" rel="noreferrer">
                   Watch on {platformName[video.platform]} ↗
                 </a>
               </>
@@ -167,6 +202,11 @@ export function PlanScreen(p: Props) {
                 : `Locked while ${APPROVER} reviews it. Withdraw it to make changes.`}
             </p>
             {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
+            {shots.length === 0 && editable && format.shotList.length === 0 && !format.why.first3s.startsWith('Breaking down') && (
+              <p className="small muted" role="status">
+                The AI breakdown isn't available for this video, so add the shots yourself.
+              </p>
+            )}
             <ol className="shot-edit">
               {shots.map((s, i) => (
                 <li key={i} className={i === addedAt ? 'shot-added' : undefined}>
@@ -180,19 +220,25 @@ export function PlanScreen(p: Props) {
                         onChange={(e) => updateShot(i, { time: e.target.value })}
                       />
                       <div className="shot-fields">
-                        <input
+                        <textarea
                           id={`shot-desc-${i}`}
+                          rows={1}
+                          ref={(el) => grow(el)}
                           aria-label={`Shot ${i + 1}: what we film`}
                           value={s.shot}
                           placeholder="What we film"
                           onChange={(e) => updateShot(i, { shot: e.target.value })}
+                          onKeyDown={noNewline}
                         />
-                        <input
+                        <textarea
                           id={`shot-text-${i}`}
+                          rows={1}
+                          ref={(el) => grow(el)}
                           aria-label={`Shot ${i + 1}: text on screen`}
                           value={s.text ?? ''}
                           placeholder="Text on screen (optional)"
                           onChange={(e) => updateShot(i, { text: e.target.value || undefined })}
+                          onKeyDown={noNewline}
                         />
                       </div>
                       <button
@@ -326,7 +372,7 @@ export function PlanScreen(p: Props) {
       <div className="plan-bar">
         {idea.status === 'saved' && (
           <>
-            <span className="plan-bar-text">Ready? {APPROVER} will see the video, your shot list and your note.</span>
+            {canSend && <span className="plan-bar-text">Ready? {APPROVER} will see the video, your shot list and your note.</span>}
             <button className="btn btn-ghost" onClick={onBack}>
               Save for later
             </button>
@@ -361,7 +407,9 @@ export function PlanScreen(p: Props) {
                 ? 'Brief copied. Paste it to your editor with the footage.'
                 : copied === 'failed'
                   ? "Couldn't copy. Your browser blocked the clipboard."
-                  : `Approved. Due ${idea.dueDate}.`}
+                  : idea.stage === 'posted'
+                    ? 'Posted.'
+                    : `Approved. ${dueLabel(idea.dueDate).text}.`}
             </span>
             <button className="btn btn-ghost" onClick={onPlanAnother}>
               Plan another video

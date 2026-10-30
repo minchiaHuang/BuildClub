@@ -6,10 +6,11 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, hasDate, hasScore, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { PlatformLogo } from './PlatformToggles'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
@@ -85,7 +86,7 @@ export function ResultsScreen(p: Props) {
   // Best to copy: the top-scoring video whose format several accounts are using (early or rising),
   // that isn't already sent or approved and that this client can film. Falls back to the top score.
   const trendOf = (v: Video) => p.trends.find((t) => t.format.id === v.formatId)
-  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))
+  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a) || b.views - a.views)
   const open = ranked.filter((v) => {
     const s = p.ideaStatus.get(v.id)
     return s !== 'waiting' && s !== 'approved' && !p.blockedFormatIds.has(v.formatId)
@@ -197,9 +198,9 @@ export function ResultsScreen(p: Props) {
         ))}
       </div>
 
-      {p.failed.map((f) => (
-        <p key={f.platform} className="error" role="alert">
-          {platformName[f.platform]}: {f.message}
+      {groupFailures(p.failed).map((g) => (
+        <p key={g.platforms.join()} className="error" role="alert">
+          {platformList(g.platforms)}: <ErrorText text={g.message} onSearch={p.onSearch} />
         </p>
       ))}
 
@@ -271,7 +272,7 @@ export function ResultsScreen(p: Props) {
                   {hasDate(best) && ` · ${agoShort(best.daysAgo)} ago`}
                 </span>
                 {/* Usual → this video, so the jump reads without decoding the × score. Keyed so it animates once per pick. */}
-                <BestCompare key={best.id} video={best} />
+                {hasScore(best) && <BestCompare key={best.id} video={best} />}
                 <div className="best-actions">
                   <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
                     {bestStatus && bestStatus !== 'saved'

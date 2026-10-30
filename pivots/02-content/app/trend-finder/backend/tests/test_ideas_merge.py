@@ -33,3 +33,24 @@ def test_old_idea_without_stage_loads(client):
     assert saved.get("stage") is None
     assert saved.get("postedAt") is None
     assert client.get("/api/ideas").json()[0]["id"] == "i1"
+
+
+def test_ideas_revision_rejects_stale_put(client):
+    assert client.get("/api/ideas").headers["etag"] == '"0"'
+    first = client.put("/api/ideas", json=[IDEA], headers={"If-Match": '"0"'})
+    assert first.status_code == 200 and first.headers["etag"] == '"1"'
+    # Another tab saves; the first tab still holds revision 1.
+    other = [IDEA, {**IDEA, "id": "i2"}]
+    assert client.put("/api/ideas", json=other, headers={"If-Match": '"1"'}).headers["etag"] == '"2"'
+    stale = client.put("/api/ideas", json=[{**IDEA, "notes": "stale"}], headers={"If-Match": '"1"'})
+    assert stale.status_code == 409
+    assert stale.headers["etag"] == '"2"'
+    assert [i["id"] for i in stale.json()["ideas"]] == ["i1", "i2"]
+    assert [i["id"] for i in client.get("/api/ideas").json()] == ["i1", "i2"]
+    assert client.get("/api/ideas").json()[0]["notes"] == ""
+
+
+def test_put_ideas_without_if_match_still_works(client):
+    client.put("/api/ideas", json=[IDEA], headers={"If-Match": '"0"'})
+    assert client.put("/api/ideas", json=[]).status_code == 200
+    assert client.get("/api/ideas").headers["etag"] == '"2"'

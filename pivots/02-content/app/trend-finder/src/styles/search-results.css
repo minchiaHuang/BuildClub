@@ -150,7 +150,7 @@
 .best-trend { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--muted); }
 .best-hook {
   font-size: clamp(22px, 2.3vw, 30px); font-weight: 700; line-height: 1.18; letter-spacing: var(--tracking-tight);
-  text-wrap: balance; max-width: 30ch;
+  text-wrap: balance; max-width: 30ch; overflow-wrap: anywhere;
 }
 .best-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .best-actions .btn { padding: 11px 18px; }
@@ -224,8 +224,8 @@ button.best-video-sample:hover .best-play, button.best-video-sample:focus-visibl
 /* ---------- Video grid and tiles ---------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 24px 16px; }
 @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; } }
-.tile { position: relative; display: grid; align-content: start; }
-.tile-main { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 10px; border-radius: var(--radius-sm); }
+.tile { position: relative; display: grid; align-content: start; min-width: 0; }
+.tile-main { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 10px; border-radius: var(--radius-sm); min-width: 0; }
 .tile-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 /* Hover or keyboard focus previews the tile: the cover lifts a little and the picture zooms inside it. */
 .tile-main .thumb {
@@ -236,7 +236,7 @@ button.best-video-sample:hover .best-play, button.best-video-sample:focus-visibl
 .tile-main:hover .thumb, .tile-main:focus-visible .thumb { transform: translateY(-3px) scale(1.015); box-shadow: var(--shadow-lg); }
 .tile-main:hover .thumb img, .tile-main:focus-visible .thumb img { transform: scale(1.06); }
 .tile-body { display: grid; gap: 3px; min-width: 0; }
-.tile-hook { font-weight: 600; font-size: 14px; line-height: 1.3; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile-hook { overflow-wrap: anywhere; font-weight: 600; font-size: 14px; line-height: 1.3; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tile-meta { font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Save star: frosted on the cover, so it reads in both themes */
@@ -247,6 +247,7 @@ button.best-video-sample:hover .best-play, button.best-video-sample:focus-visibl
   box-shadow: var(--shadow-md);
   transition: transform var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
+@media (max-width: 600px) { .tile-save { width: 40px; height: 40px; } }
 .tile-save:hover, .tile-save:focus-visible { transform: scale(1.08); }
 .tile-save:active { transform: scale(0.94); }
 .tile-save-on { background: var(--accent); color: var(--accent-fg); }
