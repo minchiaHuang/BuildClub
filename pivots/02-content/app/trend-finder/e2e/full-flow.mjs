@@ -158,6 +158,15 @@ if (WIDTH >= 600) {
     const t = await fit.innerText()
     check(/can't check this one/i.test(t), `expected the graceful "can't check" line, got: ${t}`)
     check(await drawer.getByRole('heading', { name: 'What each line does' }).isVisible(), 'the line roles vanished')
+    // The pinned search is old data: no baseline details, so the evidence is limited and the calculation says so.
+    const calc = await drawer.locator('section.calc').innerText()
+    // This video has no median at all, so the formula falls back to followers and says it is rough.
+    check(/Rough estimate \(views ÷ followers\)/.test(calc), `expected the rough-estimate formula, got: ${calc}`)
+    check((calc.match(/Rough estimate/g) ?? []).length === 1, 'the rough-estimate line shows twice')
+    check(/Evidence: limited/.test(calc), `expected "Evidence: limited", got: ${calc}`)
+    check(/We can't see watch time or retention/.test(calc), 'limit line 1 missing')
+    check(!/Instagram views include paid/.test(calc), 'the Instagram limit line shows on a TikTok video')
+    check(/These numbers don't mean a copy will go viral/.test(calc), 'limit line 3 missing')
     check(await drawer.getByRole('button', { name: /^Plan this for/ }).isVisible(), 'the panel broke')
   })
 

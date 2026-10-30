@@ -30,9 +30,14 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status, cohort }
   const byFollowers = video.medianViews === null
   // The star pops only when it's clicked, not when a tile shows up already saved.
   const [pop, setPop] = useState(false)
-  const evidence = evidenceOf(video, cohort)
-  const line = plainLine(video, cohort)
-  const spoken = evidence ? `${EVIDENCE_TEXT[evidence]}. ${line}` : BASELINE_PLATFORMS.includes(video.platform) ? '' : COPY.noPlatform
+  const evidence = video.live ? evidenceOf(video, cohort) : null
+  const spoken = !video.live
+    ? ''
+    : evidence
+      ? `${EVIDENCE_TEXT[evidence]}. ${plainLine(video, cohort)}`
+      : BASELINE_PLATFORMS.includes(video.platform)
+        ? ''
+        : COPY.noPlatform
   return (
     <article className="tile">
       <button className="tile-main" data-video-id={video.id} onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}${spoken ? `. ${spoken}` : ''}`}>

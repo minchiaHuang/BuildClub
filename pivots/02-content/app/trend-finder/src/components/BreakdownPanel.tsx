@@ -19,13 +19,15 @@ import {
 import { useCountUp } from '../lib/motion'
 import { Thumb } from './Thumb'
 import { EvidenceChip } from './EvidenceChip'
-import { COPY, denominatorOf, fetchedLine, formulaLine, limitLines, sourceLine, type Cohort } from '../lib/evidence'
+import { fetchedLine, formulaLine, limitLines, sourceLine, type Cohort } from '../lib/evidence'
 
 interface Props {
   video: Video
   format: Format
   // The accounts using this video's pattern in this search; the follow list reads the same rows.
   cohort?: Cohort
+  // Sample mode only: videos in this video's hand-written format (the old count).
+  formatAccounts: number
   client: Client
   saved: boolean
   onClose: () => void
@@ -35,7 +37,7 @@ interface Props {
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
-export function BreakdownPanel({ video, format, cohort, client, saved, onClose, onSave, onPlan }: Props) {
+export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAccounts, client, saved, onClose, onSave, onPlan }: Props) {
   // Play the slide-out before App unmounts the panel (skipped under reduced motion).
   const [closing, setClosing] = useState(false)
   const close = useCallback(() => {
@@ -93,8 +95,10 @@ export function BreakdownPanel({ video, format, cohort, client, saved, onClose, 
   const shownViews = useCountUp(video.views)
   const fit = clientFit(format, client)
   const tier = tierOf(score)
-  const formatAccounts = cohort?.accounts ?? 1
+  const formatAccounts = video.live ? (cohort?.accounts ?? 1) : sampleAccounts
   const source = sourceLine(video)
+  const formula = formulaLine(video)
+  const fetched = fetchedLine(video)
   // The numbers are the point of this panel, so they get their own row of cards.
   const stats = [
     {
@@ -191,7 +195,7 @@ export function BreakdownPanel({ video, format, cohort, client, saved, onClose, 
                   {m.unit && <span className="stat-unit"> {m.unit}</span>}
                 </span>
                 <span className="stat-note">{m.note}</span>
-                <span className="stat-source">{source}</span>
+                {video.live && <span className="stat-source">{source}</span>}
               </div>
             ))}
           </section>
@@ -200,10 +204,8 @@ export function BreakdownPanel({ video, format, cohort, client, saved, onClose, 
             <section className="block calc" aria-labelledby="calc-title">
               <h3 id="calc-title">How this multiple is calculated</h3>
               <EvidenceChip video={video} cohort={cohort} />
-              {formulaLine(video) && <p className="calc-formula">{formulaLine(video)}</p>}
-              {fetchedLine(video) && <p className="small muted">{fetchedLine(video)}</p>}
-              {denominatorOf(video) === 'followers' && <p className="small muted">{COPY.rough}</p>}
-              {video.baseline?.medianN == null && <p className="small muted">{COPY.noDetails}</p>}
+              {formula && <p className="calc-formula">{formula}</p>}
+              {fetched && <p className="small muted">{fetched}</p>}
               <ul className="calc-limits">
                 {limitLines(video).map((l) => (
                   <li key={l}>{l}</li>

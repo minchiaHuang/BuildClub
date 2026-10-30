@@ -1109,6 +1109,7 @@ export default function App() {
           video={openVideo}
           format={openFormat}
           cohort={cohorts.get(openVideo.id)}
+          formatAccounts={keywordPool.filter((v) => v.formatId === openFormat.id).length}
           client={client}
           saved={savedForClient.has(openVideo.id)}
           onClose={() => setOpenVideoId(null)}
