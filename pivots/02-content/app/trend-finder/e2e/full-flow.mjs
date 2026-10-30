@@ -248,7 +248,7 @@ if (WIDTH >= 600) {
     await sidebar().getByRole('button', { name: /^Plans/ }).click()
     await page.getByRole('button', { name: 'Open plan' }).first().click()
     await page.locator('#plan-due').fill('2026-12-24')
-    await page.getByText('Approved. Due 2026-12-24.').waitFor()
+    await page.getByText('Approved. Due 24 Dec.').waitFor()
     await page.waitForTimeout(1500) // let the change save
     await page.reload({ waitUntil: 'domcontentloaded' })
     await sidebar().getByRole('button', { name: /^Approvals/ }).click()
@@ -256,7 +256,7 @@ if (WIDTH >= 600) {
     await page.locator('.approval .status-approved').first().waitFor()
     check(!(await page.locator('.idea-actions').getByText('Withdraw').count()), 'the idea fell back to waiting')
     await sidebar().getByRole('button', { name: /^Plans/ }).click()
-    await page.getByText('2026-12-24').first().waitFor()
+    await page.getByText('Due 24 Dec').first().waitFor()
   })
 
   await step('9 Board: move to Posted, month count +1', async () => {
