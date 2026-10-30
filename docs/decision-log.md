@@ -2,6 +2,20 @@
 
 Newest first. Dates are when the decision was made (from the Miro board), except sync entries.
 
+## 30 Oct 2026
+
+Source for all entries below: `docs/plans/2026-10-30-remake-monday-mvp.md` and `docs/STATUS.md`.
+
+- Rename: Trend Finder is now called Remake.
+- Evidence rule: Limited when the denominator is followers, there is no N, or the recommended video is more than 30 days old (unknown posting date is not Limited; show `Posting date unknown`). High when the denominator is the median and the pattern has at least 3 accounts in this search with at least 2 hits. Medium otherwise. YouTube, X, Reddit (and Instagram until Task 15) show `No baseline details for this platform yet` instead of a label.
+- Hit threshold: a hit is a multiple of 2x or more (to be tuned after asking Daphne on Monday).
+- One row per account, taken from that account's newest video in the group.
+- Scope: the hit rate counts this search only. Follower-denominator accounts are listed as `Rough` and not counted; a group with fewer than 3 accounts shows `One-off`.
+- Reject tags are stored in `rejectTags`.
+- The Monday environment runs on port 8801 (new database, new Daphne account); 8787 is not touched.
+- UI copy language: UI copy is English (the English column of the copy table); conversation and internal docs are Chinese.
+- User decision: mobile/phone width (390px) is not a focus for Monday; verify at desktop 1440 only.
+
 ## 29 Oct 2026
 
 Source for all entries below: `docs/STATUS.md`.
