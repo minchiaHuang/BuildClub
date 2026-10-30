@@ -26,8 +26,8 @@ for (const { theme, width } of matrix()) {
 
   await c.step('login', async () => {
     await login(page, theme)
-    await sidebar(page).waitFor()
-    // Either the first-client dialog or the app: both mean the sign-in worked.
+    // Either the first-client dialog or the app: both mean the sign-in worked. (On a phone the dialog hides the sidebar.)
+    await sidebar(page).or(page.getByRole('dialog', { name: 'Add your first client' })).first().waitFor()
     await noHScroll(page)
   }, P)
   await c.step('add + pick client', async () => {
