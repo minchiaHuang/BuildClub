@@ -980,6 +980,25 @@ def pin(query: str, platform: str = "tiktok") -> None:
     print(f'Pinned "{query}": it will load without Apify or the internet.')
 
 
+def refetch(query: str, platform: str = "tiktok") -> None:
+    """Fresh search with account baselines, then pin it. Goes through search(), so every spend cap applies."""
+    global in_background
+    if platform not in ("tiktok", "instagram"):
+        sys.exit("refetch supports tiktok and instagram.")
+    query = query.strip()[:120]
+    original, in_background = in_background, lambda fill: fill()  # medians must finish before we pin
+    try:
+        result = search(query, fresh="1", platform=platform)
+    finally:
+        in_background = original
+    if isinstance(result, JSONResponse):
+        sys.exit(result.body.decode())
+    pin(query, platform)
+    videos = json.loads((CACHE_DIR / cache_name(query, platform)).read_text())["videos"]
+    scored = sum(1 for v in videos if v.get("outlier") is not None)
+    print(f"scored {scored} of {len(videos)} videos; baseline details on {sum(1 for v in videos if v.get('medianN'))}")
+
+
 def add_user(args: list[str]) -> None:
     """add-user <email> "<name>" "<agency>" [--password-stdin]: asks for the password twice, unless it comes on stdin."""
     stdin = "--password-stdin" in args
@@ -1004,8 +1023,11 @@ if __name__ == "__main__":
     platforms = ["tiktok", "instagram", "youtube", "reddit", "x"]
     if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and (sys.argv[3:] == [] or sys.argv[3] in platforms):
         pin(sys.argv[2].strip()[:120], *sys.argv[3:])
+    elif len(sys.argv) in (3, 4) and sys.argv[1] == "refetch" and (sys.argv[3:] == [] or sys.argv[3] in platforms[:2]):
+        refetch(sys.argv[2], *sys.argv[3:])
     elif len(sys.argv) >= 2 and sys.argv[1] == "add-user":
         add_user(sys.argv[2:])
     else:
         sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]\n'
+                 '       python backend/server.py refetch "<search>" [tiktok|instagram]\n'
                  '       python backend/server.py add-user <email> "<name>" "<agency>"')
