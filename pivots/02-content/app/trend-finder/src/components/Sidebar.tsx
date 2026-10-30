@@ -191,9 +191,12 @@ export function Sidebar(p: Props) {
         </nav>
 
         <div className="side-foot">
+          <a className="link-btn" href="/method" target="_blank" rel="noreferrer">
+            How we calculate this
+          </a>
           {p.live ? (
-            <span className="live-pill" title="Search results are real TikTok videos">
-              Live TikTok data
+            <span className="live-pill" title="Search results are real videos from the platforms you pick">
+              Live data
             </span>
           ) : (
             <span className="sample-pill" title="All accounts and numbers are made up for this demo">

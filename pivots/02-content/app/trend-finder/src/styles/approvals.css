@@ -185,3 +185,9 @@
   .review { gap: 14px; }
   .review-card { padding: 16px; }
 }
+
+/* /method: the static "How we calculate this" note */
+.method-page { min-height: 100vh; padding: 24px 16px 56px; }
+.method-page article { max-width: 680px; margin: 0 auto; }
+.method-page h2 { margin-top: 28px; }
+.method-page li { margin: 6px 0; line-height: 1.5; }
