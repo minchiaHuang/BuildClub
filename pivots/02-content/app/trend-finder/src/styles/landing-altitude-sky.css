@@ -28,8 +28,8 @@
 }
 @media (prefers-reduced-motion: reduce) { :root[data-ui="altitude"] .landing-alt .la-sky-icon { animation: none; opacity: 1; } }
 
-/* Tag version: Midnight's pills on the sky, a little smaller so they frame the headline. */
-/* Midnight tags read mouse-parallax values (--mx/--my); Altitude has no parallax, so pin them to 0 or the scale is dropped. */
+/* Tag version: floating pills on the sky, a little smaller so they frame the headline. */
+/* The pills read mouse-parallax values (--mx/--my); Altitude has no parallax, so pin them to 0 or the scale is dropped. */
 :root[data-ui="altitude"] .landing-alt .la-sky-tags { --mx: 0; --my: 0; }
 /* Size by importance (order matches TAGS): Instagram biggest, then TikTok, Breakout, YouTube, X / Reddit, Rising smallest. */
 :root[data-ui="altitude"] .landing-alt .la-sky-tags .mn-pill:nth-child(1) { --size: 1.08; }

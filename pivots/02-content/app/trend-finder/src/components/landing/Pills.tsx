@@ -1,6 +1,6 @@
-// Floating 3D pill tags with depth of field, shared by the Midnight landing and search hero.
+// Floating 3D pill tags with depth of field, used by the Altitude landing.
 import type { CSSProperties, ReactNode } from 'react'
-import { PlatformLogo, type LogoPlatform } from '../../PlatformToggles'
+import { PlatformLogo, type LogoPlatform } from '../PlatformToggles'
 
 export type PillSpec = {
   label: string

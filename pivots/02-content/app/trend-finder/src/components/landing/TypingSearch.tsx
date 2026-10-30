@@ -14,7 +14,7 @@ const SEARCHES: { platform: LogoPlatform; text: string }[] = [
   { platform: 'youtube', text: 'Shorts beating their usual views in fitness' },
 ]
 
-export function TypingSearch({ variant }: { variant: 'altitude' | 'midnight' }) {
+export function TypingSearch({ variant }: { variant: 'altitude' }) {
   const reduced = usePrefersReducedMotion()
   const [i, setI] = useState(0)
   const [len, setLen] = useState(0)

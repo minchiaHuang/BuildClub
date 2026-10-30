@@ -1,12 +1,12 @@
 import { TypingSearch } from './TypingSearch'
-import { Pill, type PillSpec } from './midnight/Pills'
+import { Pill, type PillSpec } from './Pills'
 import { PlatformLogo } from '../PlatformToggles'
 import type { LogoPlatform } from '../PlatformToggles'
 
 // Public landing page for the Altitude direction: website hero + "what it does" section, with Log in and Register.
 // Sign-in is a demo for now, so both buttons enter the sample agency.
 // Reuses the Altitude hero classes (.alt-sky, .alt-cloud, .alt-rot, .alt-icons) from theme-altitude.css.
-// How the platforms appear in the sky: 'tags' (Midnight-style text pills, being tried now) or 'round' (logo badges).
+// How the platforms appear in the sky: 'tags' (floating text pills, being tried now) or 'round' (logo badges).
 // The round version is kept so we can switch back by changing this one value.
 const SKY_STYLE: 'tags' | 'round' = 'tags'
 

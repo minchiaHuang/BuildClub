@@ -1,7 +1,0 @@
-/* The design-direction switcher, shown on the public website (landing / login) only. */
-.ui-switcher { position: fixed; bottom: 16px; left: 16px; z-index: 60; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill); background: var(--frost); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow-md); border: 1px solid var(--line); font-family: 'Inter', system-ui, sans-serif; }
-.ui-switcher button { border: 0; background: transparent; color: #6e6e73; font: 500 12px/1 'Inter', system-ui, sans-serif; padding: 7px 12px; border-radius: var(--radius-pill); cursor: pointer; }
-.ui-switcher button[aria-pressed='true'] { background: #1d1d1f; color: #fff; }
-/* Phone: bigger tap targets; landing pages keep room at the bottom so the pill never sits on a CTA */
-@media (max-width: 600px) { .ui-switcher button { min-height: 40px; padding: 7px 11px; } }
-:root:not(#_) :is(.landing-alt, .landing-unify, .landing-midnight, .login) { padding-bottom: 72px; }
