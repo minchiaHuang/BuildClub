@@ -238,15 +238,15 @@ button.best-video-sample:hover .best-play, button.best-video-sample:focus-visibl
 .tile-hook { font-weight: 600; font-size: 14px; line-height: 1.3; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tile-meta { font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Save star: frosted on the cover, so it reads in both themes */
+/* Shortlist button: a frosted pill on the cover, so it reads in both themes */
 .tile-save {
-  position: absolute; top: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; border: 0;
-  display: grid; place-items: center; font-size: 16px; line-height: 1;
+  position: absolute; top: 8px; right: 8px; z-index: 2; height: 32px; padding: 0 12px; border-radius: var(--radius-pill); border: 0;
+  display: grid; place-items: center; font-size: var(--text-sm); font-weight: 600; line-height: 1; white-space: nowrap;
   background: var(--frost); color: var(--fg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--shadow-md);
   transition: transform var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.tile-save:hover, .tile-save:focus-visible { transform: scale(1.08); }
+.tile-save:hover, .tile-save:focus-visible { transform: scale(1.05); }
 .tile-save:active { transform: scale(0.94); }
 .tile-save-on { background: var(--accent); color: var(--accent-fg); }
 .tile-save-pop { animation: star-pop var(--dur-slow) var(--ease); }
@@ -259,6 +259,15 @@ button.best-video-sample:hover .best-play, button.best-video-sample:focus-visibl
 .tile-compare .cmp-to { font-size: 24px; line-height: 1; }
 .tile-cap { font-size: var(--text-xs); color: var(--muted); }
 .tile-tier { justify-self: start; margin: 4px 0 2px; }
+/* Shortlist tray: stays at the bottom of the results while anything is shortlisted */
+.shortlist-tray {
+  position: sticky; bottom: 16px; z-index: 5; justify-self: center;
+  display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 18px;
+  background: var(--frost); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line); border-radius: var(--radius-pill); box-shadow: var(--shadow-lg);
+  font-size: var(--text-base); font-variant-numeric: tabular-nums;
+}
+
 /* Plan status badge on result tiles */
 .tile-status {
   position: absolute; left: 8px; top: 34px; z-index: 2; font-size: 11px; font-weight: 600; padding: 3px 8px;

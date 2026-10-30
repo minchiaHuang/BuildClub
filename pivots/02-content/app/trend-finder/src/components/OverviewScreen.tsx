@@ -1,6 +1,6 @@
 import type { Client, SavedIdea } from '../types'
 import { useApp } from '../lib/appContext'
-import { ProgressRing } from './ClientScreen'
+import { ProgressRing } from './ProgressRing'
 
 interface Props {
   clients: Client[]

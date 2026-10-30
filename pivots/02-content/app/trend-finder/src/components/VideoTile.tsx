@@ -6,28 +6,29 @@ import { useManagerName } from '../lib/appContext'
 
 interface Props {
   video: Video
-  saved: boolean
   onOpen: () => void
+  // Adds the video to the client's shortlist, or takes it off again.
   onToggleSave: () => void
-  // Where this video stands for the current client, if it's been saved or sent.
+  // Where this video stands for the current client, if it's been shortlisted or sent.
   status?: IdeaStatus
 }
 
 const statusBadge = (manager: string): Record<IdeaStatus, string> => ({
-  saved: 'Saved',
+  saved: 'Shortlisted',
   waiting: `Sent to ${manager}`,
   approved: 'Approved',
-  rejected: 'Not approved',
+  rejected: 'Sent back',
 })
 
 // One video in the results grid: cover, usual → this video's views, a plain label, the hook and who posted it.
-export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props) {
+export function VideoTile({ video, onOpen, onToggleSave, status }: Props) {
   const manager = useManagerName()
   const score = outlierScore(video)
   const tier = tierOf(score)
   const byFollowers = video.medianViews === null
-  // The star pops only when it's clicked, not when a tile shows up already saved.
+  // The button pops only when it's clicked, not when a tile shows up already shortlisted.
   const [pop, setPop] = useState(false)
+  const saved = status === 'saved'
   return (
     <article className="tile">
       <button className="tile-main" data-video-id={video.id} onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}`}>
@@ -49,19 +50,22 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
           </span>
         </div>
       </button>
-      <button
-        className={`tile-save ${saved ? 'tile-save-on' : ''} ${pop ? 'tile-save-pop' : ''}`}
-        aria-pressed={saved}
-        aria-label={saved ? 'Saved to client. Click to remove' : 'Save to client'}
-        title={saved ? 'Saved' : 'Save to client'}
-        onClick={() => {
-          setPop(true)
-          onToggleSave()
-        }}
-        onAnimationEnd={() => setPop(false)}
-      >
-        {saved ? '★' : '☆'}
-      </button>
+      {/* Once it's sent, the badge shows where it stands and the shortlist button goes away. */}
+      {(!status || saved) && (
+        <button
+          className={`tile-save ${saved ? 'tile-save-on' : ''} ${pop ? 'tile-save-pop' : ''}`}
+          aria-pressed={saved}
+          aria-label={saved ? 'Shortlisted. Click to remove' : 'Add to shortlist'}
+          title={saved ? 'Shortlisted' : 'Add to shortlist'}
+          onClick={() => {
+            setPop(true)
+            onToggleSave()
+          }}
+          onAnimationEnd={() => setPop(false)}
+        >
+          {saved ? '✓ Shortlisted' : '+ Shortlist'}
+        </button>
+      )}
     </article>
   )
 }

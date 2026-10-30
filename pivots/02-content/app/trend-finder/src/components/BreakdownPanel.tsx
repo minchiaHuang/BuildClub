@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import type { Client, Format, Video } from '../types'
+import type { Client, Format, IdeaStatus, Video } from '../types'
 import {
   ago,
   clientFit,
@@ -15,21 +15,25 @@ import {
 } from '../lib/metrics'
 import { useCountUp } from '../lib/motion'
 import { Thumb } from './Thumb'
+import { useManagerName } from '../lib/appContext'
 
 interface Props {
   video: Video
   format: Format
   formatAccounts: number
   client: Client
-  saved: boolean
+  // Where this video stands for the client, if it's been shortlisted or sent.
+  status?: IdeaStatus
   onClose: () => void
+  // Add to or take off the client's shortlist.
   onSave: () => void
   onPlan: () => void
 }
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
-export function BreakdownPanel({ video, format, formatAccounts, client, saved, onClose, onSave, onPlan }: Props) {
+export function BreakdownPanel({ video, format, formatAccounts, client, status, onClose, onSave, onPlan }: Props) {
+  const manager = useManagerName()
   // Play the slide-out before App unmounts the panel (skipped under reduced motion).
   const [closing, setClosing] = useState(false)
   const close = useCallback(() => {
@@ -212,12 +216,26 @@ export function BreakdownPanel({ video, format, formatAccounts, client, saved, o
         </div>
 
         <footer className="drawer-foot">
-          <button className="btn btn-ghost" onClick={onSave}>
-            {saved ? '★ Saved to client' : `Save to ${client.name}`}
-          </button>
-          <button className="btn btn-primary" onClick={onPlan}>
-            Plan this for {client.name}
-          </button>
+          {!status && (
+            <button className="btn btn-primary" onClick={onSave}>
+              Add to shortlist for {client.name}
+            </button>
+          )}
+          {status === 'saved' && (
+            <>
+              <button className="btn btn-ghost" aria-pressed="true" onClick={onSave}>
+                ✓ Shortlisted
+              </button>
+              <button className="btn btn-primary" onClick={onPlan}>
+                Open plan
+              </button>
+            </>
+          )}
+          {status && status !== 'saved' && (
+            <button className="btn btn-primary" onClick={onPlan}>
+              Open plan · {status === 'waiting' ? `Waiting for ${manager}` : status === 'approved' ? 'Approved' : 'Sent back'}
+            </button>
+          )}
         </footer>
       </aside>
     </div>

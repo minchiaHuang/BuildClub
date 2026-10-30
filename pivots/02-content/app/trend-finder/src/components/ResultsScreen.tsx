@@ -43,11 +43,12 @@ interface Props {
   setSort: (s: Sort) => void
   formatFilter: string | null
   setFormatFilter: (id: string | null) => void
-  savedVideoIds: Set<string>
-  // Status of each video's plan for this client (saved, sent, approved…).
+  // Status of each video's plan for this client (shortlisted, sent, approved…).
   ideaStatus: Map<string, IdeaStatus>
   onOpen: (id: string) => void
+  // Add to or take off the client's shortlist.
   onToggleSave: (id: string) => void
+  onGoShortlist: () => void
   // Formats this client can't film (e.g. needs a kitchen), so they never lead the page.
   blockedFormatIds: Set<string>
   clientName: string
@@ -94,6 +95,7 @@ export function ResultsScreen(p: Props) {
   const platformCounts = (['tiktok'] as Platform[])
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
+  const shortlisted = [...p.ideaStatus.values()].filter((s) => s === 'saved').length
   const i = p.interp
   const queryLabel = i.source ? '' : i.text.trim()
 
@@ -252,13 +254,19 @@ export function ResultsScreen(p: Props) {
                 {/* Usual → this video, so the jump reads without decoding the × score. Keyed so it animates once per pick. */}
                 <BestCompare key={best.id} video={best} />
                 <div className="best-actions">
-                  <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
-                    {bestStatus && bestStatus !== 'saved'
-                      ? `Open plan · ${bestStatus === 'waiting' ? `Waiting for ${manager}` : bestStatus === 'approved' ? 'Approved' : 'Not approved'}`
-                      : bestStatus === 'saved'
-                        ? 'Continue plan'
-                        : `Plan this for ${p.clientName}`}
-                  </button>
+                  {bestStatus === 'saved' ? (
+                    <button className="btn btn-primary" aria-pressed="true" onClick={() => p.onToggleSave(best.id)}>
+                      ✓ Shortlisted for {p.clientName}
+                    </button>
+                  ) : bestStatus ? (
+                    <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
+                      Open plan · {bestStatus === 'waiting' ? `Waiting for ${manager}` : bestStatus === 'approved' ? 'Approved' : 'Sent back'}
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => p.onToggleSave(best.id)}>
+                      Add to shortlist for {p.clientName}
+                    </button>
+                  )}
                   <button className="btn btn-ghost" onClick={() => p.onOpen(best.id)}>
                     See why it worked
                   </button>
@@ -314,7 +322,6 @@ export function ResultsScreen(p: Props) {
               <VideoTile
                 key={v.id}
                 video={v}
-                saved={p.savedVideoIds.has(v.id)}
                 onOpen={() => p.onOpen(v.id)}
                 onToggleSave={() => p.onToggleSave(v.id)}
                 status={p.ideaStatus.get(v.id)}
@@ -322,6 +329,17 @@ export function ResultsScreen(p: Props) {
             ))}
           </div>
         </>
+      )}
+
+      {shortlisted > 0 && (
+        <div className="shortlist-tray" role="status">
+          <span>
+            <strong>{shortlisted}</strong> shortlisted for {p.clientName}
+          </span>
+          <button className="btn btn-primary btn-sm" onClick={p.onGoShortlist}>
+            Go to shortlist
+          </button>
+        </div>
       )}
     </section>
   )

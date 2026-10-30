@@ -64,7 +64,7 @@
 :root[data-ui="altitude"] .pill { border-radius: var(--radius-pill); }
 
 /* Cards */
-:root[data-ui="altitude"] .idea,
+:root[data-ui="altitude"] .board-card,
 :root[data-ui="altitude"] .stat,
 :root[data-ui="altitude"] .review-card,
 :root[data-ui="altitude"] .search-box { border-radius: var(--radius); border-color: transparent; box-shadow: var(--shadow-md); }

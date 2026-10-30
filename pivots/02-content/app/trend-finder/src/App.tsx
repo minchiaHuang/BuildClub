@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AgencySettings, ClientEvent, IdeaStatus, Role, SavedIdea } from './types'
+import type { AgencySettings, ClientEvent, Role, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
 import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
@@ -13,14 +13,11 @@ import { LikeThisCard } from './components/LikeThisCard'
 import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
-import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
 import { Sidebar } from './components/Sidebar'
 import type { View } from './components/Sidebar'
 import { OverviewScreen } from './components/OverviewScreen'
-import { ApprovalsScreen } from './components/ApprovalsScreen'
 import { ReviewScreen } from './components/ReviewScreen'
-import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Video } from './types'
@@ -319,12 +316,11 @@ export default function App() {
     return idea
   }
 
+  // stream B: toggles the shortlist. Only a shortlisted idea comes off; one already sent stays put.
   const toggleSave = (videoId: string) => {
-    if (savedForClient.has(videoId)) {
-      setIdeas((prev) => prev.filter((i) => !(i.videoId === videoId && i.clientId === client.id)))
-    } else {
-      saveIdea(videoId)
-    }
+    const existing = ideas.find((i) => i.videoId === videoId && i.clientId === client.id)
+    if (!existing) saveIdea(videoId)
+    else if (existing.status === 'saved') setIdeas((prev) => prev.filter((i) => i.id !== existing.id))
   }
 
   const openPlan = (ideaId: string) => {
@@ -333,16 +329,15 @@ export default function App() {
     setView('plan')
   }
 
+  // stream B: a video not on the shortlist yet is only added to it (the tray shows it); a shortlisted one opens its plan.
   const planFromVideo = (videoId: string) => {
     const idea = saveIdea(videoId)
+    if (!savedForClient.has(videoId)) return
     setOpenVideoId(null)
     openPlan(idea.id)
   }
 
   const likeFormat = interp.source ? formatById.get(interp.topics[0]?.formatId ?? '') : undefined
-
-  const setStatus = (ids: string[], status: IdeaStatus) =>
-    setIdeas((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, status } : i)))
 
   const recordEvent = (clientId: string, event: ClientEvent) =>
     setClients((prev) => prev.map((c) => (c.id === clientId ? { ...c, memory: [...(c.memory ?? []), event] } : c)))
@@ -447,7 +442,8 @@ export default function App() {
               ideas={shownIdeas}
               onOpen={(id, v) => {
                 setWorkspaceRaw(id)
-                setView(v)
+                // stream B: saved ideas and approvals now live on the shortlist board.
+                setView(v === 'search' ? 'search' : 'shortlist')
               }}
             />
           )}
@@ -523,10 +519,10 @@ export default function App() {
               setSort={setSort}
               formatFilter={formatFilter}
               setFormatFilter={setFormatFilter}
-              savedVideoIds={savedForClient}
               ideaStatus={new Map(shownIdeas.filter((i) => i.clientId === client.id).map((i) => [i.videoId, i.status]))}
               onOpen={setOpenVideoId}
               onToggleSave={toggleSave}
+              onGoShortlist={() => setView('shortlist')} // stream B: shortlist tray
               blockedFormatIds={blockedFormatIds}
             />
           )}
@@ -544,32 +540,6 @@ export default function App() {
             />
           )}
 
-          {inClient && view === 'saved' && (
-            <ClientScreen
-              client={client}
-              ideas={shownIdeas}
-              formatById={formatById}
-              videoById={videoById}
-              setStatus={setStatus}
-              onRemove={(id) => setIdeas((prev) => prev.filter((i) => i.id !== id))}
-              onPlan={openPlan}
-              onFindMore={() => setView('search')}
-            />
-          )}
-
-          {inClient && view === 'approvals' && (
-            <ApprovalsScreen
-              client={client}
-              ideas={shownIdeas}
-              formatById={formatById}
-              videoById={videoById}
-              setStatus={setStatus}
-              onGoSaved={() => setView('saved')}
-              onPlan={openPlan}
-              onReview={() => setView('review')}
-            />
-          )}
-
           {inClient && view === 'review' && (
             <ReviewScreen
               client={client}
@@ -578,17 +548,6 @@ export default function App() {
               videoById={videoById}
               onDecide={decide}
               onBack={() => setView('shortlist')}
-            />
-          )}
-
-          {inClient && view === 'plans' && (
-            <PlansScreen
-              client={client}
-              ideas={shownIdeas}
-              formatById={formatById}
-              videoById={videoById}
-              onOpen={openPlan}
-              onGoApprovals={() => setView('approvals')}
             />
           )}
 
@@ -605,7 +564,7 @@ export default function App() {
               backLabel={backLabel[planFrom]}
               onFindMore={planAnother}
               onPlanAnother={planAnother}
-              onGoApprovals={() => setView('approvals')}
+              onGoApprovals={() => setView('shortlist')} // stream B: the board replaces Approvals
             />
           )}
         </main>
@@ -617,7 +576,7 @@ export default function App() {
           format={openFormat}
           formatAccounts={keywordPool.filter((v) => v.formatId === openFormat.id).length}
           client={client}
-          saved={savedForClient.has(openVideo.id)}
+          status={shownIdeas.find((i) => i.clientId === client.id && i.videoId === openVideo.id)?.status} // stream B
           onClose={() => setOpenVideoId(null)}
           onSave={() => toggleSave(openVideo.id)}
           onPlan={() => planFromVideo(openVideo.id)}
