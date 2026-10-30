@@ -1040,7 +1040,7 @@ def refetch(query: str, platform: str = "tiktok") -> None:
         sys.exit(result.body.decode())
     videos = json.loads((CACHE_DIR / cache_name(query, platform)).read_text())["videos"]
     scored = sum(1 for v in videos if v.get("outlier") is not None)
-    if platform == "tiktok" and videos and scored == 0:  # never replace a pin with a baseline-less one
+    if videos and scored == 0:  # never replace a pin with a baseline-less one
         sys.exit(f"medians failed or over budget: scored 0 of {len(videos)}; not pinned")
     pin(query, platform)
     print(f"scored {scored} of {len(videos)} videos; baseline details on {sum(1 for v in videos if v.get('medianN'))}")

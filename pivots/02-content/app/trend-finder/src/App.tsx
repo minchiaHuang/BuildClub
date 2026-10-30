@@ -14,7 +14,7 @@ import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
 import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
-import { cohortsByPattern, cohortsByVideo, fillBaseline } from './lib/evidence'
+import { COHORT_PLATFORMS, cohortsByPattern, cohortsByVideo, fillBaseline } from './lib/evidence'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
 import { Sidebar } from './components/Sidebar'
@@ -671,7 +671,11 @@ export default function App() {
     return videos.filter((v) => interp.keywords.some((k) => matchesKeyword(v, formatById.get(v.formatId), k)))
   }, [interp, formatById, live, liveResults])
 
-  const patterns = useMemo(() => (live ? findPatterns(liveResults, liveQuery) : []), [live, liveResults, liveQuery])
+  // Patterns count TikTok accounts only, matching the Accounts list (COHORT_PLATFORMS).
+  const patterns = useMemo(
+    () => (live ? findPatterns(liveResults.filter((v) => COHORT_PLATFORMS.includes(v.platform)), liveQuery) : []),
+    [live, liveResults, liveQuery],
+  )
   const cohorts = useMemo(() => cohortsByVideo(liveResults, patterns), [liveResults, patterns])
   const patternCohorts = useMemo(() => cohortsByPattern(liveResults, patterns), [liveResults, patterns])
 

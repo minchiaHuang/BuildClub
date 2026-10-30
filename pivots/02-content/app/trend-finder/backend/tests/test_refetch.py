@@ -2,6 +2,7 @@ import pytest
 
 import server
 from conftest import median_search
+from test_instagram_baseline import fake_ig
 
 
 def test_refetch_fills_baselines_and_pins(monkeypatch, capsys):
@@ -49,4 +50,16 @@ def test_refetch_keeps_old_pin_when_medians_fail(monkeypatch):
     old.write_bytes(b'{"old": true}')
     with pytest.raises(SystemExit, match="not pinned"):
         server.refetch("tofu")
+    assert old.read_bytes() == b'{"old": true}'
+
+
+def test_refetch_keeps_old_instagram_pin_when_reels_fail(monkeypatch):
+    # The budget covers the search but not the reel fill.
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", server.SEARCH_USD["instagram"])
+    monkeypatch.setattr(server, "run_actor", fake_ig([], ["a"]))
+    server.PINNED_DIR.mkdir()
+    old = server.PINNED_DIR / server.cache_name("tofu", "instagram")
+    old.write_bytes(b'{"old": true}')
+    with pytest.raises(SystemExit, match="not pinned"):
+        server.refetch("tofu", "instagram")
     assert old.read_bytes() == b'{"old": true}'
