@@ -19,7 +19,7 @@ ideas_lock = threading.Lock()
 # Creating and revoking links scan then write the share rows, so they take turns.
 share_lock = threading.Lock()
 
-DECISION_FIELDS = ("status", "rejectReason", "decidedAt")
+DECISION_FIELDS = ("status", "rejectReason", "rejectTags", "decidedAt")
 # Counts every change to the ideas list, so a tab holding an older copy can be told to reload (If-Match).
 REV_KEY = "ideas:rev"
 
@@ -51,14 +51,16 @@ def merge_ideas(stored: list, incoming: list) -> list:
     return merged
 
 
-def decide_idea(ideas: list, client_id: str, idea_id: str, approved: bool, reason, now_ms: int):
+def decide_idea(ideas: list, client_id: str, idea_id: str, approved: bool, reason, now_ms: int, tags=None):
     """Annie's answer. Returns (new ideas list, decided idea) or None when she may not decide it."""
     for n, idea in enumerate(ideas or []):
         if idea["id"] == idea_id and idea["clientId"] == client_id and idea["status"] == "waiting":
-            decided = {k: v for k, v in idea.items() if k != "rejectReason"}
+            decided = {k: v for k, v in idea.items() if k not in ("rejectReason", "rejectTags")}
             decided.update(status="approved" if approved else "rejected", decidedAt=now_ms)
             if not approved and reason and reason.strip():
                 decided["rejectReason"] = reason.strip()
+            if not approved and tags:
+                decided["rejectTags"] = list(tags)
             return ideas[:n] + [decided] + ideas[n + 1:], decided
     return None
 
@@ -132,7 +134,7 @@ def make_router(db, load, save) -> APIRouter:
             return no_such_link()
         with ideas_lock:
             result = decide_idea(load("ideas"), link["clientId"], body.ideaId, body.decision == "approved",
-                                 body.reason, int(time.time() * 1000))
+                                 body.reason, int(time.time() * 1000), body.tags)
             if result is None:
                 return JSONResponse({"error": "This idea isn't waiting for review."}, status_code=404)
             ideas, decided = result

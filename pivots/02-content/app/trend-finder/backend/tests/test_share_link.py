@@ -128,3 +128,62 @@ def test_decide_bumps_ideas_revision(client, two_clients):
     stale = client.put("/api/ideas", json=[idea("ia", "a")], headers={"If-Match": rev})
     assert stale.status_code == 409
     assert {i["id"]: i["status"] for i in stale.json()["ideas"]}["ia"] == "approved"
+
+
+def reject(client, token, idea_id="ia", **body):
+    return client.post(f"/api/review/{token}/decide", json={"ideaId": idea_id, "decision": "rejected", **body})
+
+
+def stored(client):
+    return {i["id"]: i for i in client.get("/api/ideas").json()}
+
+
+def test_reject_with_tags_round_trips(client, two_clients):
+    token, _ = link(client, "a")
+    r = reject(client, token, tags=["Other", "Doesn't fit the brand's tone"], reason="x")
+    assert r.status_code == 200
+    assert r.json()["rejectTags"] == ["Other", "Doesn't fit the brand's tone"]
+    saved = stored(client)["ia"]
+    assert saved["rejectTags"] == ["Other", "Doesn't fit the brand's tone"]
+    assert saved["rejectReason"] == "x"
+
+
+def test_unknown_tag_is_accepted(client, two_clients):
+    token, _ = link(client, "a")
+    assert reject(client, token, tags=["Too long a shoot"]).status_code == 200
+
+
+def test_reject_tag_limits(client, two_clients):
+    token, _ = link(client, "a")
+    assert reject(client, token, tags=["x" * 41]).status_code == 422
+    assert reject(client, token, tags=["a", "b", "c", "d", "e", "f"]).status_code == 422
+    assert stored(client)["ia"]["status"] == "waiting"
+
+
+def test_old_idea_without_tags_still_loads(client, two_clients):
+    token, _ = link(client, "a")
+    assert "rejectTags" not in stored(client)["ia"]
+    review = client.get(f"/api/review/{token}").json()
+    assert "rejectTags" not in review["ideas"][0]["idea"]
+
+
+def test_put_ideas_keeps_newer_reject_tags(client, two_clients):
+    token, _ = link(client, "a")
+    reject(client, token, tags=["Other"], reason="x")
+    older = idea("ia", "a", dueDate="2026-11-09")
+    r = client.put("/api/ideas", json=[older, idea("ib", "b"), idea("ia-saved", "a", "saved")])
+    assert r.status_code == 200
+    saved = stored(client)["ia"]
+    assert saved["rejectTags"] == ["Other"]
+    assert saved["dueDate"] == "2026-11-09"
+    assert saved["status"] == "rejected"
+
+
+def test_approve_after_resend_drops_old_tags(client, two_clients):
+    token, _ = link(client, "a")
+    reject(client, token, tags=["Other"])
+    client.put("/api/ideas", json=[idea("ia", "a", sentAt=2**50), idea("ib", "b"), idea("ia-saved", "a", "saved")])
+    r = client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "approved"})
+    assert r.status_code == 200
+    assert "rejectTags" not in r.json()
+    assert "rejectTags" not in stored(client)["ia"]

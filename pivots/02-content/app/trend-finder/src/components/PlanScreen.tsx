@@ -67,7 +67,7 @@ export function PlanScreen(p: Props) {
   const note = idea.noteToApprover ?? defaultNote
 
   const send = () => {
-    onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined })
+    onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined, rejectTags: undefined })
     // Bring the confirmation into view.
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -361,7 +361,16 @@ export function PlanScreen(p: Props) {
           {idea.status === 'rejected' && (
             <section className="block">
               <h3>{APPROVER}'s feedback</h3>
-              <p className="quote">{idea.rejectReason || 'No reason given.'}</p>
+              {idea.rejectTags && idea.rejectTags.length > 0 && (
+                <div className="chip-row">
+                  {idea.rejectTags.map((t) => (
+                    <span key={t} className="cchip cchip-on">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(idea.rejectReason || !idea.rejectTags?.length) && <p className="quote">{idea.rejectReason || 'No reason given.'}</p>}
             </section>
           )}
 

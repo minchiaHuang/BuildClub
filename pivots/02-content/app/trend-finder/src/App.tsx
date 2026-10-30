@@ -809,11 +809,11 @@ export default function App() {
     )
 
   // Annie's answer on a plan she was sent.
-  const decide = (ideaId: string, approved: boolean, reason?: string) =>
+  const decide = (ideaId: string, approved: boolean, reason?: string, tags?: string[]) =>
     setIdeas((prev) =>
       prev.map((i) =>
         i.id === ideaId
-          ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason, decidedAt: Date.now() }
+          ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason, rejectTags: approved || !tags?.length ? undefined : tags, decidedAt: Date.now() }
           : i,
       ),
     )
