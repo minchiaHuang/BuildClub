@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
-// Live searches run a real TikTok scrape, which usually takes 20–60 seconds (cached repeats are instant).
-export function LiveLoading({ query }: { query: string }) {
+// Live searches run a real scrape per platform, which usually takes 20–60 seconds (cached repeats are instant).
+// `title` names the platforms, or the step when a pasted link or screenshot is being read.
+export function LiveLoading({ query, title }: { query: string; title?: string }) {
   const [seconds, setSeconds] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setSeconds((s) => s + 1), 1000)
@@ -21,7 +22,7 @@ export function LiveLoading({ query }: { query: string }) {
             </div>
           ))}
         </div>
-        <strong>Searching TikTok for "{query}"…</strong>
+        <strong>{title ?? `Searching TikTok for "${query}"…`}</strong>
         <ol className="reading-steps">
           <li className={seconds < 3 ? 'now' : 'done'}>
             <span className="reading-dot" aria-hidden="true">{seconds < 3 ? '' : '✓'}</span>

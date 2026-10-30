@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { useManagerName } from '../lib/appContext'
-import { clientFit, compact, outlierScore, tierName, tierOf, times } from '../lib/metrics'
+import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { dueLabel, formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
 
 interface Props {
@@ -78,7 +79,7 @@ export function PlanScreen(p: Props) {
   // Everything the editor needs in one paste: reference, shots, props and notes.
   const brief = [
     `${format.name} for ${client.name}`,
-    `Due: ${idea.dueDate}`,
+    `Due: ${formatDay(idea.dueDate)}`,
     `Reference: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
     '',
     'Shots:',
@@ -135,31 +136,39 @@ export function PlanScreen(p: Props) {
           </span>
           <div>
             <strong>{idea.managerNote ? `${APPROVER} approved this with changes` : `${APPROVER} approved this`}</strong>
-            <span>Film it by {idea.dueDate}, then copy the brief below for your editor.</span>
+            <span>Film it by {formatDay(idea.dueDate)}, then copy the brief below for your editor.</span>
           </div>
         </div>
       )}
 
       <div className="plan-grid">
         <aside className="plan-ref">
-          <BestVideo video={video} />
-          <div className="plan-ref-score">
-            <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
-            <span className="cmp-arrow" aria-hidden="true">
-              →
-            </span>
-            <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
-          </div>
-          <span className={`tier tier-${tier}`}>
-            {tierName[tier]} · {times(score)}
-          </span>
+          <BestVideo key={video.id} video={video} />
+          {hasScore(video) ? (
+            <>
+              <div className="plan-ref-score">
+                <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
+                <span className="cmp-arrow" aria-hidden="true">
+                  →
+                </span>
+                <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
+              </div>
+              <span className={`tier tier-${tier}`}>
+                {tierName[tier]} · {times(score)}
+              </span>
+            </>
+          ) : (
+            <div className="plan-ref-score">
+              <span className="cmp-to">{compact(video.views)}</span> <span className="small muted">{viewsWord(video)}</span>
+            </div>
+          )}
           <span className="small muted">
             Reference: {video.handle}
             {video.url && (
               <>
                 {' · '}
-                <a href={video.url} target="_blank" rel="noreferrer">
-                  Watch on TikTok ↗
+                <a className="plan-watch" href={video.url} target="_blank" rel="noreferrer">
+                  Watch on {platformName[video.platform]} ↗
                 </a>
               </>
             )}
@@ -180,6 +189,11 @@ export function PlanScreen(p: Props) {
                   : `Locked while ${APPROVER} reviews it. Withdraw it to make changes.`}
             </p>
             {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
+            {shots.length === 0 && editable && format.shotList.length === 0 && !format.why.first3s.startsWith('Breaking down') && (
+              <p className="small muted" role="status">
+                The AI breakdown isn't available for this video, so add the shots yourself.
+              </p>
+            )}
             <ol className="shot-edit">
               {shots.map((s, i) => (
                 <li key={i} className={i === addedAt ? 'shot-added' : undefined}>
@@ -276,6 +290,19 @@ export function PlanScreen(p: Props) {
               </div>
             )}
           </section>
+
+          {format.lines && format.lines.length > 0 && (
+            <section className="block">
+              <h3>What each line does</h3>
+              <ul className="line-roles">
+                {format.lines.map((l, i) => (
+                  <li key={i}>
+                    <span className="shot-time">{l.time}</span> <span className="ai-tag">{l.role}</span> <span>{l.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="block">
             <label htmlFor="note-to-approver">
@@ -386,7 +413,7 @@ export function PlanScreen(p: Props) {
                 ? 'Brief copied. Paste it to your editor with the footage.'
                 : copied === 'failed'
                   ? "Couldn't copy. Your browser blocked the clipboard."
-                  : `Approved. Due ${idea.dueDate}.`}
+                  : `Approved. ${dueLabel(idea.dueDate).text}.`}
             </span>
             <button className="btn btn-ghost" onClick={() => setConfirmEdit(true)}>
               Edit

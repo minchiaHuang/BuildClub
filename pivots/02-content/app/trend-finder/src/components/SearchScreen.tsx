@@ -1,6 +1,7 @@
 import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 // The Altitude hero holds the search box.
 import { AltitudeHero } from './themes/AltitudeHero'
@@ -9,6 +10,7 @@ interface Props {
   query: Query
   setQuery: (q: Query) => void
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   clientName: string
   // Live mode searches real TikTok videos; otherwise the sample tofu data.
   live: boolean
@@ -34,6 +36,7 @@ export function SearchScreen(props: Props) {
           value={query.keyword}
           onValueChange={(text) => setQuery({ ...query, keyword: text })}
           onSearch={onSearch}
+          onImage={props.onImage}
           platforms={query.platforms}
           onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
           live={live}
@@ -77,7 +80,7 @@ export function SearchScreen(props: Props) {
 
       {error && (
         <p className="error" role="alert">
-          {error}
+          <ErrorText text={error} onSearch={props.onSearch} />
         </p>
       )}
       <p className="hint">

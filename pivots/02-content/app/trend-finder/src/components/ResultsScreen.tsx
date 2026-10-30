@@ -6,10 +6,13 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
+import { EvidenceChip } from './EvidenceChip'
+import { cachedLabel, type Cohort } from '../lib/evidence'
 import { PlatformLogo } from './PlatformToggles'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
@@ -32,11 +35,20 @@ interface Props {
   formats: Format[]
   allVideos: Video[]
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   onRemoveChip: (chip: Chip) => void
   likeThis: React.ReactNode
   // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
   live: boolean
+  // Platforms whose search failed in this live search; the rest still show.
+  failed: { platform: Platform; message: string }[]
+  // Platforms that answered with no videos.
+  empty: Platform[]
+  // Live mode: account medians are still being fetched, so scores will update in place.
+  scoring: boolean
   patterns: React.ReactNode
+  // Same-pattern accounts for each video id (live TikTok only); drives the evidence label.
+  cohorts: Map<string, Cohort>
   results: Video[]
   trends: FormatTrend[]
   sort: Sort
@@ -83,7 +95,7 @@ export function ResultsScreen(p: Props) {
   // Best to copy: the top-scoring video whose format several accounts are using (early or rising),
   // that isn't already sent or approved and that this client can film. Falls back to the top score.
   const trendOf = (v: Video) => p.trends.find((t) => t.format.id === v.formatId)
-  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))
+  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a) || b.views - a.views)
   const open = ranked.filter((v) => {
     const s = p.ideaStatus.get(v.id)
     return s !== 'waiting' && s !== 'approved' && !p.blockedFormatIds.has(v.formatId)
@@ -92,8 +104,14 @@ export function ResultsScreen(p: Props) {
   const best = proven[0] ?? open[0] ?? ranked[0]
   const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformCounts = (['tiktok'] as Platform[])
-    .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
+  const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
+    .map((pl) => {
+      const vs = shown.filter((v) => v.platform === pl)
+      // Each platform has its own search, so its cache state comes from its own videos.
+      const cached = p.live ? vs.filter((v) => v.fromCache) : []
+      const fetchedAt = cached.length ? Math.max(...cached.map((v) => v.fetchedAt ?? 0)) : 0
+      return { pl, n: vs.length, cache: cached.length ? cachedLabel(fetchedAt, Date.now()) : null }
+    })
     .filter((x) => x.n > 0)
   const shortlisted = [...p.ideaStatus.values()].filter((s) => s === 'saved').length
   const i = p.interp
@@ -167,6 +185,7 @@ export function ResultsScreen(p: Props) {
         value={draft}
         onValueChange={setDraft}
         onSearch={p.onSearch}
+        onImage={p.onImage}
         platforms={p.query.platforms}
         onPlatformsChange={(platforms) => p.setQuery({ ...p.query, platforms })}
         live={p.live}
@@ -195,13 +214,31 @@ export function ResultsScreen(p: Props) {
         ))}
       </div>
 
+      {groupFailures(p.failed).map((g) => (
+        <p key={g.platforms.join()} className="error" role="alert">
+          {platformList(g.platforms)}: <ErrorText text={g.message} onSearch={p.onSearch} />
+        </p>
+      ))}
+
+      {p.scoring && (
+        <p className="small muted" role="status">
+          Checking each account's usual views… scores update in about a minute.
+        </p>
+      )}
+
+      {p.empty.map((pl) => (
+        <p key={pl} className="error" role="alert">
+          {platformName[pl]}: No videos found.
+        </p>
+      ))}
+
       {p.likeThis}
 
       {p.answer && (
         <div className="answer" role="note">
           <div className="answer-head">
             <strong>{i.text.trim()}</strong>
-            <span className="ai-tag">Answer · sample</span>
+            <span className="ai-tag">{p.live ? 'Answer · from these results' : 'Answer · sample'}</span>
           </div>
           {p.answer.lines.map((line) => (
             <p key={line}>{line}</p>
@@ -233,12 +270,19 @@ export function ResultsScreen(p: Props) {
                 {n}
               </span>
             ))}
+            {platformCounts.map(({ pl, cache }) =>
+              cache ? (
+                <span key={`cache-${pl}`} className="summary-cached">
+                  {platformName[pl]} · {cache}
+                </span>
+              ) : null,
+            )}
           </p>
 
           {best && <h1 className="best-title">Best to copy</h1>}
           {best && (
             <div className="best">
-              <BestVideo video={best} onOpen={() => p.onOpen(best.id)} />
+              <BestVideo key={best.id} video={best} onOpen={() => p.onOpen(best.id)} />
               <div className="best-body">
                 {bestTrend && (
                   <span className="best-trend">
@@ -247,12 +291,18 @@ export function ResultsScreen(p: Props) {
                   </span>
                 )}
                 <strong className="best-hook">"{best.hook}"</strong>
+                <EvidenceChip video={best} cohort={p.cohorts.get(best.id)} />
                 <span className="small muted">
-                  {compact(best.views)} views from an account with {compact(best.followers)} followers ·{' '}
-                  {best.handle} · {agoShort(best.daysAgo)} ago
+                  {hasScore(best) && best.platform !== 'reddit'
+                    ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
+                    : `${compact(best.views)} ${viewsWord(best)}`}
+                  {best.comments !== undefined && ` · ${compact(best.comments)} comments`}{' '}
+                  ·{' '}
+                  {best.handle}
+                  {hasDate(best) && ` · ${agoShort(best.daysAgo)} ago`}
                 </span>
                 {/* Usual → this video, so the jump reads without decoding the × score. Keyed so it animates once per pick. */}
-                <BestCompare key={best.id} video={best} />
+                {hasScore(best) && <BestCompare key={best.id} video={best} />}
                 <div className="best-actions">
                   {bestStatus === 'saved' ? (
                     <button className="btn btn-primary" aria-pressed="true" onClick={() => p.onToggleSave(best.id)}>
@@ -325,6 +375,7 @@ export function ResultsScreen(p: Props) {
                 onOpen={() => p.onOpen(v.id)}
                 onToggleSave={() => p.onToggleSave(v.id)}
                 status={p.ideaStatus.get(v.id)}
+                cohort={p.cohorts.get(v.id)}
               />
             ))}
           </div>

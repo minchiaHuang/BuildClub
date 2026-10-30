@@ -40,14 +40,18 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
             </span>
           ) : pulse.error ? (
             <span className="pulse-error">Couldn't check trends: {pulse.error}</span>
+          ) : !pulse.topic ? (
+            // Nothing to look up: a refresh would only be refused.
+            <span className="muted">Add a topic to watch in Client settings to check what's trending for {clientName}.</span>
           ) : pulse.fetchedAt ? (
             <span className="muted">
-              Trends from TikTok for "{pulse.topic}" · updated {updated(pulse.fetchedAt)}
+              "Trending now" is from TikTok for "{pulse.topic}", whichever platforms you search · updated{' '}
+              {updated(pulse.fetchedAt)}
             </span>
           ) : (
             <span className="muted">Trends for {clientName} haven't been checked yet.</span>
           )}
-          {!pulse.loading && (
+          {!pulse.loading && pulse.topic && (
             <button type="button" className="link-btn" onClick={onRefresh}>
               ↻ Refresh
             </button>
@@ -66,7 +70,7 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
         </div>
       )}
 
-      {groups.map((g) => (
+      {groups.filter((g) => g.chips.length > 0).map((g) => (
         <div key={g.id} className="chip-group">
           <span className="chip-group-title">{g.title}</span>
           <div className="chip-row">

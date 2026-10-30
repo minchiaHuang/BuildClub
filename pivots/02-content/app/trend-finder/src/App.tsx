@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AgencySettings, ClientEvent, Role, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
-import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
+import { formatTrend, groupFailures, hasDate, outlierScore, platformList, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
@@ -12,7 +12,9 @@ import type { Interpretation, MediaSource } from './lib/parseQuery'
 import { LikeThisCard } from './components/LikeThisCard'
 import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
+import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
+import { COHORT_PLATFORMS, cohortsByPattern, cohortsByVideo, fillBaseline } from './lib/evidence'
 import { PlanScreen } from './components/PlanScreen'
 import { Sidebar } from './components/Sidebar'
 import type { View } from './components/Sidebar'
@@ -22,8 +24,19 @@ import { ReviewScreen } from './components/ReviewScreen'
 import { applyDecision, type Decision } from './lib/memory'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
-import type { Client, Format, Video } from './types'
-import { checkLive, findPatterns, searchLive } from './lib/live'
+import type { Client, Format, Platform, Video } from './types'
+import {
+  analyzeVideo,
+  applyBreakdown,
+  askAnswer,
+  checkLive,
+  checkNeeds,
+  findPatterns,
+  likeImage,
+  likeVideo,
+  searchAll,
+  searchLive,
+} from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
@@ -69,7 +82,7 @@ export default function App() {
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
-  // Live mode: real TikTok search through the local API (npm run api). Without it, the app uses sample data.
+  // Live mode: real TikTok, Instagram, YouTube, Reddit or X search through the local API (npm run api). Without it, the app uses sample data.
   const [live, setLive] = useState(false)
   const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
     videos: [],
@@ -77,8 +90,16 @@ export default function App() {
   })
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
-  const [searching, setSearching] = useState<string | null>(null)
+  // The written answer to the latest live search; null while it is being written or if that failed.
+  const [liveAnswer, setLiveAnswer] = useState<Answer | null>(null)
+  const [searching, setSearching] = useState<{ q: string; platforms: Platform[]; step?: string } | null>(null)
+  const searchSeq = useRef(0)
+  // A search whose account medians (each account's usual views) are still being fetched.
+  const [scoring, setScoring] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
+  // Platforms that failed or returned nothing in the last search, shown above the results.
+  const [searchEmpty, setSearchEmpty] = useState<Platform[]>([])
+  const [searchFailed, setSearchFailed] = useState<{ platform: Platform; message: string }[]>([])
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
 
   // Daily live trend check per client, which powers the "Trending now" chips on the search page.
@@ -127,39 +148,147 @@ export default function App() {
   // overrides the dropdowns; everything else keeps its current value.
   const [reading, setReading] = useState<MediaSource | null>(null)
 
-  const runLiveSearch = async (text: string) => {
-    if (/https?:\/\//.test(text)) {
-      setSearchError("Link search isn't live yet. Type what the video is about instead.")
+  // A pasted link: read the real video, then search for its first keyword.
+  const runLinkSearch = async (text: string) => {
+    const url = text.match(/https?:\/\/\S+/)?.[0] ?? text
+    const source = interpretMedia(url, null, formats)?.source ?? null
+    const seq = ++searchSeq.current
+    setSearchError(null)
+    setSearching({ q: url, platforms: [], step: 'Reading the video' })
+    let like
+    try {
+      like = await likeVideo(url, (step) => {
+        if (seq === searchSeq.current) setSearching((s) => (s ? { ...s, step: step || s.step } : s))
+      })
+    } catch (e) {
+      if (seq !== searchSeq.current) return
+      setSearching(null)
+      setSearchError(e instanceof Error ? e.message : 'Could not read that link.')
+      return
+    }
+    if (seq !== searchSeq.current) return
+    const format = applyBreakdown(
+      { id: `like-${url}`, name: like.formatName, short: like.formatName, tags: [], audiences: [], summary: '', why: like.breakdown.why,
+        shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '' },
+      like.breakdown,
+    )
+    setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
+    setSearching(null)
+    await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
+  }
+
+  // An uploaded screenshot: the AI says what it shows, then we search for its first keyword.
+  const runImageSearch = async (file: File) => {
+    const seq = ++searchSeq.current
+    const previewUrl = URL.createObjectURL(file)
+    setSearchError(null)
+    setSearching({ q: file.name, platforms: [], step: 'Looking at your screenshot' })
+    let like
+    try {
+      like = await likeImage(file)
+    } catch (e) {
+      if (seq !== searchSeq.current) return
+      setSearching(null)
+      setSearchError(e instanceof Error ? e.message : 'Could not read that image.')
+      return
+    }
+    if (seq !== searchSeq.current) return
+    const source = interpretMedia('', { name: file.name, url: previewUrl }, formats)?.source ?? null
+    const format: Format = {
+      id: `like-image-${file.name}`, name: like.formatName, short: like.formatName, tags: [], audiences: [],
+      summary: like.description,
+      why: { hook: '', first3s: '', length: '', format: like.formatName, sound: '' },
+      shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '',
+    }
+    setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
+    setSearching(null)
+    await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
+  }
+
+  const runLiveSearch = async (text: string, like?: { source: MediaSource; formatId: string }) => {
+    if (!like && /https?:\/\//.test(text)) {
+      void runLinkSearch(text)
       return
     }
     const parsed = parseQuery(text, formats)
-    // Send TikTok the meaningful words; time and length words become filters instead.
+    // Send the platform the meaningful words; time, platform and length words become filters instead.
     const q = ([...parsed.keywords, ...parsed.topics.map((t) => t.word)].join(' ') || text).trim()
+    // Platforms named in the text ("on instagram") win over the toggles.
+    const platforms = parsed.platforms?.length ? parsed.platforms : query.platforms
     if (!q) return
+    const seq = ++searchSeq.current
     setSearchError(null)
-    setSearching(q)
+    setSearching({ q, platforms })
     try {
-      const res = await searchLive(q)
+      const res = await searchAll(q, platforms)
+      // A newer search has started since; its results win.
+      if (seq !== searchSeq.current) return
+      // Every platform failed: nothing to show, so it is an error.
+      if (res.failed.length === platforms.length) {
+        throw new Error(groupFailures(res.failed).map((g) => `${platformList(g.platforms)}: ${g.message}`).join(' '))
+      }
+      setSearchFailed(res.failed)
+      setSearchEmpty(res.empty)
       setLiveStore((prev) => {
         const keep = (list: { id: string }[], add: { id: string }[]) => {
           const ids = new Set(add.map((x) => x.id))
           return [...add, ...list.filter((x) => !ids.has(x.id))].slice(0, 600)
         }
-        return { videos: keep(prev.videos, res.videos) as Video[], formats: keep(prev.formats, res.formats) as Format[] }
+        // A repeat search brings placeholder formats; keep the AI breakdown of any video already broken down.
+        const broken = new Map(prev.formats.filter((f) => f.shotList.length).map((f) => [f.id, f]))
+        const formats = res.formats.map((f) => broken.get(f.id) ?? f)
+        return { videos: keep(prev.videos, res.videos) as Video[], formats: keep(prev.formats, formats) as Format[] }
       })
       setLiveResults(res.videos)
       setLiveQuery(q)
-      setInterp({ ...parsed, text, keywords: [q], topics: [], audience: null, isQuestion: false, source: null })
-      setQuery((qq) => ({ ...qq, keyword: text, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
+      // One answer per search, from the videos it found. A failure just means no answer block.
+      setLiveAnswer(null)
+      if (res.videos.length) {
+        askAnswer(text, res.videos)
+          .then((a) => {
+            if (seq === searchSeq.current) setLiveAnswer(a)
+          })
+          .catch(() => {})
+      }
+      setInterp({
+        ...parsed, text, keywords: [q], topics: like ? [{ formatId: like.formatId, word: 'this video' }] : [],
+        audience: null, isQuestion: false, source: like?.source ?? null,
+      })
+      setQuery((qq) => ({ ...qq, keyword: text, platforms, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
       setLastSearch(text)
+      if (res.pending.length) void fillScores(q, res.pending)
       setView('results')
     } catch (e) {
+      if (seq !== searchSeq.current) return
       setSearchError(e instanceof Error ? e.message : 'Search failed.')
     } finally {
-      setSearching(null)
+      if (seq === searchSeq.current) setSearching(null)
     }
+  }
+
+  // Poll each platform's saved (free) search until its account medians are in, then update the scores in place.
+  const fillScores = async (q: string, platforms: Platform[]) => {
+    setScoring(q)
+    const poll = async (platform: Platform) => {
+      for (let i = 0; i < 36; i++) {
+        await new Promise((r) => setTimeout(r, 5000))
+        const res = await searchLive(q, false, platform, true)
+        if (res.mediansPending) continue
+        const freshById = new Map(res.videos.map((v) => [v.id, v]))
+        const fill = (v: Video) => {
+          const fresh = freshById.get(v.id)
+          return fresh ? fillBaseline(v, fresh) : v
+        }
+        setLiveStore((prev) => ({ ...prev, videos: prev.videos.map(fill) }))
+        setLiveResults((prev) => prev.map(fill))
+        return
+      }
+    }
+    // The results are still usable if a poll fails; they just keep the views ÷ followers score.
+    await Promise.allSettled(platforms.map(poll))
+    setScoring((s) => (s === q ? null : s))
   }
 
   const runSearch = (text: string) => {
@@ -202,10 +331,12 @@ export default function App() {
       setPulseLoading(c.id)
       setPulseError(null)
       try {
-        const res = await searchLive(topic, fresh)
+        // The automatic check only reads the cache; only the refresh button may start a paid search.
+        const res = await searchLive(topic, fresh, 'tiktok', !fresh)
         setPulses((prev) => ({ ...prev, [c.id]: pulseFrom(topic, res.videos, findPatterns(res.videos, topic)) }))
       } catch (e) {
-        setPulseError(e instanceof Error ? e.message : 'Trend check failed.')
+        // No saved result for an automatic check is normal (404): show no pulse, no banner.
+        if (fresh) setPulseError(e instanceof Error ? e.message : 'Trend check failed.')
       } finally {
         setPulseLoading(null)
       }
@@ -217,6 +348,7 @@ export default function App() {
   useEffect(() => {
     if (!live || workspace === 'all' || view !== 'search' || pulseLoading) return
     const topic = clientTopic(client)
+    if (!topic) return // nothing to look up yet: the search would be refused
     const p = pulses[client.id]
     const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
     const key = `${client.id}|${topic}`
@@ -260,13 +392,20 @@ export default function App() {
     return videos.filter((v) => interp.keywords.some((k) => matchesKeyword(v, formatById.get(v.formatId), k)))
   }, [interp, formatById, live, liveResults])
 
-  const patterns = useMemo(() => (live ? findPatterns(liveResults, liveQuery) : []), [live, liveResults, liveQuery])
+  // Patterns count TikTok accounts only, matching the Accounts list (COHORT_PLATFORMS).
+  const patterns = useMemo(
+    () => (live ? findPatterns(liveResults.filter((v) => COHORT_PLATFORMS.includes(v.platform)), liveQuery) : []),
+    [live, liveResults, liveQuery],
+  )
+  const cohorts = useMemo(() => cohortsByVideo(liveResults, patterns), [liveResults, patterns])
+  const patternCohorts = useMemo(() => cohortsByPattern(liveResults, patterns), [liveResults, patterns])
 
   const results = useMemo(() => {
     const pattern = patterns.find((x) => x.label === patternFilter)
     return keywordPool
       .filter((v) => live || query.platforms.includes(v.platform))
-      .filter((v) => v.daysAgo <= query.days)
+      // Videos with no posting date (YouTube search) can't be judged by age, so the day filter keeps them.
+      .filter((v) => !hasDate(v) || v.daysAgo <= query.days)
       .filter((v) => !query.maxLength || v.lengthSec <= query.maxLength)
       .filter((v) => live || !interp.topics.length || interp.topics.some((t) => t.formatId === v.formatId))
       .filter((v) => live || !interp.audience || formatById.get(v.formatId)!.audiences.includes(interp.audience))
@@ -283,7 +422,7 @@ export default function App() {
     [results, keywordPool, live],
   )
 
-  const answer = useMemo(() => (live ? null : buildAnswer(interp, results, trends)), [interp, results, trends, live])
+  const answer = useMemo(() => (live ? liveAnswer : buildAnswer(interp, results, trends)), [interp, results, trends, live, liveAnswer])
 
   // Live mode shows only ideas saved from real videos; sample mode only sample ones.
   const shownIdeas = ideas.filter((i) => Boolean(videoById.get(i.videoId)?.live) === live)
@@ -301,7 +440,29 @@ export default function App() {
 
   const savedForClient = new Set(shownIdeas.filter((i) => i.clientId === client.id).map((i) => i.videoId))
 
+  // Saving or planning a real video asks the API for its AI breakdown (about a minute the first time).
+  // It replaces the placeholder shot list and "why it works".
+  const analyzing = useRef(new Set<string>())
+  const breakDown = (videoId: string) => {
+    const v = videoById.get(videoId)
+    const f = v && formatById.get(v.formatId)
+    if (!v?.live || !v.url || !f || f.shotList.length || analyzing.current.has(videoId)) return
+    analyzing.current.add(videoId)
+    const patchFormat = (update: (x: Format) => Format) =>
+      setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? update(x) : x)) }))
+    const say = (text: string) => patchFormat((x) => ({ ...x, why: { ...x.why, first3s: text } }))
+    analyzeVideo(v.url, (step) => say(`Breaking down the video: ${step || 'waiting'}…`))
+      .then((b) => {
+        patchFormat((x) => applyBreakdown(x, b))
+        // Ideas saved before the breakdown still carry the placeholder editor notes.
+        setIdeas((prev) => prev.map((i) => (i.videoId === videoId && i.notes === f.editorNotes ? { ...i, notes: b.editorNotes } : i)))
+      })
+      .catch((e) => say(`Couldn't break down this video. ${e instanceof Error ? e.message : ''}`.trim()))
+      .finally(() => analyzing.current.delete(videoId))
+  }
+
   const saveIdea = (videoId: string): SavedIdea => {
+    breakDown(videoId)
     const existing = ideas.find((i) => i.videoId === videoId && i.clientId === client.id)
     if (existing) return existing
     const v = videoById.get(videoId)!
@@ -325,7 +486,30 @@ export default function App() {
     else if (existing.status === 'saved') setIdeas((prev) => prev.filter((i) => i.id !== existing.id))
   }
 
+  // A saved video can lack its breakdown (saved before one existed); fetch it when opened.
+  const openVideoDrawer = (videoId: string) => {
+    setOpenVideoId(videoId)
+    if (savedForClient.has(videoId)) breakDown(videoId)
+    fillNeeds(videoId)
+  }
+
+  // A real video that has a breakdown but no judged needs (an older one) gets them from the API, once per session.
+  const needsAsked = useRef(new Set<string>())
+  const fillNeeds = (videoId: string) => {
+    const v = videoById.get(videoId)
+    const f = v && formatById.get(v.formatId)
+    if (!v?.live || !v.url || !f || !f.shotList.length || f.needsKnown || needsAsked.current.has(videoId)) return
+    needsAsked.current.add(videoId)
+    checkNeeds(v.url, [...new Set(formats.flatMap((x) => x.needs))])
+      .then((needs) =>
+        setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? { ...x, needs, needsKnown: true } : x)) })),
+      )
+      .catch(() => needsAsked.current.delete(videoId))
+  }
+
   const openPlan = (ideaId: string) => {
+    const idea = ideas.find((i) => i.id === ideaId)
+    if (idea) breakDown(idea.videoId)
     setPlanFrom(view)
     setPlanIdeaId(ideaId)
     setView('plan')
@@ -453,6 +637,7 @@ export default function App() {
               query={query}
               setQuery={setQuery}
               onSearch={runSearch}
+              onImage={live ? runImageSearch : undefined}
               clientName={client.name}
               live={live}
               clientExamples={client.examples}
@@ -475,6 +660,9 @@ export default function App() {
 
           {inClient && view === 'results' && (
             <ResultsScreen
+              failed={live ? searchFailed : []}
+              empty={live ? searchEmpty : []}
+              scoring={live && scoring === liveQuery}
               query={query}
               setQuery={setQuery}
               interp={interp}
@@ -482,6 +670,7 @@ export default function App() {
               formats={formats}
               allVideos={videos}
               onSearch={runSearch}
+              onImage={live ? runImageSearch : undefined}
               onRemoveChip={removeChip}
               clientName={client.name}
               onPlan={planFromVideo}
@@ -496,9 +685,10 @@ export default function App() {
               }}
               onRefreshPulse={() => void refreshPulse(client, true)}
               live={live}
+              cohorts={cohorts}
               patterns={
                 live ? (
-                  <PatternStrip patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
+                  <PatternStrip patterns={patterns} cohorts={patternCohorts} active={patternFilter} onPick={setPatternFilter} />
                 ) : null
               }
               likeThis={
@@ -509,6 +699,7 @@ export default function App() {
                     trend={trends.find((t) => t.format.id === likeFormat.id)}
                     matches={results}
                     clientName={client.name}
+                    real={live}
                     onPlan={planFromVideo}
                   />
                 ) : null
@@ -520,7 +711,7 @@ export default function App() {
               formatFilter={formatFilter}
               setFormatFilter={setFormatFilter}
               ideaStatus={new Map(shownIdeas.filter((i) => i.clientId === client.id).map((i) => [i.videoId, i.status]))}
-              onOpen={setOpenVideoId}
+              onOpen={openVideoDrawer}
               onToggleSave={toggleSave}
               onGoShortlist={() => setView('shortlist')} // stream B: shortlist tray
               blockedFormatIds={blockedFormatIds}
@@ -577,6 +768,7 @@ export default function App() {
         <BreakdownPanel
           video={openVideo}
           format={openFormat}
+          cohort={cohorts.get(openVideo.id)}
           formatAccounts={keywordPool.filter((v) => v.formatId === openFormat.id).length}
           client={client}
           status={shownIdeas.find((i) => i.clientId === client.id && i.videoId === openVideo.id)?.status} // stream B
@@ -587,7 +779,16 @@ export default function App() {
       )}
 
       {reading && <ReadingOverlay source={reading} onDone={finishReading} />}
-      {searching && <LiveLoading query={searching} />}
+      {searching && (
+        <LiveLoading
+          query={searching.q}
+          title={
+            searching.step
+              ? `${searching.step}…`
+              : `Searching ${searching.platforms.map((p) => platformName[p]).join(', ')} for "${searching.q}"…`
+          }
+        />
+      )}
     </div>
     </AppContext.Provider>
   )
