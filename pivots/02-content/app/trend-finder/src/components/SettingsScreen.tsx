@@ -1,5 +1,6 @@
 import type { Client } from '../types'
 import { formats } from '../data/sample'
+import { ClientMemory } from './ClientMemory'
 
 interface Props {
   client: Client
@@ -94,6 +95,8 @@ export function SettingsScreen({ client, onChange }: Props) {
           ))}
         </div>
       </fieldset>
+
+      <ClientMemory client={client} />
     </section>
   )
 }

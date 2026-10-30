@@ -1,5 +1,6 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { Thumb } from './Thumb'
+import { useManagerName } from '../lib/appContext'
 
 // The client's own shots if edited, otherwise the reference format's.
 const shotCount = (idea: SavedIdea, f?: Format) => (idea.shots ?? f?.shotList ?? []).length
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, formatById }: Props) {
+  const manager = useManagerName()
   const approved = ideas
     .filter((i) => i.clientId === client.id && i.status === 'approved')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
@@ -29,7 +31,7 @@ export function PlansScreen({ client, ideas, videoById, onOpen, onGoApprovals, f
       {approved.length === 0 ? (
         <div className="empty">
           <h2>No approved ideas yet</h2>
-          <p>Once Annie approves an idea, its plan shows up here.</p>
+          <p>Once {manager} approves an idea, its plan shows up here.</p>
           <button className="btn btn-primary" onClick={onGoApprovals}>
             Go to approvals
           </button>

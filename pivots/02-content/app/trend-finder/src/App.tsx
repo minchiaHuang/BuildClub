@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { IdeaStatus, SavedIdea } from './types'
+import type { AgencySettings, ClientEvent, IdeaStatus, Role, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
 import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
-import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
+import { defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
 import { ResultsScreen } from './components/ResultsScreen'
@@ -30,6 +30,10 @@ import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
 import { LiveLoading } from './components/LiveLoading'
 import { withScreenTransition } from './lib/motion'
+import { AppContext } from './lib/appContext'
+import type { AppContextValue } from './lib/appContext'
+import { ShortlistBoard } from './components/ShortlistBoard'
+import { AddClientScreen } from './components/AddClientScreen'
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -41,6 +45,8 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
 export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
+  const [agency, setAgencyRaw] = useStored<AgencySettings>('remake.agency.v1', defaultAgency)
+  const [role, setRole] = useStored<Role>('remake.role.v1', 'member')
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
   // Every screen change goes through here, so it cross-fades (View Transitions) where supported.
@@ -338,13 +344,35 @@ export default function App() {
   const setStatus = (ids: string[], status: IdeaStatus) =>
     setIdeas((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, status } : i)))
 
-  // Annie's answer on a plan she was sent.
-  const decide = (ideaId: string, approved: boolean, reason?: string) =>
+  const recordEvent = (clientId: string, event: ClientEvent) =>
+    setClients((prev) => prev.map((c) => (c.id === clientId ? { ...c, memory: [...(c.memory ?? []), event] } : c)))
+
+  // The manager's answer on a plan they were sent. Every decision is also remembered on the client.
+  const decide = (ideaId: string, approved: boolean, reason?: string) => {
+    const idea = ideas.find((i) => i.id === ideaId)
     setIdeas((prev) =>
       prev.map((i) =>
-        i.id === ideaId ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason } : i,
+        i.id === ideaId
+          ? {
+              ...i,
+              status: approved ? 'approved' : 'rejected',
+              rejectReason: approved ? undefined : reason,
+              approvedAt: approved ? Date.now() : undefined,
+            }
+          : i,
       ),
     )
+    if (idea) recordEvent(idea.clientId, { ideaId, kind: approved ? 'approved' : 'sent-back', reason, at: Date.now() })
+  }
+
+  const appContext: AppContextValue = {
+    agency,
+    setAgency: (patch) => setAgencyRaw((a) => ({ ...a, ...patch })),
+    role,
+    setRole,
+    addClient: (c) => setClients((prev) => [...prev, c]),
+    recordEvent,
+  }
 
   const openVideo = openVideoId ? videoById.get(openVideoId) : undefined
   const openFormat = openVideo && formatById.get(openVideo.formatId)
@@ -362,22 +390,26 @@ export default function App() {
     results: 'search results',
     saved: 'saved ideas',
     approvals: 'approvals',
-    review: "Annie's review",
+    review: `${agency.managerName}'s review`,
     plans: 'plans',
     plan: 'search results',
     settings: 'settings',
+    shortlist: 'shortlist',
+    'add-client': 'add client',
   }
-  const counts = {
-    saved: mine.length,
-    waiting: mine.filter((i) => i.status === 'waiting').length,
-    plans: mine.filter((i) => i.status === 'approved').length,
-  }
+  const counts = { shortlist: mine.length }
 
-  if (!signedIn) return <LoginScreen onSignIn={() => setSignedIn(true)} />
+  if (!signedIn)
+    return (
+      <AppContext.Provider value={appContext}>
+        <LoginScreen onSignIn={() => setSignedIn(true)} />
+      </AppContext.Provider>
+    )
 
   const inClient = workspace !== 'all'
 
   return (
+    <AppContext.Provider value={appContext}>
     <div className="shell">
       <Sidebar
         clients={clients}
@@ -387,6 +419,7 @@ export default function App() {
         setView={setView}
         counts={counts}
         onSignOut={() => setSignedIn(false)}
+        onAddClient={() => setView('add-client')}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         live={live}
@@ -401,7 +434,14 @@ export default function App() {
         </header>
 
         <main className="main">
-          {(!inClient || view === 'overview') && (
+          {view === 'add-client' && (
+            <AddClientScreen
+              onCreated={(id) => setWorkspace(id)}
+              onCancel={() => setView(inClient ? 'search' : 'overview')}
+            />
+          )}
+
+          {((!inClient && view !== 'add-client') || view === 'overview') && (
             <OverviewScreen
               clients={clients}
               ideas={shownIdeas}
@@ -491,6 +531,19 @@ export default function App() {
             />
           )}
 
+          {inClient && view === 'shortlist' && (
+            <ShortlistBoard
+              client={client}
+              ideas={shownIdeas}
+              videoById={videoById}
+              formatById={formatById}
+              onChangeIdeas={setIdeas}
+              onOpenPlan={openPlan}
+              onFindMore={() => setView('search')}
+              onReview={() => setView('review')}
+            />
+          )}
+
           {inClient && view === 'saved' && (
             <ClientScreen
               client={client}
@@ -524,7 +577,7 @@ export default function App() {
               formatById={formatById}
               videoById={videoById}
               onDecide={decide}
-              onBack={() => setView('approvals')}
+              onBack={() => setView('shortlist')}
             />
           )}
 
@@ -574,5 +627,6 @@ export default function App() {
       {reading && <ReadingOverlay source={reading} onDone={finishReading} />}
       {searching && <LiveLoading query={searching} />}
     </div>
+    </AppContext.Provider>
   )
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
+import { useManagerName } from '../lib/appContext'
 import { clientFit, compact, outlierScore, tierName, tierOf, times } from '../lib/metrics'
 import { BestVideo } from './BestVideo'
 
@@ -17,15 +18,12 @@ interface Props {
   onPlanAnother: () => void
 }
 
-// Name of the person who approves ideas. Kept in one place so it's easy to change for a public demo.
-const APPROVER = 'Annie'
-
-const statusLabel: Record<IdeaStatus, string> = {
+const statusLabel = (approver: string): Record<IdeaStatus, string> => ({
   saved: 'Not sent yet',
-  waiting: `Waiting for ${APPROVER}`,
+  waiting: `Waiting for ${approver}`,
   approved: 'Approved',
   rejected: 'Not approved',
-}
+})
 
 const ago = (ts?: number) => {
   if (!ts) return ''
@@ -35,6 +33,8 @@ const ago = (ts?: number) => {
 
 export function PlanScreen(p: Props) {
   const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother } = p
+  // The person who approves plans, from the agency settings.
+  const APPROVER = useManagerName()
   // Last removed shot, so an accidental ✕ can be undone.
   const [removed, setRemoved] = useState<{ shot: Shot; index: number } | null>(null)
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle')
@@ -91,7 +91,7 @@ export function PlanScreen(p: Props) {
       <header className="plan-head">
         <div className="plan-head-row">
           <span className="eyebrow">Plan for {client.name}</span>
-          <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
+          <span className={`status status-${idea.status}`}>{statusLabel(APPROVER)[idea.status]}</span>
         </div>
         <h1>{format.name}</h1>
       </header>
@@ -104,7 +104,7 @@ export function PlanScreen(p: Props) {
           <div>
             <strong>Sent to {APPROVER} for approval</strong>
             <span>
-              Sent {ago(idea.sentAt)}. Annie's answer will show up in Approvals. Meanwhile, plan the next video for{' '}
+              Sent {ago(idea.sentAt)}. {APPROVER}'s answer will show up in the Shortlist. Meanwhile, plan the next video for{' '}
               {client.name}.
             </span>
           </div>

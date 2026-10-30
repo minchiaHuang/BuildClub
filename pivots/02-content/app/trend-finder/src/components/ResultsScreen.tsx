@@ -13,6 +13,7 @@ import { PlatformLogo } from './PlatformToggles'
 import { SearchBox } from './SearchBox'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
+import { useManagerName } from '../lib/appContext'
 
 export type Chip =
   | { kind: 'keyword'; value: string }
@@ -66,6 +67,7 @@ const stageLabel = {
 }
 
 export function ResultsScreen(p: Props) {
+  const manager = useManagerName()
   const shown = p.formatFilter ? p.results.filter((v) => v.formatId === p.formatFilter) : p.results
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
@@ -252,7 +254,7 @@ export function ResultsScreen(p: Props) {
                 <div className="best-actions">
                   <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
                     {bestStatus && bestStatus !== 'saved'
-                      ? `Open plan · ${bestStatus === 'waiting' ? 'Waiting for Annie' : bestStatus === 'approved' ? 'Approved' : 'Not approved'}`
+                      ? `Open plan · ${bestStatus === 'waiting' ? `Waiting for ${manager}` : bestStatus === 'approved' ? 'Approved' : 'Not approved'}`
                       : bestStatus === 'saved'
                         ? 'Continue plan'
                         : `Plan this for ${p.clientName}`}

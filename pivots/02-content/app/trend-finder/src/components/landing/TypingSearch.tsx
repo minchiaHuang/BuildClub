@@ -3,7 +3,7 @@ import { usePrefersReducedMotion } from '../../lib/motion'
 import { PlatformLogo } from '../PlatformToggles'
 import type { LogoPlatform } from '../PlatformToggles'
 
-// Landing-page search bar that types out the kind of trend research agencies do in Trend Finder, one platform at a time.
+// Landing-page search bar that types out the kind of trend research agencies do in Remake, one platform at a time.
 // Decorative: it shows what the product does; the real search is inside the dashboard.
 const SEARCHES: { platform: LogoPlatform; text: string }[] = [
   { platform: 'tiktok', text: 'Trending tofu recipes this week' },

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { IdeaStatus, Video } from '../types'
 import { agoShort, compact, outlierScore, scoreLine, tierName, tierOf, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
+import { useManagerName } from '../lib/appContext'
 
 interface Props {
   video: Video
@@ -12,15 +13,16 @@ interface Props {
   status?: IdeaStatus
 }
 
-const statusBadge: Record<IdeaStatus, string> = {
+const statusBadge = (manager: string): Record<IdeaStatus, string> => ({
   saved: 'Saved',
-  waiting: 'Sent to Annie',
+  waiting: `Sent to ${manager}`,
   approved: 'Approved',
   rejected: 'Not approved',
-}
+})
 
 // One video in the results grid: cover, usual → this video's views, a plain label, the hook and who posted it.
 export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props) {
+  const manager = useManagerName()
   const score = outlierScore(video)
   const tier = tierOf(score)
   const byFollowers = video.medianViews === null
@@ -30,7 +32,7 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status }: Props)
     <article className="tile">
       <button className="tile-main" data-video-id={video.id} onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}`}>
         <Thumb video={video} />
-        {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge[status]}</span>}
+        {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge(manager)[status]}</span>}
         <div className="tile-body">
           <div className="tile-compare">
             <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>

@@ -50,7 +50,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
       </a>
       <nav className="la-nav" aria-label="Main">
         <a className="la-logo" href="#top">
-          <span className="la-mark" aria-hidden="true">↗</span> Trend Finder
+          <span className="la-mark" aria-hidden="true">↗</span> Remake
         </a>
         <div className="la-links">
           <a href="#what">Product</a>
@@ -132,8 +132,8 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
             <div className="la-vis la-vis-phone" aria-hidden="true">
               <div className="la-phone"><span className="la-ph-line" /><span className="la-ph-line s" /><span className="la-ph-btn">Approve</span></div>
             </div>
-            <h3>Client approves</h3>
-            <p>Annie approves on their phone, then you copy a brief for the editor.</p>
+            <h3>Manager approves</h3>
+            <p>Your manager approves on their phone, then the team films it.</p>
           </li>
         </ol>
       </section>

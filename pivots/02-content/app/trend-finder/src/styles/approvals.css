@@ -1,4 +1,4 @@
-/* Approvals, Annie's review, saved ideas (client screen) and the agency overview.
+/* Approvals, the manager's review, saved ideas (client screen) and the agency overview.
    Calm lists with clear status, generous spacing, soft cards. Everything reads from tokens.css. */
 
 /* Shared list card: saved ideas and approvals */
@@ -87,7 +87,7 @@
 .approvals .sub-head { margin-top: 4px; }
 .approval .status { margin-bottom: 2px; }
 
-/* Annie's review: a narrow, phone-sized column that reads like an iPhone app */
+/* The manager's review: a narrow, phone-sized column that reads like an iPhone app */
 .review { max-width: 440px; width: 100%; margin: 0 auto; display: grid; gap: 18px; }
 .review-back { justify-self: start; }
 .review-banner {

@@ -69,9 +69,28 @@ export interface Client {
   topics?: string[]
   // Things this client can't do, used for the "Can they film this?" check.
   cannot: string[]
+  // Every approval and rejection for this client, oldest first. Optional so older saved clients still load.
+  memory?: ClientEvent[]
 }
 
 export type IdeaStatus = 'saved' | 'waiting' | 'approved' | 'rejected'
+
+// Who is signed in. Only the manager can approve or send back plans. Demo only: picked at login, nothing is checked.
+export type Role = 'member' | 'manager'
+
+export interface AgencySettings {
+  agencyName: string
+  // The person who approves plans, shown wherever the UI says who reviews ("Waiting for Annie").
+  managerName: string
+}
+
+// One manager decision, kept on the client so Remake remembers what each client likes and dislikes.
+export interface ClientEvent {
+  ideaId: string
+  kind: 'approved' | 'approved-with-changes' | 'sent-back'
+  reason?: string
+  at: number
+}
 
 export interface SavedIdea {
   id: string
@@ -87,4 +106,10 @@ export interface SavedIdea {
   noteToApprover?: string
   sentAt?: number
   rejectReason?: string
+  // Set when the manager decides.
+  approvedAt?: number
+  // "Approve with changes": what the manager wants changed.
+  managerNote?: string
+  // The manager's comment per shot, keyed by shot index.
+  shotComments?: Record<number, string>
 }

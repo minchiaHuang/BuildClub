@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Platform, SavedIdea } from './types'
+import type { AgencySettings, Platform, SavedIdea } from './types'
 import { sampleIdeas } from './data/sample'
 
 export type Sort = 'outlier' | 'ratio' | 'newest' | 'fastest'
@@ -46,7 +46,7 @@ export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v4
 // 'all' is the agency view across every client.
 export type Workspace = 'all' | string
 
-export const AGENCY_NAME = 'Sample Social Co.'
+export const defaultAgency: AgencySettings = { agencyName: 'Sample Social Co.', managerName: 'Annie' }
 
 export function inTwoWeeks(): string {
   const d = new Date()

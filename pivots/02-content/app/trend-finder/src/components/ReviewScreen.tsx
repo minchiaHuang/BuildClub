@@ -3,6 +3,7 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { compact, outlierScore, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
+import { useManagerName } from '../lib/appContext'
 
 interface Props {
   client: Client
@@ -28,9 +29,10 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 // Read a duration token (e.g. "--dur-slow: 300ms") so JS timing matches the CSS.
 const tokenMs = (name: string) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0
 
-// What Annie sees: each waiting plan with its reference, shots and note, and one tap to approve or send back.
-// A narrow column so it reads like a phone view. Demo only: Annie has no separate login yet.
+// What the manager sees: each waiting plan with its reference, shots and note, and one tap to approve or send back.
+// A narrow column so it reads like a phone view. Demo only: the manager role is picked at login, nothing is checked.
 export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack }: Props) {
+  const manager = useManagerName()
   const [passing, setPassing] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [leaving, setLeaving] = useState<Leaving | null>(null)
@@ -59,7 +61,7 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     focusTarget(target)
   })
 
-  // If Annie leaves mid-animation, still record the decision.
+  // If the manager leaves mid-animation, still record the decision.
   useEffect(
     () => () => {
       timers.current.forEach((t) => window.clearTimeout(t))
@@ -108,12 +110,12 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
   return (
     <section className="review">
       <button className="link-btn review-back" onClick={onBack}>
-        ← Back to approvals
+        ← Back to shortlist
       </button>
-      <p className="review-banner">Preview of Annie's view. In the real product this opens on Annie's phone.</p>
+      <p className="review-banner">Preview of {manager}'s view. In the real product this opens on {manager}'s phone.</p>
 
       <header className="page-head review-head">
-        <span className="eyebrow">{client.name} · For Annie</span>
+        <span className="eyebrow">{client.name} · For {manager}</span>
         <h1 ref={headRef} tabIndex={-1}>{waiting.length ? `${waiting.length} to review` : 'Nothing to review'}</h1>
         {waiting.length > 0 && <p className="small muted">Swipe right to approve, left to send back.</p>}
       </header>

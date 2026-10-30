@@ -160,7 +160,7 @@
 @keyframes shot-in { from { opacity: 0; transform: translateY(-4px); } }
 .shot-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 2px; }
 
-/* Note to Annie */
+/* Note to the manager */
 .plan-main textarea { padding: 12px 14px; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
 
 /* Sticky action bar at the bottom of the plan: frosted */

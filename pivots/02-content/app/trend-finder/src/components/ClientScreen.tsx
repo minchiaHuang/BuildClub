@@ -1,6 +1,7 @@
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, times, outlierScore } from '../lib/metrics'
 import { Thumb } from './Thumb'
+import { useManagerName } from '../lib/appContext'
 
 interface Props {
   client: Client
@@ -13,12 +14,12 @@ interface Props {
   onFindMore: () => void
 }
 
-const statusLabel: Record<IdeaStatus, string> = {
+const statusLabel = (manager: string): Record<IdeaStatus, string> => ({
   saved: 'Not sent yet',
-  waiting: 'Waiting for Annie',
+  waiting: `Waiting for ${manager}`,
   approved: 'Approved',
   rejected: 'Not approved',
-}
+})
 
 // Small SVG ring for a monthly target. The fill grows in once on mount (CSS), then follows the value.
 export function ProgressRing({
@@ -57,6 +58,7 @@ export function ProgressRing({
 }
 
 export function ClientScreen(p: Props) {
+  const manager = useManagerName()
   const client = p.client
   const mine = p.ideas.filter((i) => i.clientId === client.id)
   const count = (s: IdeaStatus) => mine.filter((i) => i.status === s).length
@@ -91,7 +93,7 @@ export function ClientScreen(p: Props) {
         <span className="pill pill-ok">{approved} approved</span>
         <span className="pill pill-no">{count('rejected')} not approved</span>
         {unsent.length > 0 && (
-          <span className="small muted">Open an idea's plan to send it to Annie with your shots and a note.</span>
+          <span className="small muted">Open an idea's plan to send it to {manager} with your shots and a note.</span>
         )}
       </div>
 
@@ -113,7 +115,7 @@ export function ClientScreen(p: Props) {
               <li key={idea.id} className="idea">
                 <Thumb video={v} />
                 <div className="idea-body">
-                  <span className={`status status-${idea.status}`}>{statusLabel[idea.status]}</span>
+                  <span className={`status status-${idea.status}`}>{statusLabel(manager)[idea.status]}</span>
                   <strong>{f?.name}</strong>
                   <span className="small muted">
                     Reference: "{v.hook}" · {v.handle} · {compact(v.views)} views · {times(outlierScore(v))}
