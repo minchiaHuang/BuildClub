@@ -1,7 +1,7 @@
 # Remake 週一觀察清單
 
 **日期：** 2026-11-02（週一）　**參與者：** ＿＿＿＿＿＿（Daphne／Annie／創辦人）
-**環境網址：** `http://<mini 主機>:8801`（待填：Task 12 填入）　**主題：** ＿＿＿＿＿＿（Current／Altitude／Unify／Midnight）
+**環境網址：** `https://tommymac-mini.tail8e20a0.ts.net:8443`（本機 8801）　**主題：** ＿＿＿＿＿＿（Current／Altitude／Unify／Midnight）
 **桌機寬度（1440）為主，手機寬度不是這次重點。**　記錄人：＿＿＿＿＿＿
 
 ## 流程觀察
