@@ -34,6 +34,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 import assist
 import channels
+import instagram
 import reddit
 import share
 import x
@@ -458,6 +459,52 @@ def search_x(query: str):
     return {**payload, "cached": False}
 
 
+def search_ig(query: str):
+    """Instagram reels for the keyword. Each account's usual plays (its latest reels, one batched actor
+    run) are filled afterwards, like X's."""
+    def run(payload, max_items):
+        return run_actor(payload, max_items, actor=instagram.REEL_ACTOR, max_usd=MAX_USD_PER_MEDIANS)
+
+    try:
+        videos = search_instagram(query)
+        authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
+        baselines = instagram.saved(db, authors, MEDIAN_DAYS)
+        instagram.apply(videos, baselines)
+    except Exception as e:
+        print(f"[search] failed: {e}", flush=True)
+        return error(502, "Instagram search failed. Check the API terminal for details.", str(e))
+    missing = [a for a in authors if a not in baselines][:instagram.ACCOUNTS_PER_FILL]
+    payload = {"query": query, "platform": "instagram", "fetchedAt": int(time.time() * 1000), "videos": videos,
+               "mediansPending": bool(missing)}
+    write_cache(payload)
+    print(f'[search] instagram "{query}" → {len(videos)} videos', flush=True)
+    if missing:
+        filling.add(cache_name(query, "instagram"))
+        background = copy.deepcopy(payload)
+
+        def fill():
+            try:
+                found = {}
+                if spend("apify", round(len(missing) * instagram.REELS_PER_ACCOUNT * instagram.USD_PER_REEL, 2), DAILY_APIFY_USD):
+                    try:
+                        found = instagram.fetch_baselines(missing, run)
+                        instagram.save(db, found)
+                        now = int(time.time() * 1000)
+                        found = {a: b and {**b, "fetchedAt": now} for a, b in found.items()}
+                    except Exception as e:
+                        print(f"[search] instagram baselines failed: {e}", flush=True)
+                else:
+                    print("[search] instagram baselines skipped: today's Apify budget is used up", flush=True)
+                instagram.apply(background["videos"], {**baselines, **found})
+                background["mediansPending"] = False
+                write_cache(background)
+            finally:
+                filling.discard(cache_name(query, "instagram"))
+
+        in_background(fill)
+    return {**payload, "cached": False}
+
+
 def search_reddit(query: str):
     """The search itself is already paid for (counted by the caller). Up to SUBS_PER_SEARCH subreddit
     medians are paid for and fetched in the background, the way TikTok's account medians are."""
@@ -569,23 +616,21 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
         return over_budget("Apify", DAILY_APIFY_USD, "DAILY_APIFY_USD")
     if platform == "x":
         return search_x(query)
+    if platform == "instagram":
+        return search_ig(query)
     medians, missing = {}, []
     try:
         if platform == "reddit":
             return search_reddit(query)  # subreddit medians are filled in the background
-        if platform == "instagram":
-            videos = search_instagram(query)  # account medians are TikTok only for now
-        else:
-            videos = search_tiktok(query)
-            # Accounts seen in the last week are scored now; up to AUTHORS_PER_SEARCH others later.
-            authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
-            medians = saved_medians(authors)
-            missing = [a for a in authors if a not in medians][:AUTHORS_PER_SEARCH]
-            apply_medians(videos, medians)
+        videos = search_tiktok(query)
+        # Accounts seen in the last week are scored now; up to AUTHORS_PER_SEARCH others later.
+        authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
+        medians = saved_medians(authors)
+        missing = [a for a in authors if a not in medians][:AUTHORS_PER_SEARCH]
+        apply_medians(videos, medians)
     except Exception as e:
-        name = "Instagram" if platform == "instagram" else "TikTok"
         print(f"[search] failed: {e}", flush=True)
-        return error(502, f"{name} search failed. Check the API terminal for details.", str(e))
+        return error(502, f"TikTok search failed. Check the API terminal for details.", str(e))
     payload = {"query": query, "platform": platform, "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
     write_cache(payload)
