@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { IdeaStatus, SavedIdea } from './types'
-import { clients as sampleClients, formats, videos } from './data/sample'
+import type { IdeaStage, IdeaStatus, SavedIdea } from './types'
+import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
 import { formatTrend, hasDate, outlierScore, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
-import { defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
+import { AGENCY_NAME, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
 import { ResultsScreen } from './components/ResultsScreen'
@@ -12,6 +12,7 @@ import type { Interpretation, MediaSource } from './lib/parseQuery'
 import { LikeThisCard } from './components/LikeThisCard'
 import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
+import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
@@ -22,25 +23,36 @@ import { ApprovalsScreen } from './components/ApprovalsScreen'
 import { ReviewScreen } from './components/ReviewScreen'
 import { PlansScreen } from './components/PlansScreen'
 import { SettingsScreen } from './components/SettingsScreen'
+import { NewClientForm } from './components/NewClientForm'
 import { LoginScreen } from './components/LoginScreen'
+import { logout, me, type Account } from './lib/auth'
 import { ChannelScreen } from './components/ChannelScreen'
 import type { Client, Format, Platform, Video } from './types'
 import {
   analyzeVideo,
+  checkNeeds,
   applyBreakdown,
   checkLive,
   findPatterns,
   loadLibrary,
   loadList,
+  loadPulses,
   saveLibrary,
   saveList,
-  livePlatform,
+  savePulses,
+  askAnswer,
+  likeImage,
+  likeVideo,
+  searchAll,
   searchLive,
 } from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
 import { PatternStrip } from './components/PatternStrip'
 import { withScreenTransition } from './lib/motion'
+
+// Stands in for the current client while a live API has none yet.
+const noClient: Client = { id: '', name: '', niche: '', audience: '', monthlyTarget: 8, examples: [], topics: [], cannot: [] }
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -50,7 +62,18 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
 }
 
 export default function App() {
+  // Demo entry for when the API has no accounts (or isn't there); real sign-in uses the API's session.
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
+  const [auth, setAuth] = useState<'checking' | 'open' | 'signed-out' | 'signed-in'>('checking')
+  const [account, setAccount] = useState<Account | null>(null)
+  useEffect(() => {
+    me().then((a) => {
+      setAuth(a.kind === 'signed-in' ? 'signed-in' : a.kind)
+      if (a.kind === 'signed-in') setAccount(a.account)
+    })
+  }, [])
+  // Nothing but the sign-in page may ask the API for anything until the app is let in.
+  const access = auth === 'open' || auth === 'signed-in'
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
@@ -75,7 +98,7 @@ export default function App() {
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
-  // Live mode: real TikTok, Instagram, YouTube or X search through the local API (npm run api). Without it, the app uses sample data.
+  // Live mode: real TikTok, Instagram, YouTube or X search through the local API (npm run api). Live mode keeps clients, saved ideas and videos on the API; without the API the app falls back to sample data stored in this browser.
   const [live, setLive] = useState(false)
   const [liveStore, setLiveStore] = useStored<{ videos: Video[]; formats: Format[] }>('trend-finder.live-store.v1', {
     videos: [],
@@ -83,14 +106,19 @@ export default function App() {
   })
   const [liveResults, setLiveResults] = useState<Video[]>([])
   const [liveQuery, setLiveQuery] = useState('')
+  // The written answer to the latest live search; null while it is being written or if that failed.
+  const [liveAnswer, setLiveAnswer] = useState<Answer | null>(null)
   // Live searches run in the background, so the rest of the app stays usable meanwhile.
-  const [searching, setSearching] = useState<{ q: string; platform: Platform } | null>(null)
+  const [searching, setSearching] = useState<{ q: string; platforms: Platform[]; step?: string } | null>(null)
   // A search that finished after the user moved to another screen, waiting to be opened.
   const [searchDone, setSearchDone] = useState<{ text: string; clientId: string; error?: string } | null>(null)
   const searchSeq = useRef(0)
   // A search whose TikTok, YouTube or X scores (each account's usual views) are still being fetched.
   const [scoring, setScoring] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
+  // Platforms that returned nothing in the last search (daily cap, upstream error), shown above the results.
+  const [searchEmpty, setSearchEmpty] = useState<Platform[]>([])
+  const [searchFailed, setSearchFailed] = useState<{ platform: Platform; message: string }[]>([])
   const [patternFilter, setPatternFilter] = useState<string | null>(null)
 
   // Daily live trend check per client, which powers the "Trending now" chips on the search page.
@@ -110,16 +138,29 @@ export default function App() {
   // In live mode the API keeps clients and saved ideas too. Its copy wins on load; after that,
   // every change is saved back. If the API can't load them, this browser's copy is used.
   const [synced, setSynced] = useState(false)
+  // Counts saves started and finished, so a read that overlapped one can be thrown away.
+  const writes = useRef(0)
   // What the API already holds, so the copy just loaded from it isn't written straight back.
-  const onServer = useRef<{ clients: Client[] | null; ideas: SavedIdea[] | null; library: string | null }>({
+  const onServer = useRef<{
+    clients: Client[] | null
+    ideas: SavedIdea[] | null
+    library: string | null
+    pulses: Record<string, Pulse> | null
+  }>({
     clients: null,
     ideas: null,
     library: null,
+    pulses: null,
   })
   useEffect(() => {
-    if (!live) return
-    Promise.all([loadList<Client>('clients'), loadList<SavedIdea>('ideas'), loadLibrary().catch(() => null)])
-      .then(([savedClients, savedIdeas, library]) => {
+    if (!live || !access) return
+    Promise.all([
+      loadList<Client>('clients'),
+      loadList<SavedIdea>('ideas'),
+      loadLibrary().catch(() => null),
+      loadPulses<Pulse>().catch(() => null),
+    ])
+      .then(([savedClients, savedIdeas, library, savedPulses]) => {
         if (library) {
           // Add the saved videos this browser hasn't seen; its own copies stay as they are.
           setLiveStore((prev) => {
@@ -134,15 +175,28 @@ export default function App() {
         if (savedClients?.length) {
           setClients(savedClients)
           onServer.current.clients = savedClients
+        } else {
+          // Nothing saved on the API yet: keep only clients made in this browser, not the sample ones.
+          const sampleIds = new Set(sampleClients.map((c) => c.id))
+          setClients((prev) => prev.filter((c) => !sampleIds.has(c.id)))
         }
         if (savedIdeas) {
           setIdeas(savedIdeas)
           onServer.current.ideas = savedIdeas
+        } else {
+          // Nothing saved on the API yet: start empty, not from the sample ideas this browser began with.
+          const sampleIds = new Set(sampleIdeas.map((i) => i.id))
+          setIdeas((prev) => prev.filter((i) => !sampleIds.has(i.id)))
+        }
+        // The API's copy wins; when it has none, this browser's copy is saved up by the effect below.
+        if (savedPulses) {
+          setPulses(savedPulses)
+          onServer.current.pulses = savedPulses
         }
         setSynced(true)
       })
       .catch(() => {})
-  }, [live, setClients, setIdeas, setLiveStore])
+  }, [live, access, setClients, setIdeas, setLiveStore, setPulses])
   useEffect(() => {
     if (!synced || clients === onServer.current.clients) return
     onServer.current.clients = clients
@@ -151,8 +205,51 @@ export default function App() {
   useEffect(() => {
     if (!synced || ideas === onServer.current.ideas) return
     onServer.current.ideas = ideas
-    saveList('ideas', ideas).catch(() => {})
+    writes.current += 1
+    saveList('ideas', ideas)
+      .catch(() => {})
+      .finally(() => {
+        writes.current += 1
+      })
   }, [synced, ideas])
+
+  // Annie answers on her own link, so the API's ideas are re-read every 20 s and when this window gets
+  // focus, but only on the screens that show her answers. Skipped while this tab has changes of its own
+  // that the API hasn't taken yet, or when a save finished while the read was in flight.
+  const ideasNow = useRef(ideas)
+  useEffect(() => {
+    ideasNow.current = ideas
+  }, [ideas])
+  const watchingAnswers = view === 'approvals' || view === 'overview' || view === 'plans' || workspace === 'all'
+  useEffect(() => {
+    if (!live || !synced || !watchingAnswers) return
+    let stopped = false
+    const refresh = () => {
+      const before = writes.current
+      loadList<SavedIdea>('ideas')
+        .then((fresh) => {
+          if (stopped || !fresh || writes.current !== before) return
+          if (ideasNow.current !== onServer.current.ideas) return
+          if (JSON.stringify(fresh) === JSON.stringify(ideasNow.current)) return
+          onServer.current.ideas = fresh
+          setIdeas(fresh)
+        })
+        .catch(() => {})
+    }
+    const timer = window.setInterval(refresh, 20_000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [live, synced, watchingAnswers, setIdeas])
+
+  useEffect(() => {
+    if (!synced || pulses === onServer.current.pulses) return
+    onServer.current.pulses = pulses
+    savePulses(pulses).catch(() => {})
+  }, [synced, pulses])
 
   // The videos and breakdowns behind saved ideas, kept on the API like the ideas themselves.
   const library = useMemo(() => {
@@ -181,13 +278,23 @@ export default function App() {
   }, [view])
 
   // Inside a client, everything (saving, fit checks, plans) is for that client.
-  const client = clients.find((c) => c.id === workspace) ?? clients[0]
+  // A live API with no clients yet has an empty list until the first one is added (see below).
+  const client = clients.find((c) => c.id === workspace) ?? clients[0] ?? noClient
 
   const setWorkspace = (w: Workspace) => {
     setWorkspaceRaw(w)
     setOpenVideoId(null)
     // Picking a client from the switcher always starts on Search.
     setView(w === 'all' ? 'overview' : 'search')
+  }
+
+  const [addingClient, setAddingClient] = useState(false)
+  const onAddClient = (c: Client) => {
+    setClients([...clients, c])
+    setAddingClient(false)
+    setWorkspaceRaw(c.id)
+    setOpenVideoId(null)
+    setView('settings')
   }
 
   const updateClient = (patch: Partial<Client>) =>
@@ -207,26 +314,97 @@ export default function App() {
   // overrides the dropdowns; everything else keeps its current value.
   const [reading, setReading] = useState<MediaSource | null>(null)
 
-  const runLiveSearch = async (text: string) => {
-    if (/https?:\/\//.test(text)) {
-      setSearchError("Link search isn't live yet. Type what the video is about instead.")
+  // A pasted link: read the real video, then search for its first keyword.
+  const runLinkSearch = async (text: string) => {
+    const url = text.match(/https?:\/\/\S+/)?.[0] ?? text
+    const source = interpretMedia(url, null, formats)?.source ?? null
+    const seq = ++searchSeq.current
+    const clientId = workspace
+    setSearchError(null)
+    setSearchDone(null)
+    setSearching({ q: url, platforms: [], step: 'Reading the video' })
+    let like
+    try {
+      like = await likeVideo(url, (step) => {
+        if (seq === searchSeq.current) setSearching((s) => (s ? { ...s, step: step || s.step } : s))
+      })
+    } catch (e) {
+      if (seq !== searchSeq.current) return
+      const message = e instanceof Error ? e.message : 'Could not read that link.'
+      setSearching(null)
+      setSearchError(message)
+      if (here.current.view !== 'search' || here.current.workspace !== clientId) setSearchDone({ text, clientId, error: message })
+      return
+    }
+    if (seq !== searchSeq.current) return
+    const format = applyBreakdown(
+      { id: `like-${url}`, name: like.formatName, short: like.formatName, tags: [], audiences: [], summary: '', why: like.breakdown.why,
+        shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '' },
+      like.breakdown,
+    )
+    setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
+    setSearching(null)
+    await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
+  }
+
+  // An uploaded screenshot: the AI says what it shows, then we search for its first keyword.
+  const runImageSearch = async (file: File) => {
+    const seq = ++searchSeq.current
+    const clientId = workspace
+    const previewUrl = URL.createObjectURL(file)
+    setSearchError(null)
+    setSearchDone(null)
+    setSearching({ q: file.name, platforms: [], step: 'Looking at your screenshot' })
+    let like
+    try {
+      like = await likeImage(file)
+    } catch (e) {
+      if (seq !== searchSeq.current) return
+      const message = e instanceof Error ? e.message : 'Could not read that image.'
+      setSearching(null)
+      setSearchError(message)
+      if (here.current.view !== 'search' || here.current.workspace !== clientId) setSearchDone({ text: file.name, clientId, error: message })
+      return
+    }
+    if (seq !== searchSeq.current) return
+    const source = interpretMedia('', { name: file.name, url: previewUrl }, formats)?.source ?? null
+    const format: Format = {
+      id: `like-image-${file.name}`, name: like.formatName, short: like.formatName, tags: [], audiences: [],
+      summary: like.description,
+      why: { hook: '', first3s: '', length: '', format: like.formatName, sound: '' },
+      shotList: [], props: [], needs: [], effort: 'medium', editorNotes: '',
+    }
+    setLiveStore((prev) => ({ ...prev, formats: [format, ...prev.formats.filter((f) => f.id !== format.id)] }))
+    setSearching(null)
+    await runLiveSearch(like.keywords[0], source ? { source, formatId: format.id } : undefined)
+  }
+
+  const runLiveSearch = async (text: string, like?: { source: MediaSource; formatId: string }) => {
+    if (!like && /https?:\/\//.test(text)) {
+      void runLinkSearch(text)
       return
     }
     const parsed = parseQuery(text, formats)
     // Send the platform the meaningful words; time, platform and length words become filters instead.
     const q = ([...parsed.keywords, ...parsed.topics.map((t) => t.word)].join(' ') || text).trim()
-    // A platform named in the text ("on instagram") wins over the toggles.
-    const platform = livePlatform(parsed.platforms?.length === 1 ? parsed.platforms : query.platforms)
-    if (!q || (q === searching?.q && platform === searching.platform)) return
+    // Platforms named in the text ("on instagram") win over the toggles.
+    const platforms = parsed.platforms?.length ? parsed.platforms : query.platforms
+    if (!q || (q === searching?.q && platforms.join() === searching.platforms.join())) return
     const seq = ++searchSeq.current
     const clientId = workspace
     setSearchError(null)
     setSearchDone(null)
-    setSearching({ q, platform })
+    setSearching({ q, platforms })
     try {
-      const res = await searchLive(q, false, platform)
+      const res = await searchAll(q, platforms)
       // A newer search has started since; its results win.
       if (seq !== searchSeq.current) return
+      // Every platform failed: nothing to show, so it is an error like before.
+      if (res.failed.length === platforms.length) {
+        throw new Error(res.failed.map((f) => `${platformName[f.platform]}: ${f.message}`).join(' '))
+      }
+      setSearchFailed(res.failed)
+      setSearchEmpty(res.empty)
       setLiveStore((prev) => {
         const keep = (list: { id: string }[], add: { id: string }[]) => {
           const ids = new Set(add.map((x) => x.id))
@@ -239,12 +417,22 @@ export default function App() {
       })
       setLiveResults(res.videos)
       setLiveQuery(q)
-      setInterp({ ...parsed, text, keywords: [q], topics: [], audience: null, isQuestion: false, source: null })
-      setQuery((qq) => ({ ...qq, keyword: text, platforms: [platform], days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
+      // One answer per search, from the videos as they arrive. A failure just means no answer block.
+      setLiveAnswer(null)
+      if (res.videos.length) {
+        askAnswer(text, res.videos)
+          .then((a) => { if (seq === searchSeq.current) setLiveAnswer(a) })
+          .catch(() => {})
+      }
+      setInterp({
+        ...parsed, text, keywords: [q], topics: like ? [{ formatId: like.formatId, word: 'this video' }] : [],
+        audience: null, isQuestion: false, source: like?.source ?? null,
+      })
+      setQuery((qq) => ({ ...qq, keyword: text, platforms, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
       setLastSearch(text)
-      if (res.mediansPending) void fillScores(q, platform)
+      if (res.pending.length) void fillScores(q, res.pending)
       // Only jump to the results if the user is still waiting on this client's search page.
       if (here.current.view === 'search' && here.current.workspace === clientId) setView('results')
       else setSearchDone({ text, clientId })
@@ -258,10 +446,10 @@ export default function App() {
     }
   }
 
-  // Poll the saved (free) search until the account medians are in, then update the scores in place.
-  const fillScores = async (q: string, platform: Platform) => {
+  // Poll each platform's saved (free) search until its account medians are in, then update the scores in place.
+  const fillScores = async (q: string, platforms: Platform[]) => {
     setScoring(q)
-    try {
+    const poll = async (platform: Platform) => {
       for (let i = 0; i < 36; i++) {
         await new Promise((r) => setTimeout(r, 5000))
         const res = await searchLive(q, false, platform, true)
@@ -272,11 +460,10 @@ export default function App() {
         setLiveResults((prev) => prev.map(fill))
         return
       }
-    } catch {
-      // The results are still usable; they just keep the views ÷ followers score.
-    } finally {
-      setScoring((s) => (s === q ? null : s))
     }
+    // The results are still usable if a poll fails; they just keep the views ÷ followers score.
+    await Promise.allSettled(platforms.map(poll))
+    setScoring((s) => (s === q ? null : s))
   }
 
   const runSearch = (text: string) => {
@@ -334,7 +521,7 @@ export default function App() {
 
   // Check once a day per client, when its search page opens. Each attempt runs once per session, even if it fails.
   useEffect(() => {
-    if (!live || workspace === 'all' || view !== 'search' || pulseLoading) return
+    if (!live || !access || !clients.length || workspace === 'all' || view !== 'search' || pulseLoading) return
     const topic = clientTopic(client)
     const p = pulses[client.id]
     const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
@@ -343,7 +530,7 @@ export default function App() {
       pulseTried.current.add(key)
       void refreshPulse(client, false)
     }
-  }, [live, workspace, view, client, pulses, pulseLoading, refreshPulse])
+  }, [live, access, clients.length, workspace, view, client, pulses, pulseLoading, refreshPulse])
 
   const finishReading = useCallback(() => {
     setReading(null)
@@ -403,7 +590,7 @@ export default function App() {
     [results, keywordPool, live],
   )
 
-  const answer = useMemo(() => (live ? null : buildAnswer(interp, results, trends)), [interp, results, trends, live])
+  const answer = useMemo(() => (live ? liveAnswer : buildAnswer(interp, results, trends)), [interp, results, trends, live, liveAnswer])
 
   // Live mode shows only ideas saved from real videos; sample mode only sample ones.
   const shownIdeas = ideas.filter((i) => Boolean(videoById.get(i.videoId)?.live) === live)
@@ -472,6 +659,21 @@ export default function App() {
   const openVideoDrawer = (videoId: string) => {
     setOpenVideoId(videoId)
     if (savedForClient.has(videoId)) breakDown(videoId)
+    fillNeeds(videoId)
+  }
+
+  // A real video that has a breakdown but no judged needs (an older one) gets them from the API, once per session.
+  const needsAsked = useRef(new Set<string>())
+  const fillNeeds = (videoId: string) => {
+    const v = videoById.get(videoId)
+    const f = v && formatById.get(v.formatId)
+    if (!v?.live || !v.url || !f || !f.shotList.length || f.needsKnown || needsAsked.current.has(videoId)) return
+    needsAsked.current.add(videoId)
+    checkNeeds(v.url, [...new Set(formats.flatMap((x) => x.needs))])
+      .then((needs) =>
+        setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? { ...x, needs, needsKnown: true } : x)) })),
+      )
+      .catch(() => needsAsked.current.delete(videoId))
   }
 
   const openPlan = (ideaId: string) => {
@@ -493,11 +695,19 @@ export default function App() {
   const setStatus = (ids: string[], status: IdeaStatus) =>
     setIdeas((prev) => prev.map((i) => (ids.includes(i.id) ? { ...i, status } : i)))
 
+  // Daphne moves an approved idea along the board. Posting stamps the date; moving back clears it.
+  const moveStage = (ideaId: string, stage: IdeaStage) =>
+    setIdeas((prev) =>
+      prev.map((i) => (i.id === ideaId ? { ...i, stage, postedAt: stage === 'posted' ? Date.now() : undefined } : i)),
+    )
+
   // Annie's answer on a plan she was sent.
   const decide = (ideaId: string, approved: boolean, reason?: string) =>
     setIdeas((prev) =>
       prev.map((i) =>
-        i.id === ideaId ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason } : i,
+        i.id === ideaId
+          ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason, decidedAt: Date.now() }
+          : i,
       ),
     )
 
@@ -529,7 +739,30 @@ export default function App() {
     plans: mine.filter((i) => i.status === 'approved').length,
   }
 
-  if (!signedIn) return <LoginScreen onSignIn={() => setSignedIn(true)} />
+  if (auth === 'checking') return null
+  if (auth === 'signed-out' || (auth === 'open' && !signedIn)) {
+    return (
+      <LoginScreen
+        real={auth === 'signed-out'}
+        onSignIn={(a) => {
+          if (a) {
+            setAccount(a)
+            setAuth('signed-in')
+          } else setSignedIn(true)
+        }}
+      />
+    )
+  }
+  const signOut = () => {
+    if (auth === 'open') return setSignedIn(false)
+    void logout().then(() => {
+      setAccount(null)
+      setAuth('signed-out')
+    })
+  }
+
+  // First run on a live API: the agency adds its own first client before anything else.
+  if (!clients.length) return <NewClientForm first existingIds={[]} onAdd={onAddClient} />
 
   const inClient = workspace !== 'all'
 
@@ -542,11 +775,16 @@ export default function App() {
         view={view}
         setView={setView}
         counts={counts}
-        onSignOut={() => setSignedIn(false)}
+        onSignOut={signOut}
+        account={account}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         live={live}
+        onAddClient={() => setAddingClient(true)}
       />
+      {addingClient && (
+        <NewClientForm existingIds={clients.map((c) => c.id)} onAdd={onAddClient} onCancel={() => setAddingClient(false)} />
+      )}
 
       <div className="shell-main">
         <header className="mobile-bar">
@@ -559,6 +797,7 @@ export default function App() {
         <main className="main">
           {view !== 'channel' && (!inClient || view === 'overview') && (
             <OverviewScreen
+              agency={account?.agency || AGENCY_NAME}
               clients={clients}
               ideas={shownIdeas}
               onOpen={(id, v) => {
@@ -573,6 +812,7 @@ export default function App() {
               query={query}
               setQuery={setQuery}
               onSearch={runSearch}
+              onImage={live ? runImageSearch : undefined}
               clientName={client.name}
               live={live}
               clientExamples={client.examples}
@@ -595,6 +835,8 @@ export default function App() {
 
           {inClient && view === 'results' && (
             <ResultsScreen
+              failed={live ? searchFailed : []}
+              empty={live ? searchEmpty : []}
               query={query}
               setQuery={setQuery}
               interp={interp}
@@ -602,6 +844,7 @@ export default function App() {
               formats={formats}
               allVideos={videos}
               onSearch={runSearch}
+              onImage={live ? runImageSearch : undefined}
               onRemoveChip={removeChip}
               clientName={client.name}
               onPlan={planFromVideo}
@@ -629,6 +872,7 @@ export default function App() {
                     trend={trends.find((t) => t.format.id === likeFormat.id)}
                     matches={results}
                     clientName={client.name}
+                    real={live}
                     onPlan={planFromVideo}
                   />
                 ) : null
@@ -670,6 +914,7 @@ export default function App() {
               onGoSaved={() => setView('saved')}
               onPlan={openPlan}
               onReview={() => setView('review')}
+              live={live}
             />
           )}
 
@@ -691,6 +936,7 @@ export default function App() {
               formatById={formatById}
               videoById={videoById}
               onOpen={openPlan}
+              onMove={moveStage}
               onGoApprovals={() => setView('approvals')}
             />
           )}
@@ -762,7 +1008,7 @@ function SearchStatus({
   onView,
   onDismiss,
 }: {
-  searching: { q: string; platform: Platform } | null
+  searching: { q: string; platforms: Platform[]; step?: string } | null
   done: { text: string; error?: string } | null
   scoring: string | null
   onView: () => void
@@ -798,7 +1044,16 @@ function SearchStatus({
     >
       {searching ? (
         <span className="small">
-          Searching {platformName[searching.platform]} for "{searching.q}"… <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+          {searching.step ? (
+            <>
+              {searching.step}… <span className="muted">{seconds}s · keep browsing, a new link takes about a minute</span>
+            </>
+          ) : (
+            <>
+              Searching {searching.platforms.map((p) => platformName[p]).join(', ')} for "{searching.q}"…{' '}
+              <span className="muted">{seconds}s · keep browsing, new searches take 20–60s</span>
+            </>
+          )}
         </span>
       ) : done?.error ? (
         <>

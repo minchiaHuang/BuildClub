@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Platform } from '../types'
 import type { ChipGroup } from '../lib/clientChips'
 import { PlatformToggles } from './PlatformToggles'
 import { ClientChips } from './ClientChips'
 import type { PulseInfo } from './ClientChips'
 import { VoiceButton } from './VoiceButton'
+import { usePastSearches } from '../lib/usePastSearches'
 
 interface Props {
   inputId: string
@@ -20,12 +21,17 @@ interface Props {
   pulse: PulseInfo
   onRefreshPulse: () => void
   autoFocus?: boolean
+  // Live mode: pick a screenshot to find videos like it.
+  onImage?: (file: File) => void
 }
 
 // The search card used on both the search page and the results page:
 // platforms, the search bar (with voice), and one row of "Trending now" chips for the client.
 export function SearchBox(p: Props) {
   const [listening, setListening] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const listId = useId()
+  const past = usePastSearches(p.value, p.live)
   const trending = p.chipGroups.find((g) => g.id === 'trending')
   const oneRow = trending
     ? [trending]
@@ -42,7 +48,7 @@ export function SearchBox(p: Props) {
     >
       <div className="search-on">
         <span className="field-label">Search on</span>
-        <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} showSoon live={p.live} />
+        <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} />
       </div>
 
       <label htmlFor={p.inputId} className="sr-only">
@@ -62,7 +68,16 @@ export function SearchBox(p: Props) {
                   : 'e.g. tofu, a question, or a TikTok link'
             }
             autoFocus={p.autoFocus}
+            list={p.live ? listId : undefined}
+            autoComplete="off"
           />
+          {p.live && (
+            <datalist id={listId}>
+              {past.map((q) => (
+                <option key={q} value={q} />
+              ))}
+            </datalist>
+          )}
           <VoiceButton
             onText={p.onValueChange}
             onDone={(text) => {
@@ -76,6 +91,27 @@ export function SearchBox(p: Props) {
           {/https?:\/\//.test(p.value) ? 'Find more like this' : 'Find trending videos'}
         </button>
       </div>
+
+      {p.onImage && (
+        <div className="search-upload">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            aria-label="Upload a screenshot"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) p.onImage?.(file)
+            }}
+          />
+          <button type="button" className="btn btn-ghost" onClick={() => fileInput.current?.click()}>
+            Upload screenshot
+          </button>
+          <span className="small muted">Find videos like a screenshot.</span>
+        </div>
+      )}
 
       <ClientChips
         clientName={p.clientName}

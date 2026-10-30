@@ -262,6 +262,19 @@ export function PlanScreen(p: Props) {
             )}
           </section>
 
+          {format.lines && format.lines.length > 0 && (
+            <section className="block">
+              <h3>What each line does</h3>
+              <ul className="line-roles">
+                {format.lines.map((l, i) => (
+                  <li key={i}>
+                    <span className="shot-time">{l.time}</span> <span className="ai-tag">{l.role}</span> <span>{l.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="block">
             <label htmlFor="note-to-approver">
               <h3>Note to {APPROVER}</h3>

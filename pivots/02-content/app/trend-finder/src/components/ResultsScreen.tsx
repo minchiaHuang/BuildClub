@@ -31,10 +31,15 @@ interface Props {
   formats: Format[]
   allVideos: Video[]
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   onRemoveChip: (chip: Chip) => void
   likeThis: React.ReactNode
   // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
   live: boolean
+  // Platforms whose search failed in this live search; the rest still show.
+  failed: { platform: Platform; message: string }[]
+  // Platforms that answered with no videos.
+  empty: Platform[]
   patterns: React.ReactNode
   results: Video[]
   trends: FormatTrend[]
@@ -89,7 +94,7 @@ export function ResultsScreen(p: Props) {
   const best = proven[0] ?? open[0] ?? ranked[0]
   const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformCounts = (['tiktok'] as Platform[])
+  const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
     .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
     .filter((x) => x.n > 0)
   const i = p.interp
@@ -163,6 +168,7 @@ export function ResultsScreen(p: Props) {
         value={draft}
         onValueChange={setDraft}
         onSearch={p.onSearch}
+        onImage={p.onImage}
         platforms={p.query.platforms}
         onPlatformsChange={(platforms) => p.setQuery({ ...p.query, platforms })}
         live={p.live}
@@ -191,13 +197,25 @@ export function ResultsScreen(p: Props) {
         ))}
       </div>
 
+      {p.failed.map((f) => (
+        <p key={f.platform} className="error" role="alert">
+          {platformName[f.platform]}: {f.message}
+        </p>
+      ))}
+
+      {p.empty.map((pl) => (
+        <p key={pl} className="error" role="alert">
+          {platformName[pl]}: No videos found.
+        </p>
+      ))}
+
       {p.likeThis}
 
       {p.answer && (
         <div className="answer" role="note">
           <div className="answer-head">
             <strong>{i.text.trim()}</strong>
-            <span className="ai-tag">Answer · sample</span>
+            <span className="ai-tag">{p.live ? 'Answer · from these results' : 'Answer · sample'}</span>
           </div>
           {p.answer.lines.map((line) => (
             <p key={line}>{line}</p>

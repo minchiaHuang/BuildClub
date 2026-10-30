@@ -215,7 +215,7 @@ export function ChannelScreen() {
         <fieldset className="chip-group" disabled={busy}>
           <legend className="field-label">Platform</legend>
           {platforms.map((p) => (
-            <label key={p.id} className={`chip ${platform === p.id ? 'chip-on' : ''}`}>
+            <label key={p.id} className={`cchip ${platform === p.id ? 'cchip-on' : ''}`}>
               <input type="radio" name="channel-platform" className="sr-only" checked={platform === p.id} onChange={() => setPlatform(p.id)} />
               {p.name}
             </label>
@@ -246,6 +246,11 @@ export function ChannelScreen() {
       )}
       {progress && <Progress p={progress} />}
       {result && <Summary result={result} />}
+      {!result && !progress && !error && (
+        <div className="empty">
+          <p>Decode a channel to see the formats it keeps using.</p>
+        </div>
+      )}
     </section>
   )
 }

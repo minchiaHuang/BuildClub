@@ -1,10 +1,11 @@
 import { TypingSearch } from './TypingSearch'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 import { Pill, type PillSpec } from './midnight/Pills'
 import { PlatformLogo } from '../PlatformToggles'
 import type { LogoPlatform } from '../PlatformToggles'
 
 // Public landing page for the Altitude direction: website hero + "what it does" section, with Log in and Register.
-// Sign-in is a demo for now, so both buttons enter the sample agency.
+// Sign-in is a demo for now; the sample-agency notes show only without the live API.
 // Reuses the Altitude hero classes (.alt-sky, .alt-cloud, .alt-rot, .alt-icons) from theme-altitude.css.
 // How the platforms appear in the sky: 'tags' (Midnight-style text pills, being tried now) or 'round' (logo badges).
 // The round version is kept so we can switch back by changing this one value.
@@ -43,10 +44,17 @@ function StepIcon({ kind }: { kind: 'search' | 'plan' }) {
 }
 
 export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
+  const { mode } = useLiveInfo()
   return (
     <main className="landing landing-alt">
       <a className="la-strip" href="#what">
-        Now searching TikTok live <span aria-hidden="true">·</span> Instagram coming soon <span aria-hidden="true">→</span>
+        Now searching TikTok live{' '}
+        {mode === 'sample' && (
+          <>
+            <span aria-hidden="true">·</span> Instagram coming soon{' '}
+          </>
+        )}
+        <span aria-hidden="true">→</span>
       </a>
       <nav className="la-nav" aria-label="Main">
         <a className="la-logo" href="#top">
@@ -59,7 +67,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
         </div>
         <div className="la-actions">
           <button type="button" className="la-pill la-outline" onClick={onLogIn}>Log in</button>
-          <button type="button" className="la-pill la-solid" onClick={onRegister}>Register</button>
+          <button type="button" className="la-pill la-solid" onClick={onRegister}>Ask for access</button>
         </div>
       </nav>
 
@@ -95,10 +103,10 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
           </p>
           <TypingSearch variant="altitude" />
           <div className="la-ctas">
-            <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Register free</button>
+            <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Ask for access</button>
             <button type="button" className="la-pill la-outline la-big" onClick={onLogIn}>Log in to dashboard</button>
           </div>
-          <p className="la-note">Demo: both buttons open the sample agency.</p>
+          {mode === 'sample' && <p className="la-note">Demo: both buttons open the sample agency.</p>}
         </div>
       </header>
 
@@ -142,7 +150,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
         <p>Built for agencies managing many clients.</p>
         <div className="la-ctas">
           <button type="button" className="la-pill la-outline" onClick={onLogIn}>Log in</button>
-          <button type="button" className="la-pill la-solid" onClick={onRegister}>Register free</button>
+          <button type="button" className="la-pill la-solid" onClick={onRegister}>Ask for access</button>
         </div>
       </section>
     </main>

@@ -1,5 +1,6 @@
-import type { Format, Platform, Shot, Video } from '../types'
-import { UNKNOWN_DAYS, outlierScore } from './metrics'
+import type { Format, Line, Platform, Shot, Video } from '../types'
+import type { Answer } from './answer'
+import { UNKNOWN_DAYS, hasScore, outlierScore } from './metrics'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
 interface LiveItem {
@@ -48,10 +49,13 @@ export async function checkLive(): Promise<boolean> {
   }
 }
 
+// Cuts by characters, not UTF-16 units, so an emoji is never split in half (the API rejects half of one).
+const cut = (s: string, n: number) => Array.from(s).slice(0, n).join('')
+
 // The first line of the caption, without hashtags: usually the hook.
 function hookFrom(text: string): string {
   const line = text.split('\n').map((l) => l.replace(/#\S+/g, '').trim()).find(Boolean) ?? ''
-  return line.length > 90 ? `${line.slice(0, 87).trimEnd()}…` : line
+  return Array.from(line).length > 90 ? `${cut(line, 87).trimEnd()}…` : line
 }
 
 const daysSince = (iso: string | null) =>
@@ -113,9 +117,6 @@ function toFormat(item: LiveItem, v: Video): Format {
   }
 }
 
-// The one platform a live search runs on: the only one picked, else TikTok.
-export const livePlatform = (selected: Platform[]): Platform => (selected.length === 1 ? selected[0] : 'tiktok')
-
 export async function searchLive(
   query: string,
   fresh = false,
@@ -137,13 +138,55 @@ export async function searchLive(
   return { videos, formats, cached: Boolean(body.cached), fetchedAt: body.fetchedAt, mediansPending: Boolean(body.mediansPending) }
 }
 
+export interface SearchAll {
+  videos: Video[]
+  formats: Format[]
+  // Platforms whose search failed (daily cap, upstream error, nothing saved); the others still count.
+  failed: { platform: Platform; message: string }[]
+  // Platforms that answered with no videos.
+  empty: Platform[]
+  // Platforms still working out account medians; poll them with cachedOnly.
+  pending: Platform[]
+}
+
+// Scored videos first by score, then the unscored ones by views.
+const byScore = (a: Video, b: Video) =>
+  Number(hasScore(b)) - Number(hasScore(a)) || (hasScore(a) ? outlierScore(b) - outlierScore(a) : b.views - a.views)
+
+// One search per platform, in parallel. A platform that fails never fails the rest.
+export async function searchAll(
+  query: string,
+  platforms: Platform[],
+  opts: { fresh?: boolean; cachedOnly?: boolean } = {},
+): Promise<SearchAll> {
+  const settled = await Promise.allSettled(platforms.map((p) => searchLive(query, opts.fresh, p, opts.cachedOnly)))
+  const videos: Video[] = []
+  const formats: Format[] = []
+  const failed: SearchAll['failed'] = []
+  const pending: Platform[] = []
+  const empty: Platform[] = []
+  settled.forEach((r, i) => {
+    const platform = platforms[i]
+    if (r.status === 'rejected') {
+      failed.push({ platform, message: r.reason instanceof Error ? r.reason.message : 'Search failed.' })
+      return
+    }
+    if (!r.value.videos.length) empty.push(platform)
+    videos.push(...r.value.videos)
+    formats.push(...r.value.formats)
+    if (r.value.mediansPending) pending.push(platform)
+  })
+  return { videos: videos.sort(byScore), formats, failed, empty, pending }
+}
+
 // The AI breakdown of one real video (Breakdown in backend/models.py).
 export interface Breakdown {
   shotList: Shot[]
   why: Format['why']
   props: string[]
   editorNotes: string
-  lines: { time: string; text: string; role: 'hook' | 'setup' | 'proof' | 'payoff' | 'cta' }[]
+  lines: Line[]
+  needs: string[]
 }
 
 interface AnalyzeJob {
@@ -176,6 +219,60 @@ export async function analyzeVideo(url: string, onStep: (step: string) => void):
   }
 }
 
+export interface LikeResult {
+  breakdown: Breakdown
+  keywords: string[]
+  formatName: string
+}
+
+// "Find videos like this link": breaks the video down (or reuses the saved breakdown) and returns
+// search keywords taken from it. Progress steps go to onStep.
+export async function likeVideo(url: string, onStep: (step: string) => void): Promise<LikeResult> {
+  const r = await fetch('/api/like', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  const started = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(started.error ?? 'Could not start reading that link.')
+  for (;;) {
+    const res = await fetch(`/api/like/${started.job}`)
+    const job = (await res.json().catch(() => ({}))) as Partial<AnalyzeJob> & Partial<LikeResult>
+    if (!res.ok) throw new Error((job as { error?: string }).error ?? 'Could not read that link. Try again.')
+    if (job.status === 'done' && job.breakdown && job.keywords?.length) {
+      return { breakdown: job.breakdown, keywords: job.keywords, formatName: job.formatName ?? job.keywords[0] }
+    }
+    if (job.status === 'failed') throw new Error(job.error ?? 'Could not read that link.')
+    onStep(job.step ?? '')
+    await new Promise((done) => setTimeout(done, 2000))
+  }
+}
+
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+export interface LikeImageResult {
+  keywords: string[]
+  formatName: string
+  description: string
+}
+
+// "Find videos like this screenshot": sends the picture (base64 in JSON) and returns what it shows
+// and search keywords. The same picture a second time is free.
+export async function likeImage(file: File): Promise<LikeImageResult> {
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is too big. Use one under 5 MB.')
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  const r = await fetch('/api/like-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: btoa(binary), mediaType: file.type }),
+  })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(body.error ?? 'Could not read that image. Try again.')
+  return body as LikeImageResult
+}
+
 // The breakdown fills the same Format fields the sample data has.
 export const applyBreakdown = (f: Format, b: Breakdown): Format => ({
   ...f,
@@ -183,7 +280,47 @@ export const applyBreakdown = (f: Format, b: Breakdown): Format => ({
   why: b.why,
   props: b.props,
   editorNotes: b.editorNotes,
+  lines: b.lines,
+  needs: b.needs,
+  // An empty list may just be a breakdown from before needs existed; the drawer then asks checkNeeds.
+  needsKnown: b.needs.length > 0,
 })
+
+// Asks the API what a client needs to film an already-broken-down video. Free once answered.
+export async function checkNeeds(url: string, vocab: string[]): Promise<string[]> {
+  const r = await fetch('/api/needs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, needs: vocab }),
+  })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(body.error ?? 'Could not check what this video needs.')
+  return body.needs as string[]
+}
+
+// A short written answer to the search, from the real videos it found. Free for the same results.
+export async function askAnswer(query: string, videos: Video[]): Promise<Answer> {
+  const top = [...videos].sort((a, b) => outlierScore(b) - outlierScore(a)).slice(0, 30)
+  const r = await fetch('/api/answer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: cut(query, 200), // the server's limits (models.py AnswerRequest)
+      videos: top.map((v) => ({
+        id: v.id,
+        platform: v.platform,
+        hook: cut(v.hook, 300),
+        views: v.views,
+        outlier: hasScore(v) ? outlierScore(v) : undefined,
+        hashtags: (v.hashtags ?? []).slice(0, 30).map((h) => cut(h, 60)),
+        music: cut(v.music ?? '', 200),
+      })),
+    }),
+  })
+  const body = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(body.error ?? 'Could not write an answer.')
+  return body as Answer
+}
 
 // Clients and saved ideas are also kept by the API, so they survive a new browser.
 // null means nothing has been saved there yet.
@@ -200,6 +337,22 @@ export async function saveList<T>(name: 'clients' | 'ideas', items: T[]): Promis
     body: JSON.stringify(items),
   })
   if (!r.ok) throw new Error(`Could not save ${name}.`)
+}
+
+// Each client's last "Trending now" check, kept by the API too. null means nothing saved there yet.
+export async function loadPulses<T>(): Promise<Record<string, T> | null> {
+  const r = await fetch('/api/pulses')
+  if (!r.ok) throw new Error('Could not load trending checks.')
+  return r.json()
+}
+
+export async function savePulses<T>(pulses: Record<string, T>): Promise<void> {
+  const r = await fetch('/api/pulses', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pulses),
+  })
+  if (!r.ok) throw new Error('Could not save trending checks.')
 }
 
 // The real videos and breakdowns that saved ideas point to. Without them, a saved idea opened

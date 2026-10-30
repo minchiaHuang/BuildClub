@@ -38,3 +38,12 @@ def test_library_round_trip(client):
 
 def test_library_needs_both_lists(client):
     assert client.put("/api/library", json={"videos": []}).status_code == 422
+
+
+def test_added_client_round_trips(client):
+    added = {"id": "acme-bakery", "name": "Acme Bakery", "niche": "bakery", "audience": "locals",
+             "monthlyTarget": 8, "examples": [], "topics": ["sourdough", "cake decorating"], "cannot": []}
+    assert client.put("/api/clients", json=[CLIENT, added]).status_code == 200
+    saved = client.get("/api/clients").json()
+    assert [c["id"] for c in saved] == ["c1", "acme-bakery"]
+    assert saved[1]["topics"] == ["sourdough", "cake decorating"]

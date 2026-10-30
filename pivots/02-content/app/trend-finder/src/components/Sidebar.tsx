@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Client } from '../types'
 import type { Workspace } from '../state'
 import { AGENCY_NAME } from '../state'
+import type { Account } from '../lib/auth'
 
 export type View = 'overview' | 'search' | 'results' | 'saved' | 'approvals' | 'review' | 'plans' | 'plan' | 'settings' | 'channel'
 
@@ -42,12 +43,15 @@ interface Props {
   setView: (v: View) => void
   counts: { saved: number; waiting: number; plans: number }
   onSignOut: () => void
+  // The signed-in person; null in the no-account demo.
+  account: Account | null
   open: boolean
   onClose: () => void
   live: boolean
+  onAddClient: () => void
 }
 
-function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'>) {
+function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient, agency }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'> & { onAddClient: () => void; agency: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const current = clients.find((c) => c.id === workspace)
@@ -74,7 +78,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
       <button className="switcher-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className={`avatar ${current ? '' : 'avatar-agency'}`}>{current ? initials(current.name) : '▦'}</span>
         <span className="switcher-text">
-          <span className="switcher-label">{current ? 'Client' : AGENCY_NAME}</span>
+          <span className="switcher-label">{current ? 'Client' : agency}</span>
           <strong>{current ? current.name : 'All clients'}</strong>
         </span>
         <span className="switcher-caret" aria-hidden="true">
@@ -107,11 +111,18 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
             </button>
           ))}
           <div className="switcher-sep" />
-          <button role="menuitem" className="switcher-item switcher-add" disabled title="Coming later">
+          <button
+            role="menuitem"
+            className="switcher-item switcher-add"
+            onClick={() => {
+              setOpen(false)
+              onAddClient()
+            }}
+          >
             <span className="avatar avatar-add">+</span>
             <span>
               <strong>Add client</strong>
-              <span className="small muted">Coming soon</span>
+              <span className="small muted">New client</span>
             </span>
           </button>
         </div>
@@ -148,7 +159,7 @@ export function Sidebar(p: Props) {
           Trend Finder
         </div>
 
-        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} />
+        <ClientSwitcher agency={p.account?.agency || AGENCY_NAME} clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} onAddClient={() => { p.onClose(); p.onAddClient() }} />
 
         <nav className="side-nav">
           {inClient ? (
@@ -181,10 +192,10 @@ export function Sidebar(p: Props) {
             </span>
           )}
           <div className="side-user">
-            <span className="avatar avatar-user">D</span>
+            <span className="avatar avatar-user">{p.account ? initials(p.account.name || p.account.email) : 'D'}</span>
             <span className="side-user-text">
-              <strong>Demo user</strong>
-              <span className="small muted">{AGENCY_NAME}</span>
+              <strong>{p.account ? p.account.name || p.account.email : 'Demo user'}</strong>
+              <span className="small muted">{p.account?.agency || AGENCY_NAME}</span>
             </span>
             <button className="icon-btn" onClick={p.onSignOut} aria-label="Sign out" title="Sign out">
               <Icon name="out" />

@@ -99,10 +99,10 @@ export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, eve
 export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', reddit: 'Reddit', x: 'X' }
 
 export function clientFit(format: Format, client: Client) {
-  if (format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }
+  if (!format.needsKnown && format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }
   const blockers = format.needs.filter((n) => client.cannot.includes(n))
   if (blockers.length) return { ok: false, text: `Hard for ${client.name}: needs ${blockers.join(' and ').toLowerCase()}.` }
-  const needs = format.needs.join(' and ').toLowerCase()
+  const needs = format.needs.length ? format.needs.join(' and ').toLowerCase() : 'nothing special'
   const effort = { easy: 'Easy to film', medium: 'Doable', hard: 'Takes planning' }[format.effort]
   return { ok: true, text: `${effort} for ${client.name}. Needs ${needs}.` }
 }

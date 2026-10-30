@@ -148,3 +148,8 @@
   .review { gap: 14px; }
   .review-card { padding: 16px; }
 }
+
+/* Annie's link page: just the review column, no sidebar. */
+.review-page { min-height: 100vh; padding: 24px 16px 56px; }
+.review-page > .small { max-width: 440px; margin: 0 auto 12px; color: var(--danger, #b3261e); }
+.share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; justify-self: start; align-self: flex-start; }

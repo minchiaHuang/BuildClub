@@ -9,7 +9,10 @@ Pin a cached search so it never expires (offline demos):
 """
 
 import base64
+import binascii
+import contextlib
 import copy
+import getpass
 import hashlib
 import json
 import os
@@ -29,13 +32,17 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+import assist
 import channels
 import reddit
+import share
 import x
 import youtube
-from analyze import Jobs, job_id_for
-from models import (AnalyzeJob, AnalyzeRequest, AnalyzeStarted, ChannelJob, ChannelRequest, ChannelStarted, Client,
-                    Library, SavedIdea, SearchResult)
+import analyze
+import auth
+from analyze import DEFAULT_NEEDS, Jobs, job_id_for
+from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
+                    Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
 
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
@@ -90,6 +97,11 @@ X_USD_PER_TWEET = 0.0004  # the dearer of the two candidate actors; account medi
 REDDIT_USD_PER_SUB = 0.02
 APIFY_USD_PER_VIDEO = 0.0037  # TikTok actor; account medians cost this per video fetched (134 videos: 0.497)
 ANALYZE_USD = 0.08  # one Claude breakdown
+NEEDS_USD = 0.01  # one small Claude call that fills in a finished breakdown's needs
+IMAGE_USD = 0.02  # one small Claude call that reads a screenshot
+ASK_USD = 0.01  # one small Claude call that answers a search from its results
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # decoded; the base64 request body is about a third bigger
+LIKE_USD = 0.01  # one small Claude call that turns a finished breakdown into search keywords
 
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
@@ -107,9 +119,35 @@ def password_ok(header: str) -> bool:
     return scheme.lower() == "basic" and secrets.compare_digest(password.encode(), APP_PASSWORD.encode())
 
 
+# Once an account exists these need no session: the pages (every non-/api path, so the sign-in
+# page and the approver's /review/<token> page can load), health, the landing-page stats, signing
+# in, and the approver's own API. Everything else under /api needs one. Matching is exact, or on
+# the "/api/review/" prefix with its trailing slash, so "/api/reviewX" is not let through.
+PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login")
+PUBLIC_API_PREFIX = "/api/review/"
+
+
+DOC_PATHS = ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")
+
+
+def needs_session(path: str) -> bool:
+    if path in DOC_PATHS:  # the API docs list every route, so they sit behind sign-in too
+        return True
+    if path != "/api" and not path.startswith("/api/"):
+        return False
+    return path not in PUBLIC_API and not path.startswith(PUBLIC_API_PREFIX)
+
+
 @app.middleware("http")
 async def require_password(request: Request, call_next):
-    if APP_PASSWORD and not password_ok(request.headers.get("authorization", "")):
+    with contextlib.closing(db()) as conn:
+        users = auth.has_users(conn)
+        session = auth.session_user(conn, request.cookies.get(auth.COOKIE), time.time()) if users else None
+        conn.commit()
+    if users:  # accounts replace the shared password: no Basic from here on
+        if needs_session(request.url.path) and session is None:
+            return JSONResponse({"error": "Sign in to continue."}, status_code=401)
+    elif APP_PASSWORD and not password_ok(request.headers.get("authorization", "")):
         return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Trend Finder"'})
     return await call_next(request)
 
@@ -439,6 +477,50 @@ def health():
             "resultsPerSearch": RESULTS_PER_SEARCH}
 
 
+def saved_files():
+    """(file name, parsed search, is pinned) for every saved search; the same search in both folders has the same file name."""
+    for folder in (CACHE_DIR, PINNED_DIR):
+        for f in sorted(folder.glob("*.json")):
+            try:
+                yield f.name, json.loads(f.read_text()), folder == PINNED_DIR
+            except (OSError, ValueError):
+                continue
+
+
+STATS_SECONDS = 60
+stats_cache: dict = {}
+
+
+@app.get("/api/stats")
+def stats():
+    """How many real videos this server has searched: saved and pinned searches, each search and each video once."""
+    now = time.time()
+    if stats_cache.get("at", 0) > now - STATS_SECONDS:
+        return stats_cache["value"]
+    searches = {name: saved for name, saved, _ in saved_files()}
+    seen = {(s.get("platform"), v.get("id")) for s in searches.values() for v in s.get("videos", []) if v.get("id")}
+    value = {"videosScanned": len(seen), "searches": len(searches)}
+    stats_cache.update(at=now, value=value)
+    return value
+
+
+@app.get("/api/suggest")
+def suggest_queries(q: str = ""):
+    """Past searches and client topics that contain what is being typed: pinned first, each once, at most 8."""
+    needle = q.strip().lower()
+    if not needle:
+        return {"queries": []}
+    files = list(saved_files())
+    names = [s.get("query") for _, s, pinned in files if pinned] + [s.get("query") for _, s, pinned in files if not pinned]
+    for c in load("clients") or []:
+        names += [*(c.get("topics") or []), *c.get("examples", [])]
+    out: list[str] = []
+    for name in names:
+        if isinstance(name, str) and needle in name.lower() and name.lower() not in {o.lower() for o in out}:
+            out.append(name)
+    return {"queries": out[:8]}
+
+
 @app.get("/api/search", response_model=SearchResult)
 def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: str = ""):
     query = q.strip()[:120]
@@ -494,6 +576,8 @@ def db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
+    for statement in auth.SCHEMA:
+        conn.execute(statement)
     return conn
 
 
@@ -504,7 +588,10 @@ def load(key: str):
 
 
 def save(key: str, items) -> None:
-    value = json.dumps([i.model_dump(exclude_none=True) for i in items] if isinstance(items, list) else items.model_dump())
+    if isinstance(items, dict):
+        value = json.dumps({k: v.model_dump() for k, v in items.items()})
+    else:
+        value = json.dumps([i.model_dump(exclude_none=True) for i in items] if isinstance(items, list) else items.model_dump())
     with db() as conn:
         conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, value))
 
@@ -527,7 +614,11 @@ def get_ideas():
 
 @app.put("/api/ideas", response_model=list[SavedIdea], response_model_exclude_none=True)
 def put_ideas(ideas: list[SavedIdea]):
-    save("ideas", ideas)
+    # Annie may have decided since this tab last loaded; keep her newer answer.
+    with share.ideas_lock:
+        merged = share.merge_ideas(load("ideas"), [i.model_dump(exclude_none=True) for i in ideas])
+        ideas = [SavedIdea(**i) for i in merged]
+        save("ideas", ideas)
     return ideas
 
 
@@ -541,6 +632,69 @@ def get_library():
 def put_library(library: Library):
     save("library", library)
     return library
+
+
+# Each client's last "Trending now" check, keyed by client id.
+@app.get("/api/pulses", response_model=Optional[dict[str, Pulse]])
+def get_pulses():
+    return load("pulses")
+
+
+@app.put("/api/pulses", response_model=dict[str, Pulse])
+def put_pulses(pulses: dict[str, Pulse]):
+    save("pulses", pulses)
+    return pulses
+
+
+# The approver's share link: /api/share (Daphne) and /api/review/<token> (Annie, no login).
+def session_cookie_secure(request: Request) -> bool:
+    return request.headers.get("x-forwarded-proto", "").lower() == "https" or request.url.scheme == "https"
+
+
+@app.post("/api/auth/login")
+def auth_login(body: LoginRequest, request: Request):
+    email, now = auth.normalise(body.email), time.time()
+    if auth.too_many_failures(email, now):
+        return error(429, "Too many tries. Wait a few minutes and try again.")
+    with contextlib.closing(db()) as conn:
+        user = auth.check_login(conn, email, body.password)
+        if user is None:
+            auth.note_failure(email, now)
+            return error(401, "Wrong email or password.")
+        token = auth.start_session(conn, user[0], now)
+        conn.commit()
+    auth.clear_failures(email)
+    response = JSONResponse({"email": user[0], "name": user[1], "agency": user[2]})
+    response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_SECONDS, path="/", httponly=True, samesite="lax",
+                        secure=session_cookie_secure(request))
+    return response
+
+
+@app.post("/api/auth/logout", status_code=204)
+def auth_logout(request: Request):
+    with contextlib.closing(db()) as conn:
+        auth.end_session(conn, request.cookies.get(auth.COOKIE))
+        conn.commit()
+    response = Response(status_code=204)
+    response.delete_cookie(auth.COOKIE, path="/")
+    return response
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    # Reached with no account at all (the app then opens as before) or with a live session; the
+    # middleware has already turned back an account-holder without one.
+    with contextlib.closing(db()) as conn:
+        if not auth.has_users(conn):
+            return {"users": False}
+        user = auth.session_user(conn, request.cookies.get(auth.COOKIE), time.time())
+        conn.commit()
+    if user is None:
+        return error(401, "Sign in to continue.")
+    return {"users": True, "email": user[0], "name": user[1], "agency": user[2]}
+
+
+app.include_router(share.make_router(db, load, save))
 
 
 budget_lock = threading.Lock()
@@ -605,7 +759,7 @@ def start_analyze(body: AnalyzeRequest):
     current = jobs.get(job_id_for(url))
     if (not current or current.status == "failed") and not spend("claude", ANALYZE_USD, DAILY_CLAUDE_USD):
         return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
-    return {"job": jobs.submit(url)}
+    return {"job": jobs.submit(url, body.needs) if body.needs else jobs.submit(url)}
 
 
 @app.get("/api/analyze/{job_id}", response_model=AnalyzeJob, response_model_exclude_none=True)
@@ -614,6 +768,101 @@ def get_analyze(job_id: str):
     if not job:
         return error(404, "No breakdown with that id. Start one with POST /api/analyze.")
     return job
+
+
+@app.post("/api/like", response_model=AnalyzeStarted)
+def start_like(body: LikeRequest):
+    """Find videos like a pasted link: starts (or reuses) the breakdown of that link."""
+    return start_analyze(AnalyzeRequest(url=body.url))
+
+
+@app.get("/api/like/{job_id}", response_model=LikeJob, response_model_exclude_none=True)
+def get_like(job_id: str):
+    job = jobs.get(job_id)
+    if not job:
+        return error(404, "No search with that id. Start one with POST /api/like.")
+    if job.status != "done" or not job.result:
+        return {"status": job.status, "step": job.step, "error": job.error}
+    breakdown = job.result.model_dump()
+    saved = analyze.JOBS_DIR / job_id / "like.json"
+    if saved.exists():
+        terms = json.loads(saved.read_text(encoding="utf-8"))
+    else:
+        if not spend("claude", LIKE_USD, DAILY_CLAUDE_USD):
+            return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+        try:
+            keywords, name = assist.like_terms(breakdown)
+        except Exception as e:
+            return error(502, "Could not read what this video is about. Try again.", str(e))
+        terms = {"keywords": keywords, "formatName": name}
+        saved.write_text(json.dumps(terms, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"status": "done", "step": "Done", "breakdown": breakdown, **terms}
+
+
+@app.post("/api/like-image", response_model=LikeImageResult)
+def like_image(body: LikeImageRequest):
+    """Find videos like a screenshot: Claude describes what it shows. Free for a picture seen before."""
+    data = body.image.strip()
+    if len(data) * 3 // 4 > MAX_IMAGE_BYTES + 3:  # cheap check before decoding a huge string
+        return error(413, "That image is too big. Use one under 5 MB.")
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError):
+        return error(400, "That image could not be read. Try another file.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        return error(413, "That image is too big. Use one under 5 MB.")
+    key = f"likeimg:{hashlib.sha1(raw).hexdigest()}"
+    cached = load(key)
+    if cached:
+        return cached
+    if not spend("claude", IMAGE_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+    try:
+        keywords, name, description = assist.like_image_terms(data, body.mediaType)
+    except Exception as e:
+        return error(502, "Could not read that image. Try again.", str(e))
+    result = {"keywords": keywords, "formatName": name, "description": description}
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, json.dumps(result)))
+    return result
+
+
+@app.post("/api/answer", response_model=AnswerResult)
+def answer_search(body: AnswerRequest):
+    """Answers a search from the real videos it found. Free for the same search and videos seen before."""
+    key = "answer:" + hashlib.sha1(json.dumps([body.query, [v.id for v in body.videos]]).encode()).hexdigest()
+    cached = load(key)
+    if cached:
+        return cached
+    if not spend("claude", ASK_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+    try:
+        lines = assist.answer_lines(body.query, [v.model_dump(exclude={"id"}, exclude_none=True) for v in body.videos])
+    except Exception as e:
+        return error(502, "Could not write an answer. Try again.", str(e))
+    result = {"lines": lines, "basis": f"Written from the {len(body.videos)} real videos below"}
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (key, json.dumps(result)))
+    return result
+
+
+@app.post("/api/needs", response_model=NeedsResult)
+def check_needs(body: NeedsRequest):
+    """Fills in `needs` on a breakdown saved before needs existed. Free once it has been filled."""
+    saved = analyze.JOBS_DIR / job_id_for(body.url.strip()) / "breakdown.json"
+    if not saved.exists():
+        return error(404, "No breakdown for that video yet. Break it down first.")
+    data = json.loads(saved.read_text(encoding="utf-8"))
+    if "needs" in data:
+        return {"needs": data["needs"]}
+    if not spend("claude", NEEDS_USD, DAILY_CLAUDE_USD):
+        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+    try:
+        needs = assist.pick_needs(data, body.needs or DEFAULT_NEEDS)
+    except Exception as e:
+        return error(502, "Could not check what this video needs. Try again.", str(e))
+    saved.write_text(json.dumps({**data, "needs": needs}, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"needs": needs}
 
 
 # A channel summary takes minutes to an hour, so it also runs in the background and is polled.
@@ -681,9 +930,32 @@ def pin(query: str, platform: str = "tiktok") -> None:
     print(f'Pinned "{query}": it will load without Apify or the internet.')
 
 
+def add_user(args: list[str]) -> None:
+    """add-user <email> "<name>" "<agency>" [--password-stdin]: asks for the password twice, unless it comes on stdin."""
+    stdin = "--password-stdin" in args
+    args = [a for a in args if a != "--password-stdin"]
+    if len(args) != 3:
+        sys.exit('Usage: python backend/server.py add-user <email> "<name>" "<agency>" [--password-stdin]')
+    if stdin:
+        password = sys.stdin.readline().rstrip("\r\n")
+    else:
+        password = getpass.getpass("Password: ")
+        if getpass.getpass("Password again: ") != password:
+            sys.exit("The passwords don't match.")
+    try:
+        with contextlib.closing(db()) as conn, conn:
+            auth.create_user(conn, args[0], args[1], args[2], password)
+    except ValueError as e:
+        sys.exit(str(e))
+    print(f"Added {auth.normalise(args[0])}. They can sign in now.")
+
+
 if __name__ == "__main__":
     platforms = ["tiktok", "instagram", "youtube", "reddit", "x"]
     if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and (sys.argv[3:] == [] or sys.argv[3] in platforms):
         pin(sys.argv[2].strip()[:120], *sys.argv[3:])
+    elif len(sys.argv) >= 2 and sys.argv[1] == "add-user":
+        add_user(sys.argv[2:])
     else:
-        sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]')
+        sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]\n'
+                 '       python backend/server.py add-user <email> "<name>" "<agency>"')

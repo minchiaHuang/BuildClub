@@ -5,12 +5,13 @@ import { compact, outlierScore, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
-  client: Client
+  client: Pick<Client, 'id' | 'name'>
   ideas: SavedIdea[]
   videoById: Map<string, Video>
   formatById: Map<string, Format>
   onDecide: (ideaId: string, approved: boolean, reason?: string) => void
-  onBack: () => void
+  // Only in Daphne's preview. Annie's own page has nothing to go back to.
+  onBack?: () => void
 }
 
 // A decision that is animating out. onDecide is called once the card has slid away and its space has closed.
@@ -29,7 +30,7 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 const tokenMs = (name: string) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0
 
 // What Annie sees: each waiting plan with its reference, shots and note, and one tap to approve or send back.
-// A narrow column so it reads like a phone view. Demo only: Annie has no separate login yet.
+// A narrow column so it reads like a phone view. Used for Daphne's preview and for Annie's link page.
 export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack }: Props) {
   const [passing, setPassing] = useState<string | null>(null)
   const [reason, setReason] = useState('')
@@ -107,10 +108,14 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
 
   return (
     <section className="review">
-      <button className="link-btn review-back" onClick={onBack}>
-        ← Back to approvals
-      </button>
-      <p className="review-banner">Preview of Annie's view. In the real product this opens on Annie's phone.</p>
+      {onBack && (
+        <>
+          <button className="link-btn review-back" onClick={onBack}>
+            ← Back to approvals
+          </button>
+          <p className="review-banner">Preview of Annie's view. This is what opens when she uses your link.</p>
+        </>
+      )}
 
       <header className="page-head review-head">
         <span className="eyebrow">{client.name} · For Annie</span>
