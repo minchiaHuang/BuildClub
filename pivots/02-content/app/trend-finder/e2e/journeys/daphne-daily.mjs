@@ -119,7 +119,7 @@ for (const { theme, width } of matrix()) {
     await page.getByRole('button', { name: 'Open plan' }).first().click()
     await page.locator('#plan-due').fill('2026-12-24')
     await page.locator('#plan-editor-notes').fill('Use the warm filter.')
-    await page.getByText('Approved. Due 2026-12-24.').waitFor()
+    await page.getByText('Approved. Due 24 Dec.').waitFor()
     await page.waitForTimeout(1500)
     await page.reload({ waitUntil: 'domcontentloaded' })
     await selectClient(page, name)
@@ -131,7 +131,7 @@ for (const { theme, width } of matrix()) {
     await page.getByRole('button', { name: /Copy brief for editor/ }).click()
     await page.getByText('Brief copied').waitFor()
     const brief = await page.evaluate(() => navigator.clipboard.readText())
-    check(brief.includes('Use the warm filter.') && brief.includes('2026-12-24'), 'copied brief misses the note or due date')
+    check(brief.includes('Use the warm filter.') && brief.includes('24 Dec'), 'copied brief misses the note or due date')
   }, P)
   await c.step('board: Approved -> Posted', async () => {
     await nav(page, 'Plans')

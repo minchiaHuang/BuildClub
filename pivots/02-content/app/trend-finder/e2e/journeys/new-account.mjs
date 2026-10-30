@@ -13,8 +13,8 @@ const browser = await launch()
   await c.step('a new account does not see other accounts\' clients', async () => {
     const u = addUser(`iso-${uniq()}@example.com`, 'Iso User', 'Iso Agency')
     await apiLogin(ctx, u.email, u.password)
-    const clients = await (await ctx.request.get(base + '/api/clients')).json()
-    const ideas = await (await ctx.request.get(base + '/api/ideas')).json()
+    const clients = (await (await ctx.request.get(base + '/api/clients')).json()) ?? []
+    const ideas = (await (await ctx.request.get(base + '/api/ideas')).json()) ?? []
     check(clients.length === 0 && ideas.length === 0, `new account sees ${clients.length} clients and ${ideas.length} ideas that belong to another account`)
   })
   await ctx.close()
