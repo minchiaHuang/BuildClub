@@ -162,7 +162,8 @@ for (const theme of THEMES) {
         // No tile may stick out of its column.
         const bad = await page.evaluate(() => [...document.querySelectorAll('.tile, .tile-main')].filter((e) => e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX === 'visible').length)
         check(bad === 0, `${bad} tiles overflow their box`)
-        await page.locator('.tile-main').first().click()
+        // The demo video, which has a cached breakdown (any other one would open a plan with no shots).
+        await page.locator(`[data-video-id="${demoVideo}"]`).click()
         const dlg = page.getByRole('dialog')
         await dlg.waitFor()
         await page.waitForTimeout(500)
@@ -350,7 +351,8 @@ for (const theme of THEMES) {
         await nav(a.page, 'Search')
         await searchFor(a.page, 'tofu')
         const ids = await a.page.locator('.tile-main').evaluateAll((els) => els.map((e) => e.dataset.videoId))
-        const other = ids.find((i) => i.startsWith('tt-') && i !== demoVideo)
+        // Each scenario saves a different video (the 1st), so one scenario's save does not hide the next one's button.
+        const other = ids.filter((i) => i.startsWith('tt-') && i !== demoVideo)[0]
         await a.page.locator(`[data-video-id="${other}"]`).click()
         await a.page.getByRole('dialog').getByRole('button', { name: /^Save to/ }).click()
         await a.page.getByRole('dialog').getByRole('button', { name: /Saved to/ }).waitFor({ timeout: 30_000 })
@@ -464,7 +466,8 @@ for (const theme of THEMES) {
       await nav(page, 'Search')
       await searchFor(page, 'tofu')
       const ids = await page.locator('.tile-main').evaluateAll((els) => els.map((e) => e.dataset.videoId))
-      const other = ids.find((i) => i.startsWith('tt-') && i !== demoVideo)
+      // Each scenario saves a different video (the 2nd), so one scenario's save does not hide the next one's button.
+      const other = ids.filter((i) => i.startsWith('tt-') && i !== demoVideo)[1]
       await page.locator(`[data-video-id="${other}"]`).click()
       const dlg = page.getByRole('dialog')
       await dlg.getByRole('button', { name: /^Save to/ }).click()
@@ -529,7 +532,8 @@ for (const theme of THEMES) {
       await nav(page, 'Search')
       await searchFor(page, 'tofu')
       const ids = await page.locator('.tile-main').evaluateAll((els) => els.map((e) => e.dataset.videoId))
-      const other = ids.find((i) => i.startsWith('tt-') && i !== demoVideo)
+      // Each scenario saves a different video (the 3rd), so one scenario's save does not hide the next one's button.
+      const other = ids.filter((i) => i.startsWith('tt-') && i !== demoVideo)[2]
       await page.locator(`[data-video-id="${other}"]`).click()
       const dlg = page.getByRole('dialog')
       await dlg.getByRole('button', { name: /^Save to/ }).click()
