@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
-import { compact, outlierScore, times } from '../lib/metrics'
+import { compact, hasScore, outlierScore, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 import { useApp, useManagerName } from '../lib/appContext'
 import type { Decision } from '../lib/memory'
@@ -290,7 +290,7 @@ function ReviewCard(p: CardProps) {
             <div>
               <strong>{f.name}</strong>
               <span className="small muted">
-                Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
+                Reference: "{v.hook}" · {compact(v.views)} views{hasScore(v) && ` · ${times(outlierScore(v))} usual`}
               </span>
             </div>
           </div>

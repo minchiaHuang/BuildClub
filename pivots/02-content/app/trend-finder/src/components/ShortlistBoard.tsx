@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
-import { compact, outlierScore, plural, times } from '../lib/metrics'
+import { compact, hasScore, outlierScore, plural, times } from '../lib/metrics'
+import { dueLabel } from '../lib/dates'
 import { useManagerName } from '../lib/appContext'
 import { inTwoWeeks } from '../state'
 import { ProgressRing } from './ProgressRing'
@@ -73,10 +74,10 @@ export function ShortlistBoard(p: Props) {
         <div className="board-card-body">
           <strong>{v.live ? v.hook : f?.name}</strong>
           <span className="small muted">
-            Reference: {v.live ? v.handle : `"${v.hook}" · ${v.handle}`} · {compact(v.views)} views · {times(outlierScore(v))}
+            Reference: {v.live ? v.handle : `"${v.hook}" · ${v.handle}`} · {compact(v.views)} views{hasScore(v) && ` · ${times(outlierScore(v))}`}
           </span>
           <span className="small">
-            Due {idea.dueDate} · {shots ? plural(shots, 'shot') : <span className="muted">No shots yet</span>}
+            <span className={dueLabel(idea.dueDate).late ? 'due-soon' : undefined}>{dueLabel(idea.dueDate).text}</span> · {shots ? plural(shots, 'shot') : <span className="muted">No shots yet</span>}
           </span>
           {idea.status === 'rejected' && (
             <span className="board-reason small">
