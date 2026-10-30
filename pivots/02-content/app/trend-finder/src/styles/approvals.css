@@ -160,3 +160,7 @@
 .review-page { min-height: 100vh; padding: 24px 16px 56px; }
 .review-page > .small { max-width: 440px; margin: 0 auto 12px; color: var(--danger, #b3261e); }
 .share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; justify-self: start; align-self: flex-start; }
+
+.method-page article { max-width: 680px; margin: 0 auto; }
+.method-page h2 { margin-top: 28px; }
+.method-page li { margin: 6px 0; line-height: 1.5; }
