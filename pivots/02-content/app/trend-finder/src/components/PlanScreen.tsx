@@ -40,9 +40,21 @@ export function PlanScreen(p: Props) {
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle')
   // Index of a shot just added with "+ Add a shot", so only that row plays its enter animation.
   const [addedAt, setAddedAt] = useState<number | null>(null)
+  // "Edit" on an approved plan asks first, because it sends the plan back for approval.
+  const [confirmEdit, setConfirmEdit] = useState(false)
 
   const shots = idea.shots ?? format.shotList
-  const editable = idea.status === 'saved' || idea.status === 'approved'
+  // Approved plans are locked: the team films what the manager approved. Sent-back plans can be fixed and sent again.
+  // An approved plan reopened with "Edit" waits with approvedAt still set, and stays editable while it waits.
+  const reopened = idea.status === 'waiting' && !!idea.approvedAt
+  const editable = idea.status === 'saved' || idea.status === 'rejected' || reopened
+  const comments = idea.shotComments ?? {}
+  const shotComment = (i: number) =>
+    comments[i] && (
+      <span className="shot-comment">
+        {APPROVER}: {comments[i]}
+      </span>
+    )
   const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
@@ -53,6 +65,10 @@ export function PlanScreen(p: Props) {
     onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined })
     // Bring the confirmation into view.
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const reopen = () => {
+    setConfirmEdit(false)
+    onChange({ status: 'waiting', sentAt: Date.now(), approvedAt: idea.approvedAt ?? Date.now() })
   }
   const sendButton = (
     <button className="btn btn-primary" disabled={shots.length === 0} onClick={send}>
@@ -102,10 +118,11 @@ export function PlanScreen(p: Props) {
             ✓
           </span>
           <div>
-            <strong>Sent to {APPROVER} for approval</strong>
+            <strong>{reopened ? `Sent back to ${APPROVER} for approval` : `Sent to ${APPROVER} for approval`}</strong>
             <span>
-              Sent {ago(idea.sentAt)}. {APPROVER}'s answer will show up in the Shortlist. Meanwhile, plan the next video for{' '}
-              {client.name}.
+              {reopened
+                ? `Sent ${ago(idea.sentAt)}. Keep editing: ${APPROVER} sees your changes when reviewing it again.`
+                : `Sent ${ago(idea.sentAt)}. ${APPROVER}'s answer will show up in the Shortlist. Meanwhile, plan the next video for ${client.name}.`}
             </span>
           </div>
         </div>
@@ -117,7 +134,7 @@ export function PlanScreen(p: Props) {
             ✓
           </span>
           <div>
-            <strong>{APPROVER} approved this</strong>
+            <strong>{idea.managerNote ? `${APPROVER} approved this with changes` : `${APPROVER} approved this`}</strong>
             <span>Film it by {idea.dueDate}, then copy the brief below for your editor.</span>
           </div>
         </div>
@@ -154,9 +171,13 @@ export function PlanScreen(p: Props) {
           <section className="block">
             <h3>Shots</h3>
             <p className="small muted">
-              {editable
+              {reopened
+                ? `You're changing an approved plan. ${APPROVER} will review it again.`
+                : editable
                 ? `Based on the reference video. Edit them for ${client.name}: what you'll film and any text on screen.`
-                : `Locked while ${APPROVER} reviews it. Withdraw it to make changes.`}
+                : idea.status === 'approved'
+                  ? `Approved by ${APPROVER}. Locked so you film what was approved.`
+                  : `Locked while ${APPROVER} reviews it. Withdraw it to make changes.`}
             </p>
             {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
             <ol className="shot-edit">
@@ -186,6 +207,7 @@ export function PlanScreen(p: Props) {
                           placeholder="Text on screen (optional)"
                           onChange={(e) => updateShot(i, { text: e.target.value || undefined })}
                         />
+                        {shotComment(i)}
                       </div>
                       <button
                         type="button"
@@ -206,6 +228,7 @@ export function PlanScreen(p: Props) {
                       <span>
                         {s.shot}
                         {s.text && <span className="shot-text">Text: "{s.text}"</span>}
+                        {shotComment(i)}
                       </span>
                     </>
                   )}
@@ -258,14 +281,25 @@ export function PlanScreen(p: Props) {
             <label htmlFor="note-to-approver">
               <h3>Note to {APPROVER}</h3>
             </label>
-            <textarea
-              id="note-to-approver"
-              rows={3}
-              value={note}
-              placeholder={`Why this would work for ${client.name}`}
-              onChange={(e) => onChange({ noteToApprover: e.target.value })}
-            />
+            {editable ? (
+              <textarea
+                id="note-to-approver"
+                rows={3}
+                value={note}
+                placeholder={`Why this would work for ${client.name}`}
+                onChange={(e) => onChange({ noteToApprover: e.target.value })}
+              />
+            ) : (
+              <p className="quote">{note}</p>
+            )}
           </section>
+
+          {idea.status === 'approved' && idea.managerNote && (
+            <section className="block manager-note">
+              <h3>Changes {APPROVER} asked for</h3>
+              <p className="quote">{idea.managerNote}</p>
+            </section>
+          )}
 
           {idea.status === 'approved' && (
             <section className={`block editor-brief${copied === 'done' ? ' is-copied' : ''}`}>
@@ -333,7 +367,19 @@ export function PlanScreen(p: Props) {
           </>
         )}
 
-        {idea.status === 'approved' && (
+        {idea.status === 'approved' && confirmEdit && (
+          <>
+            <span className="plan-bar-text">This sends it back to {APPROVER} for approval. Continue?</span>
+            <button className="btn btn-ghost" onClick={() => setConfirmEdit(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={reopen}>
+              Continue
+            </button>
+          </>
+        )}
+
+        {idea.status === 'approved' && !confirmEdit && (
           <>
             <span className="plan-bar-text" role="status">
               {copied === 'done'
@@ -342,6 +388,9 @@ export function PlanScreen(p: Props) {
                   ? "Couldn't copy. Your browser blocked the clipboard."
                   : `Approved. Due ${idea.dueDate}.`}
             </span>
+            <button className="btn btn-ghost" onClick={() => setConfirmEdit(true)}>
+              Edit
+            </button>
             <button className="btn btn-ghost" onClick={onPlanAnother}>
               Plan another video
             </button>

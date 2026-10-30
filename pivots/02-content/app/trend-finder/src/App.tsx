@@ -18,6 +18,8 @@ import { Sidebar } from './components/Sidebar'
 import type { View } from './components/Sidebar'
 import { OverviewScreen } from './components/OverviewScreen'
 import { ReviewScreen } from './components/ReviewScreen'
+// stream C: decisions and client memory
+import { applyDecision, type Decision } from './lib/memory'
 import { SettingsScreen } from './components/SettingsScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Video } from './types'
@@ -343,21 +345,12 @@ export default function App() {
     setClients((prev) => prev.map((c) => (c.id === clientId ? { ...c, memory: [...(c.memory ?? []), event] } : c)))
 
   // The manager's answer on a plan they were sent. Every decision is also remembered on the client.
-  const decide = (ideaId: string, approved: boolean, reason?: string) => {
+  // stream C: three decision kinds, with the manager's comment and per-shot comments
+  const decide = (ideaId: string, d: Decision) => {
     const idea = ideas.find((i) => i.id === ideaId)
-    setIdeas((prev) =>
-      prev.map((i) =>
-        i.id === ideaId
-          ? {
-              ...i,
-              status: approved ? 'approved' : 'rejected',
-              rejectReason: approved ? undefined : reason,
-              approvedAt: approved ? Date.now() : undefined,
-            }
-          : i,
-      ),
-    )
-    if (idea) recordEvent(idea.clientId, { ideaId, kind: approved ? 'approved' : 'sent-back', reason, at: Date.now() })
+    const at = Date.now()
+    setIdeas((prev) => prev.map((i) => (i.id === ideaId ? applyDecision(i, d, at) : i)))
+    if (idea) recordEvent(idea.clientId, { ideaId, kind: d.kind, reason: d.comment, at })
   }
 
   const appContext: AppContextValue = {
@@ -383,10 +376,7 @@ export default function App() {
     overview: 'overview',
     search: 'search',
     results: 'search results',
-    saved: 'saved ideas',
-    approvals: 'approvals',
     review: `${agency.managerName}'s review`,
-    plans: 'plans',
     plan: 'search results',
     settings: 'settings',
     shortlist: 'shortlist',
@@ -559,7 +549,10 @@ export default function App() {
             />
           )}
 
-          {inClient && view === 'settings' && <SettingsScreen client={client} onChange={updateClient} />}
+          {/* stream C: ideas and lookups so client memory can name each plan */}
+          {inClient && view === 'settings' && (
+            <SettingsScreen client={client} onChange={updateClient} ideas={ideas} videoById={videoById} formatById={formatById} />
+          )}
 
           {inClient && view === 'plan' && planIdea && planVideo && planFormat && planClient && (
             <PlanScreen

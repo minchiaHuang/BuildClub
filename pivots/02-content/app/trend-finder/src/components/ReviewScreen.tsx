@@ -3,24 +3,27 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { compact, outlierScore, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
-import { useManagerName } from '../lib/appContext'
+import { useApp, useManagerName } from '../lib/appContext'
+import type { Decision } from '../lib/memory'
 
 interface Props {
   client: Client
   ideas: SavedIdea[]
   videoById: Map<string, Video>
   formatById: Map<string, Format>
-  onDecide: (ideaId: string, approved: boolean, reason?: string) => void
+  onDecide: (ideaId: string, d: Decision) => void
   onBack: () => void
 }
 
 // A decision that is animating out. onDecide is called once the card has slid away and its space has closed.
 interface Leaving {
   id: string
-  approved: boolean
-  reason?: string
+  d: Decision
   collapsing: boolean
 }
+
+// Which comment box is open on a card: approve with changes, or send back.
+type Mode = 'changes' | 'back' | null
 
 const SWIPE_AT = 96 // px of horizontal drag that counts as a swipe
 const SLOP = 6 // px before a press becomes a drag
@@ -29,12 +32,12 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 // Read a duration token (e.g. "--dur-slow: 300ms") so JS timing matches the CSS.
 const tokenMs = (name: string) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0
 
-// What the manager sees: each waiting plan with its reference, shots and note, and one tap to approve or send back.
-// A narrow column so it reads like a phone view. Demo only: the manager role is picked at login, nothing is checked.
+// What the manager sees: each waiting plan with its reference, shots, the team's note and due date, and three choices:
+// approve, approve with changes, or send back. A narrow column so it reads like a phone view.
+// Team members see the same plans read-only. Demo only: the role is picked at login, nothing is checked.
 export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack }: Props) {
   const manager = useManagerName()
-  const [passing, setPassing] = useState<string | null>(null)
-  const [reason, setReason] = useState('')
+  const isManager = useApp().role === 'manager'
   const [leaving, setLeaving] = useState<Leaving | null>(null)
   const timers = useRef<number[]>([])
   const pending = useRef<Leaving | null>(null)
@@ -66,7 +69,7 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     () => () => {
       timers.current.forEach((t) => window.clearTimeout(t))
       const p = pending.current
-      if (p) decideRef.current(p.id, p.approved, p.reason)
+      if (p) decideRef.current(p.id, p.d)
     },
     [],
   )
@@ -74,21 +77,19 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
   const finish = (d: Leaving) => {
     pending.current = null
     setLeaving(null)
-    onDecide(d.id, d.approved, d.reason)
+    onDecide(d.id, d.d)
   }
 
-  const decide = (id: string, approved: boolean, why?: string) => {
-    if (leaving) return
-    const d: Leaving = { id, approved, reason: why, collapsing: false }
+  const decide = (id: string, decision: Decision) => {
+    if (leaving || !isManager) return
+    const d: Leaving = { id, d: decision, collapsing: false }
     const ids = waiting.map((i) => i.id)
     const at = ids.indexOf(id)
     focusNext.current = ids[at + 1] ?? ids[at - 1] ?? ''
     // Move focus straight away so it isn't lost while the card animates out; the effect re-checks once it's gone.
     if (focusNext.current) focusTarget(focusNext.current)
-    setPassing(null)
-    setReason('')
     if (reducedMotion()) {
-      onDecide(id, approved, why)
+      onDecide(id, decision)
       return
     }
     pending.current = d
@@ -101,23 +102,23 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     )
   }
 
-  const startPass = (id: string) => {
-    if (leaving) return
-    setPassing(id)
-    setReason('')
-  }
-
   return (
     <section className="review">
       <button className="link-btn review-back" onClick={onBack}>
         ← Back to shortlist
       </button>
-      <p className="review-banner">Preview of {manager}'s view. In the real product this opens on {manager}'s phone.</p>
+      <p className="review-banner">
+        {isManager
+          ? `Preview of ${manager}'s view. In the real product this opens on ${manager}'s phone.`
+          : `You're signed in as a team member. Only ${manager} can approve or send back plans.`}
+      </p>
 
       <header className="page-head review-head">
         <span className="eyebrow">{client.name} · For {manager}</span>
-        <h1 ref={headRef} tabIndex={-1}>{waiting.length ? `${waiting.length} to review` : 'Nothing to review'}</h1>
-        {waiting.length > 0 && <p className="small muted">Swipe right to approve, left to send back.</p>}
+        <h1 ref={headRef} tabIndex={-1}>
+          {!waiting.length ? 'Nothing to review' : isManager ? `${waiting.length} to review` : `${waiting.length} waiting for ${manager}`}
+        </h1>
+        {waiting.length > 0 && isManager && <p className="small muted">Swipe right to approve, left to send back.</p>}
       </header>
 
       {waiting.length === 0 && (
@@ -139,16 +140,12 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
               idea={idea}
               video={v}
               format={f}
-              passing={passing === idea.id}
-              reason={reason}
-              setReason={setReason}
-              leaving={out ? (out.approved ? 'right' : 'left') : null}
+              isManager={isManager}
+              manager={manager}
+              leaving={out ? (out.d.kind === 'sent-back' ? 'left' : 'right') : null}
               collapsing={!!out?.collapsing}
               busy={!!leaving}
-              onApprove={() => decide(idea.id, true)}
-              onStartPass={() => startPass(idea.id)}
-              onCancelPass={() => setPassing(null)}
-              onSendBack={() => decide(idea.id, false, reason.trim() || undefined)}
+              onDecide={(d) => decide(idea.id, d)}
             />
           )
         })}
@@ -161,27 +158,41 @@ interface CardProps {
   idea: SavedIdea
   video: Video
   format: Format
-  passing: boolean
-  reason: string
-  setReason: (r: string) => void
+  isManager: boolean
+  manager: string
   leaving: 'left' | 'right' | null
   collapsing: boolean
   busy: boolean
-  onApprove: () => void
-  onStartPass: () => void
-  onCancelPass: () => void
-  onSendBack: () => void
+  onDecide: (d: Decision) => void
 }
 
+const due = (date: string) => new Date(`${date}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+
 // One plan as a swipeable card. Pointer events cover mouse drag and touch; the buttons stay as the accessible path,
-// and the focused card also takes ←/→.
+// and the focused card also takes ←/→. Swiping left opens "Send back", which needs a reason.
 function ReviewCard(p: CardProps) {
   const { idea, video: v, format: f } = p
+  const [mode, setMode] = useState<Mode>(null)
+  const [comment, setComment] = useState('')
+  const [shotComments, setShotComments] = useState<Record<number, string>>({})
+  // Shots with their comment box open.
+  const [commenting, setCommenting] = useState<number[]>([])
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
   const start = useRef<{ x: number; y: number; id: number } | null>(null)
   const shots = idea.shots ?? f.shotList
-  const canSwipe = !p.passing && !p.leaving && !p.busy
+  const canSwipe = p.isManager && !mode && !p.leaving && !p.busy
+
+  const approve = () => p.onDecide({ kind: 'approved', shotComments })
+  const openMode = (m: Mode) => {
+    setMode(m)
+    setComment('')
+  }
+  const confirm = () => {
+    const text = comment.trim()
+    if (!text || !mode) return
+    p.onDecide({ kind: mode === 'changes' ? 'approved-with-changes' : 'sent-back', comment: text, shotComments })
+  }
 
   const onPointerDown = (e: PointerEvent<HTMLElement>) => {
     if (!canSwipe || (e.pointerType === 'mouse' && e.button !== 0)) return
@@ -215,18 +226,18 @@ function ReviewCard(p: CardProps) {
     setDragging(false)
     setDx(0)
     if (cancelled) return
-    if (moved >= SWIPE_AT) p.onApprove()
-    else if (moved <= -SWIPE_AT) p.onStartPass()
+    if (moved >= SWIPE_AT) approve()
+    else if (moved <= -SWIPE_AT) openMode('back')
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     if (e.target !== e.currentTarget || !canSwipe) return
     if (e.key === 'ArrowRight') {
       e.preventDefault()
-      p.onApprove()
+      approve()
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault()
-      p.onStartPass()
+      openMode('back')
     }
   }
 
@@ -237,6 +248,7 @@ function ReviewCard(p: CardProps) {
   const cls = [
     'review-card',
     dragging && 'is-dragging',
+    !p.isManager && 'is-readonly',
     p.leaving && `is-leaving is-leaving-${p.leaving}`,
   ]
     .filter(Boolean)
@@ -250,8 +262,8 @@ function ReviewCard(p: CardProps) {
           data-idea={idea.id}
           style={style}
           tabIndex={canSwipe ? 0 : -1}
-          aria-keyshortcuts="ArrowRight ArrowLeft"
-          aria-label={`${f.name}. Press right arrow to approve, left arrow to send back.`}
+          aria-keyshortcuts={p.isManager ? 'ArrowRight ArrowLeft' : undefined}
+          aria-label={p.isManager ? `${f.name}. Press right arrow to approve, left arrow to send back.` : f.name}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={(e) => endDrag(e, false)}
@@ -283,46 +295,86 @@ function ReviewCard(p: CardProps) {
             </div>
           </div>
 
-          {idea.noteToApprover && <p className="quote">{idea.noteToApprover}</p>}
+          <div className="review-meta">
+            <span className="small muted">
+              Due {due(idea.dueDate)}
+              {idea.approvedAt && ' · Changed after approval'}
+            </span>
+            {!p.isManager && <span className="status status-waiting">Waiting for {p.manager}</span>}
+          </div>
+
+          {idea.noteToApprover && (
+            <div className="review-note">
+              <span className="field-label">Note from the team</span>
+              <p className="quote">{idea.noteToApprover}</p>
+            </div>
+          )}
 
           {shots.length > 0 && (
             <ol className="review-shots">
-              {shots.map((s, i) => (
-                <li key={i}>
-                  {s.shot}
-                  {s.text && <span className="shot-text"> Text: "{s.text}"</span>}
-                </li>
-              ))}
+              {shots.map((s, i) => {
+                const open = commenting.includes(i) || !!shotComments[i]
+                return (
+                  <li key={i}>
+                    {s.shot}
+                    {s.text && <span className="shot-text"> Text: "{s.text}"</span>}
+                    {p.isManager &&
+                      (open ? (
+                        <input
+                          className="shot-comment-input"
+                          aria-label={`Comment on shot ${i + 1}`}
+                          placeholder="Comment on this shot"
+                          value={shotComments[i] ?? ''}
+                          autoFocus={!shotComments[i]}
+                          onChange={(e) => setShotComments({ ...shotComments, [i]: e.target.value })}
+                          onBlur={() => setCommenting(commenting.filter((n) => n !== i))}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className="link-btn shot-comment-btn"
+                          disabled={p.busy}
+                          onClick={() => setCommenting([...commenting, i])}
+                        >
+                          + Comment
+                        </button>
+                      ))}
+                  </li>
+                )
+              })}
             </ol>
           )}
 
-          {p.passing ? (
+          {!p.isManager ? null : mode ? (
             <div className="review-reject">
-              <label htmlFor={`reason-${idea.id}`} className="field-label">
-                What should change? (optional)
+              <label htmlFor={`comment-${idea.id}`} className="field-label">
+                {mode === 'changes' ? 'What should change before filming?' : 'Why are you sending it back?'}
               </label>
               <textarea
-                id={`reason-${idea.id}`}
+                id={`comment-${idea.id}`}
                 rows={2}
-                value={p.reason}
-                onChange={(e) => p.setReason(e.target.value)}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
                 autoFocus
               />
               <div className="review-actions">
-                <button className="btn btn-ghost" onClick={p.onCancelPass}>
+                <button className="btn btn-ghost" onClick={() => setMode(null)}>
                   Cancel
                 </button>
-                <button className="btn btn-primary" onClick={p.onSendBack} disabled={p.busy}>
-                  Send back
+                <button className="btn btn-primary" onClick={confirm} disabled={p.busy || !comment.trim()}>
+                  {mode === 'changes' ? 'Approve with changes' : 'Send back'}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="review-actions">
-              <button className="btn btn-ghost" onClick={p.onStartPass} disabled={p.busy}>
-                Not this one
+            <div className="review-actions review-actions-3">
+              <button className="btn btn-ghost" onClick={() => openMode('back')} disabled={p.busy}>
+                Send back
               </button>
-              <button className="btn btn-primary" onClick={p.onApprove} disabled={p.busy}>
+              <button className="btn btn-ghost" onClick={() => openMode('changes')} disabled={p.busy}>
+                Approve with changes
+              </button>
+              <button className="btn btn-primary" onClick={approve} disabled={p.busy}>
                 Approve
               </button>
             </div>

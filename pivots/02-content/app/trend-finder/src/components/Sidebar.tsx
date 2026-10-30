@@ -8,10 +8,7 @@ export type View =
   | 'search'
   | 'results'
   | 'shortlist'
-  | 'saved'
-  | 'approvals'
   | 'review'
-  | 'plans'
   | 'plan'
   | 'settings'
   | 'add-client'
@@ -180,7 +177,7 @@ export function Sidebar(p: Props) {
                 'saved',
                 'Shortlist',
                 p.counts.shortlist,
-                ['shortlist', 'saved', 'approvals', 'review', 'plans', 'plan'].includes(p.view),
+                ['shortlist', 'review', 'plan'].includes(p.view),
               )}
               <div className="side-sep" />
               {item('settings', 'settings', 'Client settings')}
