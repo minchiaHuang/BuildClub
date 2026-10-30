@@ -177,7 +177,7 @@ export function Sidebar(p: Props) {
           <span className="brand-mark" aria-hidden="true">
             ↗
           </span>
-          Trend Finder
+          Remake
         </div>
 
         <ClientSwitcher agency={p.account?.agency || AGENCY_NAME} clients={p.clients} workspace={p.workspace} setWorkspace={(w) => { p.setWorkspace(w); p.onClose() }} onAddClient={() => { p.onClose(); p.onAddClient() }} />

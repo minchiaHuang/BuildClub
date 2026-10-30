@@ -58,7 +58,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
       </a>
       <nav className="la-nav" aria-label="Main">
         <a className="la-logo" href="#top">
-          <span className="la-mark" aria-hidden="true">↗</span> Trend Finder
+          <span className="la-mark" aria-hidden="true">↗</span> Remake
         </a>
         <div className="la-links">
           <a href="#what">Product</a>

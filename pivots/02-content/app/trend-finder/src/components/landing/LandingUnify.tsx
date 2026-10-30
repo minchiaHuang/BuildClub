@@ -7,7 +7,7 @@ import { useLiveInfo } from '../../lib/useLiveInfo'
 // Sign-in is a demo for now. With sample data (no API) the page says so; with the live API it shows real counts and drops the sample labels.
 
 const STEPS = [
-  { title: 'Search a niche', body: "Type your client's niche, like budget recipes. Trend Finder searches TikTok live for what's working right now." },
+  { title: 'Search a niche', body: "Type your client's niche, like budget recipes. Remake searches TikTok live for what's working right now." },
   { title: 'Spot the outliers', body: "Each video gets an outlier score: how far it beat the creator's usual views. Small accounts with huge jumps rise to the top." },
   { title: 'Plan the copy', body: 'Turn the best video into a shot-by-shot plan: hook, scenes, caption and sound, in your client’s voice.' },
   { title: 'Client approves on their phone', body: 'Send the plan to your client. They approve or send it back with a note from their phone, no login needed.' },
@@ -94,9 +94,9 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             </div>
             {sample && <p className="lu-note">Demo: both buttons open the sample agency.</p>}
             <ul className="lu-pills"><li>TikTok live search</li><li>Outlier scores</li><li>Client approvals</li><li>Editor briefs</li></ul>
-            {sample && <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>}
+            {sample && <p className="lu-count">Remake has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>}
             {mode === 'live' && stats && stats.videosScanned > 0 && (
-              <p className="lu-count">Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos</p>
+              <p className="lu-count">Remake has scanned <SlotCounter value={stats.videosScanned} /> videos</p>
             )}
           </div>
 

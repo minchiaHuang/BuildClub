@@ -49,7 +49,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
         <nav className="mn-nav">
           <span className="mn-brand">
             <span className="mn-mark" aria-hidden="true" />
-            Trend Finder
+            Remake
           </span>
           <span className="mn-links">
             <a href="#mn-how">Features</a>
