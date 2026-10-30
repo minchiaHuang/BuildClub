@@ -14,7 +14,7 @@ import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
 import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
-import { cohortsByVideo, fillBaseline } from './lib/evidence'
+import { cohortsByPattern, cohortsByVideo, fillBaseline } from './lib/evidence'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
 import { Sidebar } from './components/Sidebar'
@@ -673,6 +673,7 @@ export default function App() {
 
   const patterns = useMemo(() => (live ? findPatterns(liveResults, liveQuery) : []), [live, liveResults, liveQuery])
   const cohorts = useMemo(() => cohortsByVideo(liveResults, patterns), [liveResults, patterns])
+  const patternCohorts = useMemo(() => cohortsByPattern(liveResults, patterns), [liveResults, patterns])
 
   const results = useMemo(() => {
     const pattern = patterns.find((x) => x.label === patternFilter)
@@ -1003,7 +1004,7 @@ export default function App() {
               cohorts={cohorts}
               patterns={
                 live ? (
-                  <PatternStrip patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
+                  <PatternStrip patterns={patterns} cohorts={patternCohorts} active={patternFilter} onPick={setPatternFilter} />
                 ) : null
               }
               likeThis={
