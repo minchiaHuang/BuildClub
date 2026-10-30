@@ -56,7 +56,7 @@
 :root[data-ui="unify"] .stat-big,
 :root[data-ui="unify"] .cmp-num,
 :root[data-ui="unify"] .target-num,
-:root[data-ui="unify"] .section-title,
+:root[data-ui="unify"] .section-title h2,
 :root[data-ui="unify"] .review h1,
 :root[data-ui="unify"] .drawer-head h2,
 :root[data-ui="unify"] .plan-head h1,
@@ -105,6 +105,8 @@
   border: 1px solid var(--line);
   background: var(--surface);
 }
+/* The border above needs room inside it: plan sections otherwise touch their own frame. */
+:root[data-ui="unify"] .block { padding: 16px 18px; border-radius: var(--radius); }
 :root[data-ui="unify"] .tile:hover { border-color: var(--fg); }
 
 /* Thin pill chips */
@@ -143,8 +145,7 @@
 :root[data-ui="unify"] .side-on .side-count { background: var(--u-orange); color: #fff; }
 
 /* Accent touches */
-:root[data-ui="unify"] .progress span,
-:root[data-ui="unify"] .progress-line span,
+:root[data-ui="unify"] .progress-mini span,
 :root[data-ui="unify"] .cmp-bar-this { background: var(--u-orange); }
 :root[data-ui="unify"] .drawer { background: var(--bg); }
 
