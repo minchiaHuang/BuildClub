@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 import server
-from conftest import item, median_search  # noqa: F401
+from conftest import item, median_search
 from models import SearchResult
 
 

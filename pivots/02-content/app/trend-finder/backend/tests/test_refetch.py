@@ -38,3 +38,15 @@ def test_refetch_search_failure_exits_without_pin():
 def test_refetch_rejects_other_platforms():
     with pytest.raises(SystemExit):
         server.refetch("tofu", "youtube")
+
+
+def test_refetch_keeps_old_pin_when_medians_fail(monkeypatch):
+    # The budget covers the search but not the account medians.
+    monkeypatch.setattr(server, "DAILY_APIFY_USD", server.SEARCH_USD["tiktok"])
+    monkeypatch.setattr(server, "run_actor", median_search([], ["a"]))
+    server.PINNED_DIR.mkdir()
+    old = server.PINNED_DIR / server.cache_name("tofu")
+    old.write_bytes(b'{"old": true}')
+    with pytest.raises(SystemExit, match="not pinned"):
+        server.refetch("tofu")
+    assert old.read_bytes() == b'{"old": true}'
