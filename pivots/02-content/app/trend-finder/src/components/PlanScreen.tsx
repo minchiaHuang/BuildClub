@@ -57,7 +57,8 @@ export function PlanScreen(p: Props) {
   }, [idea.id, idea.status])
 
   const shots = idea.shots ?? format.shotList
-  const editable = idea.status === 'saved' || idea.status === 'approved'
+  // A plan sent back by the approver is open again: the bar asks her to edit it and resend.
+  const editable = idea.status !== 'waiting'
   const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
