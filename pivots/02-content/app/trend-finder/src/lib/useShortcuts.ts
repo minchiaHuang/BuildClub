@@ -6,8 +6,8 @@ import { useEffect, useRef } from 'react'
 export const resultsShortcuts: { keys: string; label: string }[] = [
   { keys: 'J / K', label: 'Next / previous video' },
   { keys: 'Enter', label: 'Open the focused video' },
-  { keys: 'S', label: 'Save or unsave it' },
-  { keys: 'P', label: 'Plan it' },
+  { keys: 'S', label: 'Add to or remove from the shortlist' },
+  { keys: 'P', label: 'Shortlist it, or open its plan' },
   { keys: '/', label: 'Search' },
   { keys: 'Esc', label: 'Close' },
   { keys: '?', label: 'Show these shortcuts' },

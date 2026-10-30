@@ -73,7 +73,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
         {best && (
           <div className="like-actions">
             <button className="btn btn-primary" onClick={() => onPlan(best.id)}>
-              Plan this for {clientName}
+              Add to shortlist for {clientName}
             </button>
             <span className="small muted">Uses the best match below as the reference.</span>
           </div>

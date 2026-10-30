@@ -1,4 +1,4 @@
-/* Video breakdown drawer, plan page (pitch → approval → brief) and the plans list.
+/* Video breakdown drawer and plan page (pitch → approval → brief).
    Calm canvas, loud content: the score is the focal point, everything else is quiet. */
 
 /* ---------- Breakdown drawer ---------- */
@@ -206,25 +206,11 @@
 .props-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .props-list li { background: var(--surface-2); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--text-sm); }
 
-/* ---------- Plans list (base .idea-list / .idea from approvals.css) ---------- */
-.plans { display: grid; gap: 28px; }
-.plans .idea-list { gap: 12px; }
-.plans .idea {
-  border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px 14px 14px; gap: 18px;
-  transition: box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-}
-.plans .idea:hover { box-shadow: var(--shadow-md); border-color: var(--line-strong); }
-.plans .idea .thumb { border-radius: var(--radius-sm); }
-.plans .idea-body { gap: 4px; }
-.plans .idea-body > strong { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.01em; }
-.plans .plan-due { display: inline-flex; align-items: baseline; gap: 6px; font-size: var(--text-sm); color: var(--muted); }
-.plans .plan-due strong { font-size: var(--text-base); font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: 0; }
-
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .drawer-wrap, .drawer, .drawer-wrap.is-closing, .drawer-wrap.is-closing .drawer,
   .shot-edit li.shot-added, .sent-banner, .copy-btn.is-copied, .copy-btn.is-copied .copy-icon-check path { animation: none; }
-  .shot-edit li, .shot-edit .icon-btn, .editor-brief, .plans .idea { transition: none; }
+  .shot-edit li, .shot-edit .icon-btn, .editor-brief { transition: none; }
 }
 /* Tablet/laptop with sidebar: the action bar can wrap to two rows, so leave room for it */
 @media (min-width: 561px) and (max-width: 1200px) { .plan { padding-bottom: 168px; } }
