@@ -1,0 +1,38 @@
+/* Stream A: login card, add-client form and the agency section. Scoped to Altitude. */
+
+/* Login: a card on the Altitude sky */
+:root[data-ui="altitude"] .landing-alt .la-logo-btn { background: none; border: 0; padding: 0; color: inherit; font-family: inherit; cursor: pointer; }
+:root[data-ui="altitude"] .landing-alt .la-login { min-height: calc(100vh - 62px); padding: 96px 16px 48px; }
+:root[data-ui="altitude"] .landing-alt .la-login .alt-ground { top: 58%; }
+:root[data-ui="altitude"] .la-login-card {
+  width: 100%; max-width: 420px; display: grid; gap: 18px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 28px; box-shadow: var(--shadow-md);
+}
+:root[data-ui="altitude"] .la-login-head { display: grid; gap: 6px; }
+:root[data-ui="altitude"] .la-login-head h1 { margin: 0; font-size: 28px; letter-spacing: -0.04em; line-height: 1.05; font-weight: 600; }
+:root[data-ui="altitude"] .la-login-head p { margin: 0; font-size: 14px; color: var(--muted); }
+:root[data-ui="altitude"] .la-roles { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+:root[data-ui="altitude"] .la-roles legend { margin-bottom: 6px; padding: 0; }
+:root[data-ui="altitude"] .la-role {
+  display: grid; gap: 4px; align-content: start; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 16px; cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+:root[data-ui="altitude"] .la-role input { position: absolute; opacity: 0; pointer-events: none; }
+:root[data-ui="altitude"] .la-role strong { font-size: 15px; }
+:root[data-ui="altitude"] .la-role span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+:root[data-ui="altitude"] .la-role:hover { border-color: var(--fg); }
+:root[data-ui="altitude"] .la-role:has(input:checked) { border-color: var(--fg); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--fg); }
+:root[data-ui="altitude"] .la-role:has(input:focus-visible) { outline: 2px solid var(--sky-top); outline-offset: 2px; }
+:root[data-ui="altitude"] .la-login-card .la-pill { width: 100%; }
+:root[data-ui="altitude"] .la-login-switch { margin: 0; font-size: 14px; color: var(--muted); text-align: center; }
+@media (max-width: 420px) { :root[data-ui="altitude"] .la-roles { grid-template-columns: 1fr; } }
+
+/* Add client form */
+:root[data-ui="altitude"] .add-client .settings-grid { align-items: start; }
+:root[data-ui="altitude"] .add-client .field-error { color: var(--no); font-size: 13px; }
+:root[data-ui="altitude"] .add-client input[aria-invalid="true"] { border-color: var(--no); }
+:root[data-ui="altitude"] .form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Overview: header with an action, and the agency section */
+:root[data-ui="altitude"] .page-head-row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+:root[data-ui="altitude"] .agency-box { max-width: 760px; }

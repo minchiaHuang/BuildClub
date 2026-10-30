@@ -402,7 +402,13 @@ export default function App() {
   if (!signedIn)
     return (
       <AppContext.Provider value={appContext}>
-        <LoginScreen onSignIn={() => setSignedIn(true)} />
+        {/* stream A: after login, land on the all-clients overview */}
+        <LoginScreen
+          onSignIn={() => {
+            setSignedIn(true)
+            setWorkspace('all')
+          }}
+        />
       </AppContext.Provider>
     )
 
@@ -436,6 +442,7 @@ export default function App() {
         <main className="main">
           {view === 'add-client' && (
             <AddClientScreen
+              takenIds={clients.map((c) => c.id)} // stream A: keeps new client ids unique
               onCreated={(id) => setWorkspace(id)}
               onCancel={() => setView(inClient ? 'search' : 'overview')}
             />
@@ -449,6 +456,7 @@ export default function App() {
                 setWorkspaceRaw(id)
                 setView(v)
               }}
+              onAddClient={() => setView('add-client')} // stream A: "Add client" on the overview
             />
           )}
 

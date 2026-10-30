@@ -4,7 +4,7 @@ import { PlatformLogo } from '../PlatformToggles'
 import type { LogoPlatform } from '../PlatformToggles'
 
 // Public landing page for the Altitude direction: website hero + "what it does" section, with Log in and Register.
-// Sign-in is a demo for now, so both buttons enter the sample agency.
+// Sign-in is a demo for now: both buttons open the login screen, where you pick a role and enter the sample agency.
 // Reuses the Altitude hero classes (.alt-sky, .alt-cloud, .alt-rot, .alt-icons) from theme-altitude.css.
 // How the platforms appear in the sky: 'tags' (floating text pills, being tried now) or 'round' (logo badges).
 // The round version is kept so we can switch back by changing this one value.
@@ -59,7 +59,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
         </div>
         <div className="la-actions">
           <button type="button" className="la-pill la-outline" onClick={onLogIn}>Log in</button>
-          <button type="button" className="la-pill la-solid" onClick={onRegister}>Register</button>
+          <button type="button" className="la-pill la-solid" onClick={onRegister}>Register free</button>
         </div>
       </nav>
 
@@ -98,7 +98,7 @@ export function LandingAltitude({ onLogIn, onRegister }: { onLogIn: () => void; 
             <button type="button" className="la-pill la-solid la-big" onClick={onRegister}>Register free</button>
             <button type="button" className="la-pill la-outline la-big" onClick={onLogIn}>Log in to dashboard</button>
           </div>
-          <p className="la-note">Demo: both buttons open the sample agency.</p>
+          <p className="la-note">Demo: no password. Pick a role and look around the sample agency.</p>
         </div>
       </header>
 

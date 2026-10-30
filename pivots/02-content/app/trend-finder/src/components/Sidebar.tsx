@@ -141,6 +141,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
 
 export function Sidebar(p: Props) {
   const { agency, role } = useApp()
+  const userName = role === 'manager' ? agency.managerName : 'Team member'
   const inClient = p.workspace !== 'all'
   const item = (v: View, icon: keyof typeof paths, label: string, count?: number, active = p.view === v) => (
     <button
@@ -203,9 +204,9 @@ export function Sidebar(p: Props) {
             </span>
           )}
           <div className="side-user">
-            <span className="avatar avatar-user">D</span>
+            <span className="avatar avatar-user">{initials(userName) || '?'}</span>
             <span className="side-user-text">
-              <strong>{role === 'manager' ? `${agency.managerName} (manager)` : 'Team member'}</strong>
+              <strong>{role === 'manager' ? `${userName} (manager)` : userName}</strong>
               <span className="small muted">{agency.agencyName}</span>
             </span>
             <button className="icon-btn" onClick={p.onSignOut} aria-label="Sign out" title="Sign out">
