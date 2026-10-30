@@ -35,12 +35,14 @@ const CONSOLE_WHITELIST = [
   // Benign layout notification from the browser.
   { re: /ResizeObserver loop/, why: 'benign browser notice' },
   // Typing into a field and then leaving it for a mailto: link: no handler is installed in headless Chrome.
-  { re: /Failed to launch '(mailto|tel):/, why: 'headless Chrome has no mail handler' },
+  { re: /(Failed|Not allowed) to launch '(mailto|tel):/, why: 'headless Chrome has no mail handler' },
 ]
 // Responses that are expected by design (method, url regex, status).
 const API_WHITELIST = [
   { re: /\/api\/auth\/me$/, status: 401, why: 'signed-out visitor; the app then shows the sign-in page' },
   { re: /\/favicon/, status: 404, why: 'no favicon is shipped' },
+  { re: /cachedOnly=1/, status: 404, why: 'nothing cached yet for that word; the free check then shows no pulse' },
+  { re: /\/api\/channel$/, status: 400, why: 'the isolated backend has no channel-summary key; the screen says summaries are not set up' },
 ]
 // A 429/401 must be explained on screen with words like these.
 const MESSAGE_RE = /limit|budget|cap\b|quota|unavailable|can.?t|couldn.?t|could not|failed|error|try again|wrong|sign in|not available|no budget|over|isn.?t|not working|went wrong|reached|later|paused|off/i
@@ -291,6 +293,10 @@ const COLLECT = ({ allowSidebar, scopeSel }) => {
       why,
       group,
       readonly: !!e.readOnly,
+      pressed: e.getAttribute('aria-pressed') === 'true',
+      // A submit button of a form whose required fields are empty: the browser's own "fill in this field" bubble
+      // answers, which is not in the DOM.
+      blocked: e.type === 'submit' && !!e.form && !e.form.checkValidity(),
       options: tag === 'select' ? [...e.options].map((o) => o.value) : undefined,
       sidebar: !!e.closest('aside.sidebar'),
     })
@@ -538,6 +544,12 @@ async function testControl(page, d, ctxInfo, shotBase) {
     return res
   }
 
+  if (d.pressed || d.blocked) {
+    res.skip = d.pressed ? 'already the chosen option (aria-pressed)' : 'form has empty required fields: the browser asks for them'
+    res.status = 'skip'
+    return res
+  }
+
   const before = await printState(page)
   await page.waitForTimeout(120)
   const before2 = await printState(page)
@@ -571,7 +583,9 @@ async function testControl(page, d, ctxInfo, shotBase) {
     const line = `${r.method} ${r.url} -> ${r.status}`
     if (r.status >= 500) add('http5xx', line)
     else if (r.status === 429 || r.status === 401) {
-      if (!MESSAGE_RE.test(after.text)) add('no-message', `${line}, but the screen shows no message about it`)
+      // A plan locked while the approver reviews it fetches the breakdown only for show: nothing to tell her.
+      const lockedPlan = /\/api\/analyze/.test(r.url) && /Locked while/.test(after.text)
+      if (!lockedPlan && !MESSAGE_RE.test(after.text)) add('no-message', `${line}, but the screen shows no message about it`)
       res.apiNote = (res.apiNote ?? '') + line + '; '
     } else add('http4xx', line)
   }
