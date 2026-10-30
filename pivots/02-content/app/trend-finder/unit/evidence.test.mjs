@@ -140,6 +140,11 @@ test('limitLines: three fixed lines, per-platform', () => {
   ])
 })
 
+test('cachedLabel rounds down: 47 hours is 1 day', () => {
+  const now = Date.UTC(2026, 9, 30, 12)
+  assert.equal(e.cachedLabel(now - 47 * 3600000, now), 'Cached · fetched 1 day ago')
+})
+
 test('cachedLabel: today and N days', () => {
   const now = Date.now()
   assert.equal(e.cachedLabel(now, now), 'Cached · fetched today')

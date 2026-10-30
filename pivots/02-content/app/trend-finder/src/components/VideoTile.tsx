@@ -3,7 +3,7 @@ import type { IdeaStatus, Video } from '../types'
 import { agoShort, compact, hasDate, hasScore, outlierScore, scoreLine, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { Thumb } from './Thumb'
 import { EvidenceChip } from './EvidenceChip'
-import { COPY, EVIDENCE_TEXT, BASELINE_PLATFORMS, evidenceOf, plainLine, type Cohort } from '../lib/evidence'
+import { COPY, EVIDENCE_TEXT, BASELINE_PLATFORMS, cachedLabel, evidenceOf, plainLine, type Cohort } from '../lib/evidence'
 
 interface Props {
   video: Video
@@ -70,6 +70,7 @@ export function VideoTile({ video, saved, onOpen, onToggleSave, status, cohort }
             {video.handle}
             {hasDate(video) && ` · ${agoShort(video.daysAgo)}`}
             {video.comments !== undefined && ` · ${compact(video.comments)} comments`}
+            {video.live && video.fromCache && ` · ${cachedLabel(video.fetchedAt ?? 0, Date.now())}`}
           </span>
         </div>
       </button>

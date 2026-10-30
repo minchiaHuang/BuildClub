@@ -10,7 +10,7 @@ import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, plat
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { EvidenceChip } from './EvidenceChip'
-import type { Cohort } from '../lib/evidence'
+import { cachedLabel, type Cohort } from '../lib/evidence'
 import { PlatformLogo } from './PlatformToggles'
 import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
@@ -100,7 +100,13 @@ export function ResultsScreen(p: Props) {
   const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
   const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
-    .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
+    .map((pl) => {
+      const vs = shown.filter((v) => v.platform === pl)
+      // Each platform has its own search, so its cache state comes from its own videos.
+      const cached = p.live ? vs.filter((v) => v.fromCache) : []
+      const fetchedAt = cached.length ? Math.max(...cached.map((v) => v.fetchedAt ?? 0)) : 0
+      return { pl, n: vs.length, cache: cached.length ? cachedLabel(fetchedAt, Date.now()) : null }
+    })
     .filter((x) => x.n > 0)
   const i = p.interp
   const queryLabel = i.source ? '' : i.text.trim()
@@ -252,6 +258,13 @@ export function ResultsScreen(p: Props) {
                 {n}
               </span>
             ))}
+            {platformCounts.map(({ pl, cache }) =>
+              cache ? (
+                <span key={`cache-${pl}`} className="summary-cached">
+                  {platformName[pl]} · {cache}
+                </span>
+              ) : null,
+            )}
           </p>
 
           {best && <h1 className="best-title">Best to copy</h1>}
