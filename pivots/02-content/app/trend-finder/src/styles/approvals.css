@@ -144,6 +144,30 @@
 .review-reject { display: grid; gap: 10px; }
 .review-reject textarea { border-radius: var(--radius-sm); }
 
+/* Stream C: three decisions, shot comments, read-only view for team members */
+.review-card.is-readonly { cursor: default; }
+.review-meta { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.review-note { display: grid; gap: 6px; }
+.review-actions-3 { display: grid; grid-template-columns: 1fr 1fr; }
+.review-actions-3 .btn:last-child { grid-column: 1 / -1; }
+.shot-comment-btn { display: block; margin-top: 2px; font-size: var(--text-sm); }
+.shot-comment-input { display: block; width: 100%; margin-top: 6px; font-size: var(--text-sm); }
+.shot-comment { display: block; margin-top: 4px; font-size: var(--text-sm); color: var(--rising); }
+.manager-note .quote { margin: 0; }
+
+/* Client memory in client settings */
+.client-memory { display: grid; gap: 14px; max-width: 640px; }
+.client-memory-head { display: grid; gap: 4px; }
+.memory-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.memory-item {
+  display: grid; gap: 4px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.memory-item .quote { margin: 4px 0 0; font-size: var(--text-sm); }
+.memory-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.memory-approved, .memory-approved-with-changes { background: var(--early-soft); color: var(--early); }
+.memory-sent-back { background: var(--no-soft); color: var(--no); }
+
 @media (max-width: 600px) {
   .review { gap: 14px; }
   .review-card { padding: 16px; }
