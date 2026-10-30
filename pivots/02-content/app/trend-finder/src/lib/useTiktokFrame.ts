@@ -3,11 +3,13 @@ import { READY_TIMEOUT_MS, isPlayerError, parsePlayerMessage } from './tiktokPla
 
 // Listens to one TikTok player iframe. Messages are matched to the iframe by `event.source`.
 // Reports ready / muted state and a failure: an onPlayerError, or no onPlayerReady within 6 s of the page loading.
-export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialMuted: boolean; onReady?: () => void; onFail?: () => void }) {
+export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialMuted: boolean; armOnMount?: boolean; onReady?: () => void; onFail?: () => void }) {
   const [ready, setReady] = useState(false)
   const [muted, setMuted] = useState(opts.initialMuted)
   const [failed, setFailed] = useState(false)
   const timer = useRef<number | undefined>(undefined)
+  // Ready can arrive before the iframe's load event (the player is script-driven); once it has, never arm the timer again.
+  const readyRef = useRef(false)
   const cb = useRef(opts)
   useEffect(() => {
     cb.current = opts
@@ -25,6 +27,7 @@ export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialM
       const m = parsePlayerMessage(e.origin, e.data)
       if (!m) return
       if (m.type === 'onPlayerReady') {
+        readyRef.current = true
         window.clearTimeout(timer.current)
         setReady(true)
         cb.current.onReady?.()
@@ -32,15 +35,18 @@ export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialM
       else if (isPlayerError(m)) fail()
     }
     window.addEventListener('message', onMessage)
-    // The 6 s clock starts once the iframe's page has loaded (a lazy iframe off screen has not started yet).
-    const onLoad = () => {
+    // The 6 s clock starts at mount for an eager iframe (so a load that never fires still falls back), or at the iframe's
+    // load for a lazy one (off screen it has not started yet). Never once the player is ready.
+    const arm = () => {
+      if (readyRef.current) return
       window.clearTimeout(timer.current)
       timer.current = window.setTimeout(fail, READY_TIMEOUT_MS)
     }
-    frame.addEventListener('load', onLoad)
+    if (cb.current.armOnMount) arm()
+    frame.addEventListener('load', arm)
     return () => {
       window.removeEventListener('message', onMessage)
-      frame.removeEventListener('load', onLoad)
+      frame.removeEventListener('load', arm)
       window.clearTimeout(timer.current)
     }
   }, [frame])

@@ -38,7 +38,7 @@ export const isPlayerError = (m: PlayerMessage) => m.type === 'onPlayerError'
 export const commandMessage = (type: PlayerCommand) => ({ type, 'x-tiktok-player': true })
 
 export function sendCommand(frame: HTMLIFrameElement | null, type: PlayerCommand) {
-  frame?.contentWindow?.postMessage(commandMessage(type), '*')
+  frame?.contentWindow?.postMessage(commandMessage(type), TIKTOK_ORIGIN)
 }
 
 // ---- One hover preview at a time, and previews that failed (not retried until reload) ----

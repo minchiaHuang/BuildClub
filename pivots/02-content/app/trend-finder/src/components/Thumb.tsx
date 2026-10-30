@@ -52,7 +52,7 @@ const SoundIcon = ({ on }: { on: boolean }) => (
 // instead of loading TikTok again. Mounting it fresh per video gives each player its own ready / muted state.
 function PreviewPlayer({ id, hovering }: { id: string; hovering: boolean }) {
   const [frame, setFrame] = useState<HTMLIFrameElement | null>(null)
-  const { ready, muted, setMuted } = useTiktokFrame(frame, { initialMuted: true, onFail: () => markPreviewFailed(id) })
+  const { ready, muted, setMuted } = useTiktokFrame(frame, { initialMuted: true, armOnMount: true, onFail: () => markPreviewFailed(id) })
   useEffect(() => {
     if (!ready) return
     if (hovering) sendCommand(frame, 'play')
@@ -118,7 +118,7 @@ export function Thumb({ video, large = false, preview = false }: { video: Video;
   const hue = hues[video.formatId] ?? 180
   const showImage = video.thumbnail && !broken
   return (
-    <div className={`thumb ${large ? 'thumb-lg' : ''} ${showImage ? 'thumb-img' : ''} ${hovering && id && (active || failed) ? 'thumb-has-ctl' : ''}`} style={{ '--hue': hue } as React.CSSProperties}
+    <div className={`thumb ${large ? 'thumb-lg' : ''} ${showImage ? 'thumb-img' : ''} ${id && (failed || (hovering && active)) ? 'thumb-has-ctl' : ''}`} style={{ '--hue': hue } as React.CSSProperties}
       onPointerEnter={
         id
           ? (e) => {
@@ -144,7 +144,7 @@ export function Thumb({ video, large = false, preview = false }: { video: Video;
         />
       )}
       {id && active && !failed && <PreviewPlayer id={id} hovering={hovering} />}
-      {failed && hovering && video.url && (
+      {failed && video.url && (
         <ThumbControl role="link" className="thumb-fail" label="Watch on TikTok" onActivate={() => window.open(video.url, '_blank', 'noopener,noreferrer')}>
           Watch on TikTok ↗
         </ThumbControl>
