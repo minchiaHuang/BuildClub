@@ -28,7 +28,7 @@ const landings: Partial<Record<UiTheme, Landing>> = {
 }
 
 // Where "Ask for access" writes to. Accounts are made by hand; there is no self-service sign-up.
-const ACCESS_EMAIL = 'hello@buildclub.example'
+const ACCESS_EMAIL = 'tommycat997@gmail.com'
 const askForAccess = () => {
   window.location.href = `mailto:${ACCESS_EMAIL}?subject=${encodeURIComponent('Trend Finder access')}`
 }
