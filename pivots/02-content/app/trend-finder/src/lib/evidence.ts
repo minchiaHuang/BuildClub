@@ -4,7 +4,7 @@ import type { Baseline, Denominator, Platform, Video } from '../types.ts'
 
 export const HIT_MULTIPLE = 2
 export const LIMITED_DAYS = 30
-export const BASELINE_PLATFORMS: Platform[] = ['tiktok']
+export const BASELINE_PLATFORMS: Platform[] = ['tiktok', 'instagram']
 export const COHORT_PLATFORMS: Platform[] = ['tiktok']
 
 export type Evidence = 'high' | 'medium' | 'limited'

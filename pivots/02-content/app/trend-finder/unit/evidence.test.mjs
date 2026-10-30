@@ -47,8 +47,12 @@ test('medium with 2 hits among only 2 accounts', () => {
   assert.equal(e.evidenceOf(vid(), cohort(2, 2)), 'medium')
 })
 
-test('no label for YouTube, X, Reddit and (for now) Instagram', () => {
-  for (const platform of ['youtube', 'x', 'reddit', 'instagram']) assert.equal(e.evidenceOf(vid({ platform }), cohort(4, 3)), null)
+test('no label for YouTube, X, Reddit', () => {
+  for (const platform of ['youtube', 'x', 'reddit']) assert.equal(e.evidenceOf(vid({ platform }), cohort(4, 3)), null)
+})
+
+test('instagram gets a level but never high (no cohort)', () => {
+  assert.equal(e.evidenceOf(vid({ platform: 'instagram', baseline: base({ medianN: 6 }) })), 'medium')
 })
 
 test('no label when there is no denominator', () => {
