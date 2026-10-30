@@ -79,7 +79,7 @@ def test_account_medians_are_skipped_when_they_would_go_over_the_cap(client, mon
 
 def test_only_accounts_actually_fetched_are_paid_for(client, monkeypatch):
     monkeypatch.setattr(server, "run_actor", fake_search([]))
-    server.save_medians({"a": 400})
+    server.save_medians({"a": {"median": 400, "n": 5, "from": None, "to": None}})
     assert client.get("/api/search", params={"q": "tofu", "fresh": "1"}).status_code == 200
     assert server.load(f"spend:{server.today()}") == {"apify": server.SEARCH_USD["tiktok"]}
 

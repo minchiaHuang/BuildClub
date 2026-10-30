@@ -32,6 +32,15 @@ class SearchVideo(BaseModel):
     # Null when the account has too few videos, or for searches saved before this existed.
     medianViews: Optional[float] = None
     outlier: Optional[float] = None
+    # How many videos the median covers (null on searches saved before baselines were kept).
+    medianN: Optional[int] = None
+    # Dates (YYYY-MM-DD) of the oldest and newest video in the median.
+    baselineFrom: Optional[str] = None
+    baselineTo: Optional[str] = None
+    # When the median was fetched, in ms since the epoch.
+    medianFetchedAt: Optional[int] = None
+    # What outlier is measured against: the account's median, or followers when there is no median.
+    denominator: Optional[Literal["median", "followers"]] = None
     # YouTube only: the channel, which the usual views are looked up by. Not shown in the app.
     channelId: Optional[str] = None
     # Reddit only: upvotes, the subreddit (without "r/"), and the subreddit's median upvotes over its
