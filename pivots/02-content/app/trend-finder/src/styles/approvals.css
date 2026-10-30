@@ -150,6 +150,7 @@
 .review-actions .btn { flex: 1; min-height: 50px; border-radius: var(--radius-sm); font-size: var(--text-md); }
 .review-reject { display: grid; gap: 10px; }
 .review-reject textarea { border-radius: var(--radius-sm); }
+.cchip.cchip-on, .cchip.cchip-on:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 
 @media (max-width: 600px) {
   .review { gap: 14px; }
@@ -160,3 +161,7 @@
 .review-page { min-height: 100vh; padding: 24px 16px 56px; }
 .review-page > .small { max-width: 440px; margin: 0 auto 12px; color: var(--danger, #b3261e); }
 .share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; justify-self: start; align-self: flex-start; }
+
+.method-page article { max-width: 680px; margin: 0 auto; }
+.method-page h2 { margin-top: 28px; }
+.method-page li { margin: 6px 0; line-height: 1.5; }

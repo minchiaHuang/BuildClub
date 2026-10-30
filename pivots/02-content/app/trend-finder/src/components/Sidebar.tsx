@@ -177,7 +177,7 @@ export function Sidebar(p: Props) {
           <span className="brand-mark" aria-hidden="true">
             ↗
           </span>
-          Trend Finder
+          Remake
         </div>
 
         <ClientSwitcher agency={p.account?.agency || AGENCY_NAME} clients={p.clients} workspace={p.workspace} setWorkspace={(w) => { p.setWorkspace(w); p.onClose() }} onAddClient={() => { p.onClose(); p.onAddClient() }} />
@@ -203,6 +203,9 @@ export function Sidebar(p: Props) {
         </nav>
 
         <div className="side-foot">
+          <a className="link-btn" href="/method" target="_blank" rel="noreferrer">
+            How we calculate this
+          </a>
           {p.live ? (
             <span className="live-pill" title="Search results are real TikTok videos">
               Live TikTok data

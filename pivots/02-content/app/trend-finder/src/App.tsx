@@ -14,6 +14,7 @@ import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
 import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
+import { COHORT_PLATFORMS, cohortsByPattern, cohortsByVideo, fillBaseline } from './lib/evidence'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
 import { Sidebar } from './components/Sidebar'
@@ -550,8 +551,11 @@ export default function App() {
         await new Promise((r) => setTimeout(r, 5000))
         const res = await searchLive(q, false, platform, true)
         if (res.mediansPending) continue
-        const byId = new Map(res.videos.map((v) => [v.id, v.medianViews]))
-        const fill = (v: Video) => (byId.has(v.id) ? { ...v, medianViews: byId.get(v.id) ?? null } : v)
+        const freshById = new Map(res.videos.map((v) => [v.id, v]))
+        const fill = (v: Video) => {
+          const fresh = freshById.get(v.id)
+          return fresh ? fillBaseline(v, fresh) : v
+        }
         setLiveStore((prev) => ({ ...prev, videos: prev.videos.map(fill) }))
         setLiveResults((prev) => prev.map(fill))
         return
@@ -667,7 +671,13 @@ export default function App() {
     return videos.filter((v) => interp.keywords.some((k) => matchesKeyword(v, formatById.get(v.formatId), k)))
   }, [interp, formatById, live, liveResults])
 
-  const patterns = useMemo(() => (live ? findPatterns(liveResults, liveQuery) : []), [live, liveResults, liveQuery])
+  // Patterns count TikTok accounts only, matching the Accounts list (COHORT_PLATFORMS).
+  const patterns = useMemo(
+    () => (live ? findPatterns(liveResults.filter((v) => COHORT_PLATFORMS.includes(v.platform)), liveQuery) : []),
+    [live, liveResults, liveQuery],
+  )
+  const cohorts = useMemo(() => cohortsByVideo(liveResults, patterns), [liveResults, patterns])
+  const patternCohorts = useMemo(() => cohortsByPattern(liveResults, patterns), [liveResults, patterns])
 
   const results = useMemo(() => {
     const pattern = patterns.find((x) => x.label === patternFilter)
@@ -803,11 +813,11 @@ export default function App() {
     )
 
   // Annie's answer on a plan she was sent.
-  const decide = (ideaId: string, approved: boolean, reason?: string) =>
+  const decide = (ideaId: string, approved: boolean, reason?: string, tags?: string[]) =>
     setIdeas((prev) =>
       prev.map((i) =>
         i.id === ideaId
-          ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason, decidedAt: Date.now() }
+          ? { ...i, status: approved ? 'approved' : 'rejected', rejectReason: approved ? undefined : reason, rejectTags: approved || !tags?.length ? undefined : tags, decidedAt: Date.now() }
           : i,
       ),
     )
@@ -995,9 +1005,10 @@ export default function App() {
               }}
               onRefreshPulse={() => void refreshPulse(client, true)}
               live={live}
+              cohorts={cohorts}
               patterns={
                 live ? (
-                  <PatternStrip patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
+                  <PatternStrip patterns={patterns} cohorts={patternCohorts} active={patternFilter} onPick={setPatternFilter} />
                 ) : null
               }
               likeThis={
@@ -1102,6 +1113,7 @@ export default function App() {
         <BreakdownPanel
           video={openVideo}
           format={openFormat}
+          cohort={cohorts.get(openVideo.id)}
           formatAccounts={keywordPool.filter((v) => v.formatId === openFormat.id).length}
           client={client}
           saved={savedForClient.has(openVideo.id)}

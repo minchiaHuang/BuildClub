@@ -1,5 +1,16 @@
 export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'reddit' | 'x'
 
+export type Denominator = 'median' | 'followers'
+
+// How a video's multiple was measured. All null on data written before the details were kept.
+export interface Baseline {
+  medianN: number | null
+  baselineFrom: string | null
+  baselineTo: string | null
+  medianFetchedAt: number | null
+  denominator: Denominator | null
+}
+
 export interface Video {
   id: string
   platform: Platform
@@ -26,6 +37,11 @@ export interface Video {
   hashtags?: string[]
   // Reddit only: it shows no views, so `views` holds the upvotes (and medianViews the subreddit's usual upvotes).
   comments?: number
+  baseline?: Baseline
+  // When this search fetched the video, in ms.
+  fetchedAt?: number
+  // True when the search result came from the cache.
+  fromCache?: boolean
 }
 
 export interface Shot {
@@ -100,6 +116,7 @@ export interface SavedIdea {
   noteToApprover?: string
   sentAt?: number
   rejectReason?: string
+  rejectTags?: string[]
   // When the approver answered (ms). Stops an older tab from putting the idea back to waiting.
   decidedAt?: number
   // Where an approved idea is in production. Missing means 'approved'.

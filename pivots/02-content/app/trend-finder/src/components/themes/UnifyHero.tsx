@@ -22,12 +22,12 @@ export function UnifyHero({ clientName }: { clientName: string }) {
       {mode === 'sample' && (
         <p className="uh-count">
           <span className="uh-stars" aria-hidden="true">★★★★★</span>
-          Trend Finder has scanned <SlotCounter value={1284301} /> videos this month <span className="uh-sample">sample</span>
+          Remake has scanned <SlotCounter value={1284301} /> videos this month <span className="uh-sample">sample</span>
         </p>
       )}
       {mode === 'live' && stats && stats.videosScanned > 0 && (
         <p className="uh-count">
-          Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos
+          Remake has scanned <SlotCounter value={stats.videosScanned} /> videos
         </p>
       )}
     </header>

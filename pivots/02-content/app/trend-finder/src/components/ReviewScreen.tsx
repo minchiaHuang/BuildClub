@@ -3,13 +3,14 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { compact, hasScore, outlierScore, platformName, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
+import { REJECT_TAGS } from '../lib/share'
 
 interface Props {
   client: Pick<Client, 'id' | 'name'>
   ideas: SavedIdea[]
   videoById: Map<string, Video>
   formatById: Map<string, Format>
-  onDecide: (ideaId: string, approved: boolean, reason?: string) => void
+  onDecide: (ideaId: string, approved: boolean, reason?: string, tags?: string[]) => void
   // Only in Daphne's preview. Annie's own page has nothing to go back to.
   onBack?: () => void
 }
@@ -19,6 +20,7 @@ interface Leaving {
   id: string
   approved: boolean
   reason?: string
+  tags?: string[]
   collapsing: boolean
 }
 
@@ -34,6 +36,7 @@ const tokenMs = (name: string) => parseFloat(getComputedStyle(document.documentE
 export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack }: Props) {
   const [passing, setPassing] = useState<string | null>(null)
   const [reason, setReason] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [leaving, setLeaving] = useState<Leaving | null>(null)
   // What she has answered in this visit, newest last, for the confirmation line and the "All decided" list.
   const [decided, setDecided] = useState<{ id: string; title: string; approved: boolean }[]>([])
@@ -71,7 +74,7 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     () => () => {
       timers.current.forEach((t) => window.clearTimeout(t))
       const p = pending.current
-      if (p) decideRef.current(p.id, p.approved, p.reason)
+      if (p) decideRef.current(p.id, p.approved, p.reason, p.tags)
     },
     [],
   )
@@ -87,12 +90,12 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     pending.current = null
     setLeaving(null)
     record(d.id, d.approved)
-    onDecide(d.id, d.approved, d.reason)
+    onDecide(d.id, d.approved, d.reason, d.tags)
   }
 
-  const decide = (id: string, approved: boolean, why?: string) => {
+  const decide = (id: string, approved: boolean, why?: string, whyTags?: string[]) => {
     if (leaving) return
-    const d: Leaving = { id, approved, reason: why, collapsing: false }
+    const d: Leaving = { id, approved, reason: why, tags: whyTags, collapsing: false }
     const ids = waiting.map((i) => i.id)
     const at = ids.indexOf(id)
     focusNext.current = ids[at + 1] ?? ids[at - 1] ?? ''
@@ -100,9 +103,10 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     if (focusNext.current) focusTarget(focusNext.current)
     setPassing(null)
     setReason('')
+    setTags([])
     if (reducedMotion()) {
       record(id, approved)
-      onDecide(id, approved, why)
+      onDecide(id, approved, why, whyTags)
       return
     }
     pending.current = d
@@ -119,6 +123,7 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
     if (leaving) return
     setPassing(id)
     setReason('')
+    setTags([])
   }
 
   return (
@@ -170,13 +175,15 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
               passing={passing === idea.id}
               reason={reason}
               setReason={setReason}
+              tags={tags}
+              toggleTag={(t) => setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : prev.length < 5 ? [...prev, t] : prev))}
               leaving={out ? (out.approved ? 'right' : 'left') : null}
               collapsing={!!out?.collapsing}
               busy={!!leaving}
               onApprove={() => decide(idea.id, true)}
               onStartPass={() => startPass(idea.id)}
               onCancelPass={() => setPassing(null)}
-              onSendBack={() => decide(idea.id, false, reason.trim() || undefined)}
+              onSendBack={() => decide(idea.id, false, reason.trim() || undefined, tags)}
             />
           )
         })}
@@ -192,6 +199,8 @@ interface CardProps {
   passing: boolean
   reason: string
   setReason: (r: string) => void
+  tags: string[]
+  toggleTag: (t: string) => void
   leaving: 'left' | 'right' | null
   collapsing: boolean
   busy: boolean
@@ -338,6 +347,19 @@ function ReviewCard(p: CardProps) {
 
           {p.passing ? (
             <div className="review-reject">
+              <div className="chip-row" role="group" aria-label="Why not this one?">
+                {REJECT_TAGS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`cchip ${p.tags.includes(t) ? 'cchip-on' : ''}`}
+                    aria-pressed={p.tags.includes(t)}
+                    onClick={() => p.toggleTag(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
               <label htmlFor={`reason-${idea.id}`} className="field-label">
                 What should change? (optional)
               </label>

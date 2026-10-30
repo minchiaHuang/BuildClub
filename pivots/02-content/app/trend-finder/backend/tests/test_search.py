@@ -1,14 +1,10 @@
 import json
+import sqlite3
 from pathlib import Path
 
 import server
+from conftest import item, median_search
 from models import SearchResult
-
-
-def item(vid, author, plays, fans=100):
-    """A raw Apify item, as the TikTok actor returns it."""
-    return {"id": vid, "playCount": plays, "authorMeta": {"name": author, "fans": fans},
-            "webVideoUrl": f"https://www.tiktok.com/@{author}/video/{vid}", "createTime": 1761523200}
 
 
 def write_search(folder, query, fetched_at, videos):
@@ -81,8 +77,17 @@ def test_failed_medians_keep_the_search(client, monkeypatch):
 
 
 def test_median_needs_five_videos():
-    assert server.median_views([item(n, "a", n) for n in range(4)]) == {}
-    assert server.median_views([item(n, "a", n) for n in range(5)]) == {"a": 2}
+    assert server.account_baselines([item(n, "a", n) for n in range(4)]) == {}
+    five = server.account_baselines([item(n, "a", n) for n in range(5)])
+    assert five["a"]["median"] == 2
+    assert five["a"]["n"] == 5
+
+
+def test_baseline_records_count_and_date_range():
+    first = 1790812800  # 2026-10-01 UTC
+    items = [item(n, "a", n, created=first + (n - 1) * 86400) for n in range(1, 7)]
+    assert server.account_baselines(items)["a"] == {
+        "median": 3.5, "n": 6, "from": "2026-10-01", "to": "2026-10-06"}
 
 
 def test_saved_pins_still_match_the_contract():
@@ -105,7 +110,7 @@ def test_instagram_search_from_a_real_result(client, monkeypatch):
 
     def fake_actor(payload, max_items, actor=None, max_usd=None):
         calls.append((payload, actor))
-        return json.loads(FIXTURE.read_text())
+        return json.loads(FIXTURE.read_text()) if actor == server.IG_ACTOR else []
 
     monkeypatch.setattr(server, "run_actor", fake_actor)
     r = client.get("/api/search", params={"q": "tofu", "platform": "instagram"})
@@ -117,7 +122,7 @@ def test_instagram_search_from_a_real_result(client, monkeypatch):
     top = body["videos"][0]
     assert top["author"] == "thaotamto" and top["url"].startswith("https://www.instagram.com/")
     assert top["followers"] is None and top["ratio"] is None and top["medianViews"] is None
-    assert [actor for _, actor in calls] == [server.IG_ACTOR]  # no TikTok account lookups
+    assert [actor for _, actor in calls] == [server.IG_ACTOR, server.instagram.REEL_ACTOR]  # then the accounts' reels
     assert calls[0][0]["keywordSearch"] is True
 
     # the second search comes from the cache, kept apart from TikTok's
@@ -132,16 +137,6 @@ def test_unknown_platform_is_rejected(client):
 
 def test_tiktok_cache_names_did_not_change():
     assert server.cache_name("tofu") == server.cache_name("tofu", "tiktok") != server.cache_name("tofu", "instagram")
-
-
-def median_search(calls, authors):
-    """Search returns one video per author; each account's latest videos all have 100 views."""
-    def fake_actor(payload, max_items, actor=None, max_usd=None):
-        calls.append(payload)
-        if "searchQueries" in payload:
-            return [item(n, a, 1000) for n, a in enumerate(authors)]
-        return [item(100 + n, a, 100) for a in payload["profiles"] for n in range(5)]
-    return fake_actor
 
 
 def fetched(calls):
@@ -234,7 +229,7 @@ def test_results_come_back_before_account_medians(client, monkeypatch):
 def test_saved_medians_need_no_waiting(client, monkeypatch):
     calls = []
     monkeypatch.setattr(server, "run_actor", median_search(calls, ["a"]))
-    server.save_medians({"a": 100})
+    server.save_medians({"a": {"median": 100, "n": 5, "from": "2026-10-01", "to": "2026-10-05"}})
     r = client.get("/api/search", params={"q": "tofu"})
     assert r.json()["mediansPending"] is False
     assert r.json()["videos"][0]["outlier"] == 10
@@ -249,8 +244,8 @@ def test_a_fill_lost_to_a_restart_is_not_waited_on(client):
     assert client.get("/api/search", params={"q": "tofu"}).json()["mediansPending"] is False
 
 
-def test_instagram_has_no_medians_to_wait_for(client, monkeypatch):
-    monkeypatch.setattr(server, "run_actor", lambda payload, max_items, actor=None: [])
+def test_instagram_with_no_results_has_no_medians_to_wait_for(client, monkeypatch):
+    monkeypatch.setattr(server, "run_actor", lambda payload, max_items, actor=None, max_usd=None: [])
     r = client.get("/api/search", params={"q": "tofu", "platform": "instagram"})
     assert r.json()["mediansPending"] is False
 
@@ -258,3 +253,50 @@ def test_instagram_has_no_medians_to_wait_for(client, monkeypatch):
 def test_a_poll_for_scores_never_searches_live(client):
     r = client.get("/api/search", params={"q": "tofu", "cachedOnly": "1"})
     assert r.status_code == 404  # the offline fixture would fail the test if Apify were called
+
+
+def test_live_search_returns_baseline_details(client, monkeypatch):
+    monkeypatch.setattr(server, "run_actor", median_search([], ["a"]))
+    client.get("/api/search", params={"q": "tofu"})
+    video = client.get("/api/search", params={"q": "tofu"}).json()["videos"][0]
+    assert video["medianN"] == 5
+    assert video["baselineFrom"] and video["baselineTo"]
+    assert isinstance(video["medianFetchedAt"], int)
+    assert abs(video["medianFetchedAt"] - server.time.time() * 1000) < 5000
+    assert video["denominator"] == "median"
+
+
+def test_unscored_account_falls_back_to_followers(client, monkeypatch):
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
+        if "searchQueries" in payload:
+            return [item(1, "new", 1000), item(2, "nofans", 1000, fans=0)]
+        return []
+
+    monkeypatch.setattr(server, "run_actor", fake_actor)
+    client.get("/api/search", params={"q": "tofu"})
+    videos = {v["author"]: v for v in client.get("/api/search", params={"q": "tofu"}).json()["videos"]}
+    new, nofans = videos["new"], videos["nofans"]
+    assert new["denominator"] == "followers"
+    assert new["medianN"] is None
+    assert nofans["denominator"] is None
+
+
+def test_old_median_rows_load_without_details(client, monkeypatch):
+    now = server.time.time()
+    conn = sqlite3.connect(server.DB_PATH)  # the schema before n and the dates were added
+    conn.execute("CREATE TABLE medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
+    conn.execute("INSERT INTO medians VALUES ('a', 100, ?)", (now,))
+    conn.commit()
+    conn.close()
+
+    def search_only(payload, max_items, actor=None, max_usd=None):
+        assert "searchQueries" in payload, "account medians were fetched again"
+        return [item(1, "a", 1000)]
+
+    monkeypatch.setattr(server, "run_actor", search_only)
+    video = client.get("/api/search", params={"q": "tofu"}).json()["videos"][0]
+    assert video["medianViews"] == 100
+    assert video["medianN"] is None
+    assert video["baselineFrom"] is None
+    assert video["medianFetchedAt"] == int(now * 1000)
+    assert video["denominator"] == "median"

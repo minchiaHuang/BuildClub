@@ -30,7 +30,7 @@ const landings: Partial<Record<UiTheme, Landing>> = {
 // Where "Ask for access" writes to. Accounts are made by hand; there is no self-service sign-up.
 const ACCESS_EMAIL = 'tommycat997@gmail.com'
 const askForAccess = () => {
-  window.location.href = `mailto:${ACCESS_EMAIL}?subject=${encodeURIComponent('Trend Finder access')}`
+  window.location.href = `mailto:${ACCESS_EMAIL}?subject=${encodeURIComponent('Remake access')}`
 }
 
 // `real` is true when the API has accounts: the form then signs in for real. Otherwise it is the
@@ -81,7 +81,7 @@ function BaseLogin({ real, onSignIn, onBack }: { real: boolean; onSignIn: (accou
           <span className="brand-mark" aria-hidden="true">
             ↗
           </span>
-          Trend Finder
+          Remake
         </div>
         <div className="login-copy">
           <h1>Find what's working for every client</h1>

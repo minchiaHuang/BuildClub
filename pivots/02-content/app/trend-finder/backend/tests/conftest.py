@@ -21,6 +21,22 @@ def fake_subprocess(run):
     return SimpleNamespace(**{**vars(subprocess), "run": run})
 
 
+def item(vid, author, plays, fans=100, created=1761523200):
+    """A raw Apify item, as the TikTok actor returns it."""
+    return {"id": vid, "playCount": plays, "authorMeta": {"name": author, "fans": fans},
+            "webVideoUrl": f"https://www.tiktok.com/@{author}/video/{vid}", "createTime": created}
+
+
+def median_search(calls, authors):
+    """Search returns one video per author; each account's latest videos all have 100 views."""
+    def fake_actor(payload, max_items, actor=None, max_usd=None):
+        calls.append(payload)
+        if "searchQueries" in payload:
+            return [item(n, a, 1000) for n, a in enumerate(authors)]
+        return [item(100 + n, a, 100) for a in payload["profiles"] for n in range(5)]
+    return fake_actor
+
+
 @pytest.fixture(autouse=True)
 def offline(tmp_path, monkeypatch):
     def no_network(payload, max_items, actor=None, max_usd=None):

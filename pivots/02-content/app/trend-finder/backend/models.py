@@ -32,6 +32,15 @@ class SearchVideo(BaseModel):
     # Null when the account has too few videos, or for searches saved before this existed.
     medianViews: Optional[float] = None
     outlier: Optional[float] = None
+    # How many videos the median covers (null on searches saved before baselines were kept).
+    medianN: Optional[int] = None
+    # Dates (YYYY-MM-DD) of the oldest and newest video in the median.
+    baselineFrom: Optional[str] = None
+    baselineTo: Optional[str] = None
+    # When the median was fetched, in ms since the epoch.
+    medianFetchedAt: Optional[int] = None
+    # What outlier is measured against: the account's median, or followers when there is no median.
+    denominator: Optional[Literal["median", "followers"]] = None
     # YouTube only: the channel, which the usual views are looked up by. Not shown in the app.
     channelId: Optional[str] = None
     # Reddit only: upvotes, the subreddit (without "r/"), and the subreddit's median upvotes over its
@@ -68,6 +77,9 @@ class Shot(BaseModel):
     text: Optional[str] = None
 
 
+Tag = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+
+
 class SavedIdea(BaseModel):
     id: str
     videoId: str
@@ -79,6 +91,7 @@ class SavedIdea(BaseModel):
     noteToApprover: Optional[str] = None
     sentAt: Optional[int] = None
     rejectReason: Optional[str] = None
+    rejectTags: Optional[list[Tag]] = Field(default=None, max_length=5)
     decidedAt: Optional[int] = None
     # Daphne's production stage for an approved idea. No stage means "approved".
     stage: Optional[Literal["approved", "filming", "editing", "posted"]] = None
@@ -273,6 +286,7 @@ class ReviewIdea(BaseModel):
     noteToApprover: Optional[str] = None
     sentAt: Optional[int] = None
     rejectReason: Optional[str] = None
+    rejectTags: Optional[list[Tag]] = Field(default=None, max_length=5)
     decidedAt: Optional[int] = None
 
 
@@ -291,6 +305,7 @@ class DecideRequest(BaseModel):
     ideaId: str
     decision: Literal["approved", "rejected"]
     reason: Optional[str] = Field(default=None, max_length=1000)
+    tags: Optional[list[Tag]] = Field(default=None, max_length=5)
 
 
 class LoginRequest(BaseModel):

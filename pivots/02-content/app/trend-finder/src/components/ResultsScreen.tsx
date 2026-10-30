@@ -9,6 +9,8 @@ import type { Answer } from '../lib/answer'
 import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
+import { EvidenceChip } from './EvidenceChip'
+import { cachedLabel, type Cohort } from '../lib/evidence'
 import { PlatformLogo } from './PlatformToggles'
 import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
@@ -42,6 +44,8 @@ interface Props {
   // Platforms that answered with no videos.
   empty: Platform[]
   patterns: React.ReactNode
+  // Same-pattern accounts for each video id (live TikTok only); drives the evidence label.
+  cohorts: Map<string, Cohort>
   results: Video[]
   trends: FormatTrend[]
   sort: Sort
@@ -96,7 +100,13 @@ export function ResultsScreen(p: Props) {
   const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
   const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
-    .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
+    .map((pl) => {
+      const vs = shown.filter((v) => v.platform === pl)
+      // Each platform has its own search, so its cache state comes from its own videos.
+      const cached = p.live ? vs.filter((v) => v.fromCache) : []
+      const fetchedAt = cached.length ? Math.max(...cached.map((v) => v.fetchedAt ?? 0)) : 0
+      return { pl, n: vs.length, cache: cached.length ? cachedLabel(fetchedAt, Date.now()) : null }
+    })
     .filter((x) => x.n > 0)
   const i = p.interp
   const queryLabel = i.source ? '' : i.text.trim()
@@ -248,12 +258,19 @@ export function ResultsScreen(p: Props) {
                 {n}
               </span>
             ))}
+            {platformCounts.map(({ pl, cache }) =>
+              cache ? (
+                <span key={`cache-${pl}`} className="summary-cached">
+                  {platformName[pl]} · {cache}
+                </span>
+              ) : null,
+            )}
           </p>
 
           {best && <h1 className="best-title">Best to copy</h1>}
           {best && (
             <div className="best">
-              <BestVideo video={best} onOpen={() => p.onOpen(best.id)} />
+              <BestVideo key={best.id} video={best} onOpen={() => p.onOpen(best.id)} />
               <div className="best-body">
                 {bestTrend && (
                   <span className="best-trend">
@@ -262,6 +279,7 @@ export function ResultsScreen(p: Props) {
                   </span>
                 )}
                 <strong className="best-hook">"{best.hook}"</strong>
+                <EvidenceChip video={best} cohort={p.cohorts.get(best.id)} />
                 <span className="small muted">
                   {hasScore(best) && best.platform !== 'reddit'
                     ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
@@ -340,6 +358,7 @@ export function ResultsScreen(p: Props) {
                 onOpen={() => p.onOpen(v.id)}
                 onToggleSave={() => p.onToggleSave(v.id)}
                 status={p.ideaStatus.get(v.id)}
+                cohort={p.cohorts.get(v.id)}
               />
             ))}
           </div>

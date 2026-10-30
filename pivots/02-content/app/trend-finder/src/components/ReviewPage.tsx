@@ -30,9 +30,9 @@ export function ReviewPage({ token }: { token: string }) {
   )
 
   // The card has already animated away, so take it out of the list; put it back if the answer didn't save.
-  const decide = (ideaId: string, approved: boolean, reason?: string) => {
+  const decide = (ideaId: string, approved: boolean, reason?: string, tags?: string[]) => {
     setIdeas((prev) => prev.map((i) => (i.id === ideaId ? { ...i, status: approved ? 'approved' : 'rejected' } : i)))
-    sendDecision(token, ideaId, approved, reason)
+    sendDecision(token, ideaId, approved, reason, tags)
       .then(() => setFailed(''))
       .catch((e: Error) => {
         setFailed(e.message + ' Please try again.')

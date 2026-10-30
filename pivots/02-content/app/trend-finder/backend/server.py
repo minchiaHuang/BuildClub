@@ -34,6 +34,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 import assist
 import channels
+import instagram
 import reddit
 import share
 import x
@@ -177,14 +178,20 @@ def read_cache(query: str, platform: str = "tiktok"):
     return saved if age_hours < CACHE_HOURS else None
 
 
+def created_iso(item: dict) -> Optional[str]:
+    """When the raw TikTok item was posted, as an ISO string."""
+    created = item.get("createTimeISO")
+    if not created and item.get("createTime"):
+        created = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(item["createTime"]))
+    return created
+
+
 def trim(item: dict) -> dict:
     """Only the fields the app uses, so the cache stays small."""
     meta = item.get("videoMeta") or {}
     author = item.get("authorMeta") or {}
     music = item.get("musicMeta")
-    created = item.get("createTimeISO")
-    if not created and item.get("createTime"):
-        created = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(item["createTime"]))
+    created = created_iso(item)
     plays = item.get("playCount") or 0
     followers = author.get("fans") or 0
     return {
@@ -269,40 +276,60 @@ def search_instagram(query: str) -> list:
     return sorted(videos, key=lambda v: v["plays"], reverse=True)
 
 
-def median_views(items: list) -> dict:
+def account_baselines(items: list) -> dict:
     """Each account's usual views: the median over its recent videos (from reel-studio's
-    research.py score()). Accounts with fewer than MIN_VIDEOS videos are left out."""
-    views = {}
+    research.py score()), with how many videos and which dates it covers. Accounts with
+    fewer than MIN_VIDEOS videos are left out."""
+    by_author = {}
     for i in items:
         name = (i.get("authorMeta") or {}).get("name")
         if name and i.get("playCount") is not None:
-            views.setdefault(name, []).append(i["playCount"])
-    return {name: statistics.median(v) for name, v in views.items() if len(v) >= MIN_VIDEOS}
+            by_author.setdefault(name, []).append(i)
+    baselines = {}
+    for name, videos in by_author.items():
+        if len(videos) < MIN_VIDEOS:
+            continue
+        dates = sorted(d[:10] for d in map(created_iso, videos) if d)
+        baselines[name] = {"median": statistics.median(v["playCount"] for v in videos), "n": len(videos),
+                           "from": dates[0] if dates else None, "to": dates[-1] if dates else None}
+    return baselines
 
 
 def saved_medians(authors: list) -> dict:
-    """Account medians fetched in the last MEDIAN_DAYS. None means the account had too few videos."""
+    """Account baselines fetched in the last MEDIAN_DAYS, with fetchedAt in ms. None means the
+    account had too few videos. Rows saved before n and the dates existed have those as None."""
     if not authors:
         return {}
     since = time.time() - MEDIAN_DAYS * 86400
     with db() as conn:
-        rows = conn.execute(f"SELECT author, median FROM medians WHERE fetched_at > ? AND author IN "
-                            f"({','.join('?' * len(authors))})", (since, *authors)).fetchall()
-    return dict(rows)
+        rows = conn.execute(f"SELECT author, median, n, base_from, base_to, fetched_at FROM medians "
+                            f"WHERE fetched_at > ? AND author IN ({','.join('?' * len(authors))})",
+                            (since, *authors)).fetchall()
+    return {a: None if m is None else {"median": m, "n": n, "from": f, "to": t, "fetchedAt": int(at * 1000)}
+            for a, m, n, f, t, at in rows}
 
 
-def save_medians(medians: dict) -> None:
+def save_medians(baselines: dict, now: Optional[float] = None) -> None:
+    now = now or time.time()
     with db() as conn:
-        conn.executemany("INSERT OR REPLACE INTO medians (author, median, fetched_at) VALUES (?, ?, ?)",
-                         [(a, m, time.time()) for a, m in medians.items()])
+        conn.executemany("INSERT OR REPLACE INTO medians (author, median, n, base_from, base_to, fetched_at) "
+                         "VALUES (?, ?, ?, ?, ?, ?)",
+                         [(a, b and b["median"], b and b["n"], b and b["from"], b and b["to"], now)
+                          for a, b in baselines.items()])
 
 
-def apply_medians(videos: list, medians: dict) -> None:
-    """medianViews and outlier: views over the account's usual views."""
+def apply_medians(videos: list, baselines: dict) -> None:
+    """medianViews, outlier and the baseline details: views over the account's usual views."""
     for v in videos:
-        median = medians.get(v["author"])
+        b = baselines.get(v["author"])
+        median = b and b["median"]
         v["medianViews"] = median
         v["outlier"] = round(v["plays"] / median, 2) if median else None
+        v["medianN"] = b and b["n"]
+        v["baselineFrom"] = b and b["from"]
+        v["baselineTo"] = b and b["to"]
+        v["medianFetchedAt"] = b and b["fetchedAt"]
+        v["denominator"] = "median" if median else "followers" if (v.get("followers") or 0) > 0 else None
 
 
 def fetch_medians(missing: list) -> dict:
@@ -312,15 +339,16 @@ def fetch_medians(missing: list) -> dict:
         print("[search] account medians skipped: today's Apify budget is used up", flush=True)
         return {}
     try:
-        found = median_views(run_actor({
+        found = account_baselines(run_actor({
             "profiles": missing, "resultsPerPage": VIDEOS_PER_AUTHOR, "profileSorting": "latest",
             "excludePinnedPosts": True, **NO_DOWNLOADS}, len(missing) * VIDEOS_PER_AUTHOR, max_usd=MAX_USD_PER_MEDIANS))
     except Exception as e:
         print(f"[search] account medians failed: {e}", flush=True)
         return {}
+    now = time.time()
     fresh = {a: found.get(a) for a in missing}
-    save_medians(fresh)
-    return fresh
+    save_medians(fresh, now)
+    return {a: b and {**b, "fetchedAt": int(now * 1000)} for a, b in fresh.items()}
 
 
 # Fetching account medians takes about 40 seconds, so the search returns first and the cache
@@ -426,6 +454,52 @@ def search_x(query: str):
                 write_cache(background)
             finally:
                 filling.discard(cache_name(query, "x"))
+
+        in_background(fill)
+    return {**payload, "cached": False}
+
+
+def search_ig(query: str):
+    """Instagram reels for the keyword. Each account's usual plays (its latest reels, one batched actor
+    run) are filled afterwards, like X's."""
+    def run(payload, max_items):
+        return run_actor(payload, max_items, actor=instagram.REEL_ACTOR, max_usd=MAX_USD_PER_MEDIANS)
+
+    try:
+        videos = search_instagram(query)
+        authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
+        baselines = instagram.saved(db, authors, MEDIAN_DAYS)
+        instagram.apply(videos, baselines)
+    except Exception as e:
+        print(f"[search] failed: {e}", flush=True)
+        return error(502, "Instagram search failed. Check the API terminal for details.", str(e))
+    missing = [a for a in authors if a not in baselines][:instagram.ACCOUNTS_PER_FILL]
+    payload = {"query": query, "platform": "instagram", "fetchedAt": int(time.time() * 1000), "videos": videos,
+               "mediansPending": bool(missing)}
+    write_cache(payload)
+    print(f'[search] instagram "{query}" → {len(videos)} videos', flush=True)
+    if missing:
+        filling.add(cache_name(query, "instagram"))
+        background = copy.deepcopy(payload)
+
+        def fill():
+            try:
+                found = {}
+                if spend("apify", round(len(missing) * instagram.REELS_PER_ACCOUNT * instagram.USD_PER_REEL, 2), DAILY_APIFY_USD):
+                    try:
+                        found = instagram.fetch_baselines(missing, run)
+                        instagram.save(db, found)
+                        now = int(time.time() * 1000)
+                        found = {a: b and {**b, "fetchedAt": now} for a, b in found.items()}
+                    except Exception as e:
+                        print(f"[search] instagram baselines failed: {e}", flush=True)
+                else:
+                    print("[search] instagram baselines skipped: today's Apify budget is used up", flush=True)
+                instagram.apply(background["videos"], {**baselines, **found})
+                background["mediansPending"] = False
+                write_cache(background)
+            finally:
+                filling.discard(cache_name(query, "instagram"))
 
         in_background(fill)
     return {**payload, "cached": False}
@@ -542,23 +616,21 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
         return over_budget("Apify", DAILY_APIFY_USD, "DAILY_APIFY_USD")
     if platform == "x":
         return search_x(query)
+    if platform == "instagram":
+        return search_ig(query)
     medians, missing = {}, []
     try:
         if platform == "reddit":
             return search_reddit(query)  # subreddit medians are filled in the background
-        if platform == "instagram":
-            videos = search_instagram(query)  # account medians are TikTok only for now
-        else:
-            videos = search_tiktok(query)
-            # Accounts seen in the last week are scored now; up to AUTHORS_PER_SEARCH others later.
-            authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
-            medians = saved_medians(authors)
-            missing = [a for a in authors if a not in medians][:AUTHORS_PER_SEARCH]
-            apply_medians(videos, medians)
+        videos = search_tiktok(query)
+        # Accounts seen in the last week are scored now; up to AUTHORS_PER_SEARCH others later.
+        authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
+        medians = saved_medians(authors)
+        missing = [a for a in authors if a not in medians][:AUTHORS_PER_SEARCH]
+        apply_medians(videos, medians)
     except Exception as e:
-        name = "Instagram" if platform == "instagram" else "TikTok"
         print(f"[search] failed: {e}", flush=True)
-        return error(502, f"{name} search failed. Check the API terminal for details.", str(e))
+        return error(502, f"TikTok search failed. Check the API terminal for details.", str(e))
     payload = {"query": query, "platform": platform, "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
     write_cache(payload)
@@ -572,10 +644,19 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
 
 # Clients and ideas are saved as whole lists, the way the front end already holds them.
 # GET returns null until something is saved, so the front end keeps its sample data.
+def migrate_medians(conn: sqlite3.Connection) -> None:
+    """Add the baseline columns to a medians table made before they existed. Rows are kept as they are."""
+    have = {row[1] for row in conn.execute("PRAGMA table_info(medians)")}
+    for column, kind in (("n", "INTEGER"), ("base_from", "TEXT"), ("base_to", "TEXT")):
+        if column not in have:
+            conn.execute(f"ALTER TABLE medians ADD COLUMN {column} {kind}")
+
+
 def db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
+    migrate_medians(conn)
     for statement in auth.SCHEMA:
         conn.execute(statement)
     return conn
@@ -944,6 +1025,27 @@ def pin(query: str, platform: str = "tiktok") -> None:
     print(f'Pinned "{query}": it will load without Apify or the internet.')
 
 
+def refetch(query: str, platform: str = "tiktok") -> None:
+    """Fresh search with account baselines, then pin it. Goes through search(), so every spend cap applies."""
+    global in_background
+    if platform not in ("tiktok", "instagram"):
+        sys.exit("refetch supports tiktok and instagram.")
+    query = query.strip()[:120]
+    original, in_background = in_background, lambda fill: fill()  # medians must finish before we pin
+    try:
+        result = search(query, fresh="1", platform=platform)
+    finally:
+        in_background = original
+    if isinstance(result, JSONResponse):
+        sys.exit(result.body.decode())
+    videos = json.loads((CACHE_DIR / cache_name(query, platform)).read_text())["videos"]
+    scored = sum(1 for v in videos if v.get("outlier") is not None)
+    if videos and scored == 0:  # never replace a pin with a baseline-less one
+        sys.exit(f"medians failed or over budget: scored 0 of {len(videos)}; not pinned")
+    pin(query, platform)
+    print(f"scored {scored} of {len(videos)} videos; baseline details on {sum(1 for v in videos if v.get('medianN'))}")
+
+
 def add_user(args: list[str]) -> None:
     """add-user <email> "<name>" "<agency>" [--password-stdin]: asks for the password twice, unless it comes on stdin."""
     stdin = "--password-stdin" in args
@@ -968,8 +1070,11 @@ if __name__ == "__main__":
     platforms = ["tiktok", "instagram", "youtube", "reddit", "x"]
     if len(sys.argv) in (3, 4) and sys.argv[1] == "pin" and (sys.argv[3:] == [] or sys.argv[3] in platforms):
         pin(sys.argv[2].strip()[:120], *sys.argv[3:])
+    elif len(sys.argv) in (3, 4) and sys.argv[1] == "refetch" and (sys.argv[3:] == [] or sys.argv[3] in platforms[:2]):
+        refetch(sys.argv[2], *sys.argv[3:])
     elif len(sys.argv) >= 2 and sys.argv[1] == "add-user":
         add_user(sys.argv[2:])
     else:
         sys.exit(f'Usage: python backend/server.py pin "<search>" [{"|".join(platforms)}]\n'
+                 '       python backend/server.py refetch "<search>" [tiktok|instagram]\n'
                  '       python backend/server.py add-user <email> "<name>" "<agency>"')

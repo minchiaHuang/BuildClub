@@ -40,11 +40,26 @@ export async function loadReview(token: string): Promise<Review | null> {
   return r.json()
 }
 
-export async function sendDecision(token: string, ideaId: string, approved: boolean, reason?: string): Promise<void> {
+// Preset reasons for sending a plan back, in the order Annie sees them. The backend accepts any short text.
+export const REJECT_TAGS: readonly string[] = [
+  "Doesn't fit the brand's tone",
+  "Format doesn't suit this client",
+  'Too hard or costly to film',
+  'Did something similar recently',
+  'Other',
+]
+
+export async function sendDecision(
+  token: string,
+  ideaId: string,
+  approved: boolean,
+  reason?: string,
+  tags?: string[],
+): Promise<void> {
   const r = await fetch(`/api/review/${encodeURIComponent(token)}/decide`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ideaId, decision: approved ? 'approved' : 'rejected', reason }),
+    body: JSON.stringify({ ideaId, decision: approved ? 'approved' : 'rejected', reason, tags }),
   })
   if (!r.ok) throw new Error("Couldn't save your answer.")
 }

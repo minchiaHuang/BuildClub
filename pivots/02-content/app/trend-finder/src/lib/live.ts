@@ -1,4 +1,4 @@
-import type { Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
+import type { Baseline, Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
 import type { Answer } from './answer'
 import { UNKNOWN_DAYS, hasScore, meanScore, outlierScore } from './metrics'
 
@@ -21,6 +21,12 @@ interface LiveItem {
   followers: number | null
   // The account's usual views. Null when the API couldn't work it out, and missing on older saved searches.
   medianViews?: number | null
+  // How that median was measured (SearchVideo in backend/models.py); missing on older saved searches.
+  medianN?: number | null
+  baselineFrom?: string | null
+  baselineTo?: string | null
+  medianFetchedAt?: number | null
+  denominator?: Baseline['denominator']
   music: string
   musicOriginal: boolean
   hashtags: string[]
@@ -64,7 +70,19 @@ const daysSince = (iso: string | null) =>
 const idPrefix: Record<Platform, string> = { tiktok: 'tt', instagram: 'ig', youtube: 'yt', reddit: 'rd', x: 'x' }
 const noCaption: Record<Platform, string> = { tiktok: 'TikTok video', instagram: 'Instagram reel', youtube: 'YouTube Short', reddit: 'Reddit video', x: 'X video' }
 
-function toVideo(item: LiveItem, query: string, platform: Platform): Video {
+// Only set when the API sent at least one of the five fields, so older saved searches fall back to the median/followers rule.
+function baselineOf(item: LiveItem): Baseline | undefined {
+  const b: Baseline = {
+    medianN: item.medianN ?? null,
+    baselineFrom: item.baselineFrom ?? null,
+    baselineTo: item.baselineTo ?? null,
+    medianFetchedAt: item.medianFetchedAt ?? null,
+    denominator: item.denominator ?? null,
+  }
+  return Object.values(b).some((x) => x !== null) ? b : undefined
+}
+
+function toVideo(item: LiveItem, query: string, platform: Platform, search: { fetchedAt?: number; cached: boolean }): Video {
   return {
     id: `${idPrefix[platform]}-${item.id}`,
     platform,
@@ -88,6 +106,9 @@ function toVideo(item: LiveItem, query: string, platform: Platform): Video {
     music: item.music,
     hashtags: item.hashtags ?? [],
     comments: platform === 'reddit' ? item.comments : undefined,
+    baseline: baselineOf(item),
+    fetchedAt: search.fetchedAt,
+    fromCache: search.cached,
   }
 }
 
@@ -131,7 +152,7 @@ export async function searchLive(
   const videos: Video[] = []
   const formats: Format[] = []
   for (const item of body.videos as LiveItem[]) {
-    const v = toVideo(item, query, platform)
+    const v = toVideo(item, query, platform, { fetchedAt: body.fetchedAt, cached: Boolean(body.cached) })
     videos.push(v)
     formats.push(toFormat(item, v))
   }
