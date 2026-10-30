@@ -16,7 +16,7 @@
 .mn-links { display: flex; gap: 34px; }
 .mn-links a { color: #c3c9d6; text-decoration: none; font-size: 15px; }
 .mn-links a:hover { color: #fff; }
-.mn-nav-right { display: flex; justify-content: flex-end; align-items: center; gap: 20px; }
+.mn-nav-right { display: flex; justify-content: flex-end; align-items: center; gap: 20px; white-space: nowrap; }
 .mn-textbtn { background: none; color: #dfe3ec; font-size: 15px; }
 .mn-whitepill { background: #fff; color: #0b1224; padding: 9px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; }
 
@@ -63,7 +63,10 @@
   .landing-midnight { padding: 8px; }
   .landing-midnight .mn-panel { padding: 0 16px 32px; }
   .landing-midnight .mn-stage { min-height: 300px; margin-top: 16px; }
-  .mn-nav-right { gap: 12px; }
+  .mn-nav-right { gap: 10px; }
+  .mn-nav-right .mn-textbtn { font-size: 14px; }
+  .mn-nav-right .mn-whitepill { padding: 8px 12px; font-size: 13px; }
+  .mn-brand { font-size: 15px; gap: 7px; }
   .mn-steps { grid-template-columns: 1fr; }
   .mn-br { display: none; }
   .mn-laurels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
