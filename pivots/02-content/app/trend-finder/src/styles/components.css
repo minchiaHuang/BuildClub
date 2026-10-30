@@ -183,3 +183,12 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
   .btn-sm, select, .check, .shot-edit input, .shot-edit textarea { min-height: 40px; }
   .plan-watch { display: inline-flex; align-items: center; min-height: 40px; }
 }
+
+/* Evidence label + one plain line under a recommendation */
+.evidence { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.evidence-line { font-size: var(--text-xs); color: var(--muted); overflow-wrap: anywhere; }
+.evidence-chip { white-space: nowrap; }
+.evidence-high { background: var(--early-soft); color: var(--early); }
+.evidence-medium { background: var(--rising-soft); color: var(--rising); }
+.evidence-limited { background: var(--late-soft); color: var(--late); }
+.evidence-compact .evidence-line { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

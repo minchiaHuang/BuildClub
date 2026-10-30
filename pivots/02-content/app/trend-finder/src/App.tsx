@@ -14,6 +14,7 @@ import { ReadingOverlay } from './components/ReadingOverlay'
 import { buildAnswer } from './lib/answer'
 import type { Answer } from './lib/answer'
 import { BreakdownPanel } from './components/BreakdownPanel'
+import { cohortsByVideo, fillBaseline } from './lib/evidence'
 import { ClientScreen } from './components/ClientScreen'
 import { PlanScreen } from './components/PlanScreen'
 import { Sidebar } from './components/Sidebar'
@@ -550,8 +551,11 @@ export default function App() {
         await new Promise((r) => setTimeout(r, 5000))
         const res = await searchLive(q, false, platform, true)
         if (res.mediansPending) continue
-        const byId = new Map(res.videos.map((v) => [v.id, v.medianViews]))
-        const fill = (v: Video) => (byId.has(v.id) ? { ...v, medianViews: byId.get(v.id) ?? null } : v)
+        const freshById = new Map(res.videos.map((v) => [v.id, v]))
+        const fill = (v: Video) => {
+          const fresh = freshById.get(v.id)
+          return fresh ? fillBaseline(v, fresh) : v
+        }
         setLiveStore((prev) => ({ ...prev, videos: prev.videos.map(fill) }))
         setLiveResults((prev) => prev.map(fill))
         return
@@ -668,6 +672,7 @@ export default function App() {
   }, [interp, formatById, live, liveResults])
 
   const patterns = useMemo(() => (live ? findPatterns(liveResults, liveQuery) : []), [live, liveResults, liveQuery])
+  const cohorts = useMemo(() => cohortsByVideo(liveResults, patterns), [liveResults, patterns])
 
   const results = useMemo(() => {
     const pattern = patterns.find((x) => x.label === patternFilter)
@@ -995,6 +1000,7 @@ export default function App() {
               }}
               onRefreshPulse={() => void refreshPulse(client, true)}
               live={live}
+              cohorts={cohorts}
               patterns={
                 live ? (
                   <PatternStrip patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
@@ -1102,7 +1108,7 @@ export default function App() {
         <BreakdownPanel
           video={openVideo}
           format={openFormat}
-          formatAccounts={keywordPool.filter((v) => v.formatId === openFormat.id).length}
+          cohort={cohorts.get(openVideo.id)}
           client={client}
           saved={savedForClient.has(openVideo.id)}
           onClose={() => setOpenVideoId(null)}

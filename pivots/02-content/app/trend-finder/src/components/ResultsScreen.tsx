@@ -9,6 +9,8 @@ import type { Answer } from '../lib/answer'
 import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
+import { EvidenceChip } from './EvidenceChip'
+import type { Cohort } from '../lib/evidence'
 import { PlatformLogo } from './PlatformToggles'
 import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
@@ -42,6 +44,8 @@ interface Props {
   // Platforms that answered with no videos.
   empty: Platform[]
   patterns: React.ReactNode
+  // Same-pattern accounts for each video id (live TikTok only); drives the evidence label.
+  cohorts: Map<string, Cohort>
   results: Video[]
   trends: FormatTrend[]
   sort: Sort
@@ -262,6 +266,7 @@ export function ResultsScreen(p: Props) {
                   </span>
                 )}
                 <strong className="best-hook">"{best.hook}"</strong>
+                <EvidenceChip video={best} cohort={p.cohorts.get(best.id)} />
                 <span className="small muted">
                   {hasScore(best) && best.platform !== 'reddit'
                     ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
@@ -340,6 +345,7 @@ export function ResultsScreen(p: Props) {
                 onOpen={() => p.onOpen(v.id)}
                 onToggleSave={() => p.onToggleSave(v.id)}
                 status={p.ideaStatus.get(v.id)}
+                cohort={p.cohorts.get(v.id)}
               />
             ))}
           </div>
