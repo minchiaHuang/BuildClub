@@ -2,6 +2,7 @@
 
 **一句話：** 2026-10-30 UI/UX 全面測試（`test/uiux-sweep`）跑完：四套設計 × 三種寬度，修了 36 個問題，最後一次全矩陣重跑 0 失敗、US$0；PR https://github.com/minchiaHuang/BuildClub/pull/2 （base `feat/full-backend-coverage`），報告 https://claude.ai/artifact/EW9ANgzo4nAS2kVjQ8CV6V 。`feat/full-backend-coverage`（PR #1）早上的 ③④⑤ 和 `ACCESS_EMAIL`（5a3ba66）都做完了。Daphne 的 8787 **還是 integrate-premium-ui 那一版，沒換**（2026-10-30 使用者取消換版）。
 
+- **2026-10-30 測試階段結束：** PR #2 已 merge 進 `feat/full-backend-coverage`（97470ba），這次的修正跟著 PR #1 送審。停在這裡，因為全矩陣第 1–4 層都 0 失敗，剩下的 8 項都是設計決定（見報告的「要你決定」），等 Veralyn 審 PR 時一起談。已清掉 worktree：`uiux-sweep`、`.claude/worktrees/agent-a0cfba9…`（test/isolated-backend）、`agent-a6d6071…`（fix/no-accidental-paid-search）；本機分支 `test/uiux-sweep` 已刪，另兩個分支內容已在（`git cherry` 確認），但不是祖先、`-d` 拒絕，先留著。8787 沒換。驗證：`bash bin/verify.sh` GREEN（2026-10-30）。
 - **2026-10-29～30（UI/UX 全面測試，`test/uiux-sweep`）：** 照 `docs/plans/2026-10-29-uiux-sweep.md` 跑，worktree `~/orca/workspaces/BuildClub/uiux-sweep`，隔離後端 `bin/isolated-backend.sh 8799 --demo-data`（無 `.env`、上限 0、US$0）。
   - 測試腳本在 `pivots/02-content/app/trend-finder/e2e/`：`click-sweep.mjs`（第 1 層）、`journeys/`（第 2 層：daphne-daily、annie-phone、new-account）、`anomalies.mjs`（第 3 層）、`keyboard-a11y.mjs`（第 4 層），共用 `lib/harness.mjs`；第 5 層三個 persona 加一次視覺審查已做。
   - 修了 36 個問題，每個問題一個 commit。P1 包括：舊分頁蓋掉點子、退回的規劃被鎖住（8cb06d9）、過期沒標示和已 Posted 還算在 Plans 裡、Annie 打不開參考影片、重新整理後規劃不見。完整清單在 PR #2 和報告。
