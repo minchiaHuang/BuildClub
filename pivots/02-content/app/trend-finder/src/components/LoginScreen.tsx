@@ -16,7 +16,12 @@ export function LoginScreen({ onSignIn }: Props) {
   const [account, setAccount] = useState<'staff' | 'client'>('staff')
   const [staffRole, setStaffRole] = useState<'member' | 'manager'>(savedRole === 'manager' ? 'manager' : 'member')
 
-  if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onRegister={() => setMode('register')} />
+  // "Try the demo" skips sign-up: enter the sample agency as a team member.
+  const tryDemo = () => {
+    setRole('member')
+    onSignIn()
+  }
+  if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onDemo={tryDemo} />
 
   const register = mode === 'register'
   const isClient = account === 'client'
