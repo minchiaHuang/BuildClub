@@ -36,3 +36,16 @@
 /* Overview: header with an action, and the agency section */
 :root[data-ui="altitude"] .page-head-row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
 :root[data-ui="altitude"] .agency-box { max-width: 760px; }
+
+/* Login: staff pick team member or manager in a small segmented control */
+:root[data-ui="altitude"] .la-seg { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+:root[data-ui="altitude"] .la-seg legend { margin-bottom: 6px; padding: 0; }
+:root[data-ui="altitude"] .la-seg label { position: relative; cursor: pointer; }
+:root[data-ui="altitude"] .la-seg input { position: absolute; opacity: 0; pointer-events: none; }
+:root[data-ui="altitude"] .la-seg span {
+  display: block; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 999px; text-align: center; font-size: 14px;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+:root[data-ui="altitude"] .la-seg label:hover span { border-color: var(--fg); }
+:root[data-ui="altitude"] .la-seg input:checked + span { border-color: var(--fg); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--fg); }
+:root[data-ui="altitude"] .la-seg input:focus-visible + span { outline: 2px solid var(--sky-top); outline-offset: 2px; }

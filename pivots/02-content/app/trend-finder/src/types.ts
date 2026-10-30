@@ -75,8 +75,9 @@ export interface Client {
 
 export type IdeaStatus = 'saved' | 'waiting' | 'approved' | 'rejected'
 
-// Who is signed in. Only the manager can approve or send back plans. Demo only: picked at login, nothing is checked.
-export type Role = 'member' | 'manager'
+// Who is signed in. Staff are team members or the manager; only the manager can approve or send back plans.
+// A client account sees its own plans, read-only. Demo only: picked at login, nothing is checked.
+export type Role = 'member' | 'manager' | 'client'
 
 export interface AgencySettings {
   agencyName: string

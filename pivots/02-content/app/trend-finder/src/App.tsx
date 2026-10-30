@@ -384,10 +384,11 @@ export default function App() {
   }
   const counts = { shortlist: mine.length }
 
-  if (!signedIn)
+  // Client accounts aren't live yet (see ClientPortal), so a saved client login goes back to the login screen.
+  if (!signedIn || role === 'client')
     return (
       <AppContext.Provider value={appContext}>
-        {/* stream A: after login, land on the all-clients overview */}
+        {/* stream A: after login, staff land on the all-clients overview */}
         <LoginScreen
           onSignIn={() => {
             setSignedIn(true)
@@ -396,6 +397,7 @@ export default function App() {
         />
       </AppContext.Provider>
     )
+
 
   const inClient = workspace !== 'all'
 

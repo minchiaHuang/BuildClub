@@ -1,22 +1,33 @@
 import { useState } from 'react'
-import type { Role } from '../types'
 import { useApp } from '../lib/appContext'
 import { LandingAltitude } from './landing/LandingAltitude'
 
+interface Props {
+  onSignIn: () => void
+}
+
 // MOCK sign-in for the demo. No account or password is checked or stored; only the picked role is kept.
-export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
+// Staff covers the whole agency (team members and the manager who approves); clients get their own account.
+// Clients never see the agency's client list: their login is a separate second step (not built yet).
+export function LoginScreen({ onSignIn }: Props) {
   const { role: savedRole, setRole } = useApp()
-  const [mode, setMode] = useState<'landing' | 'login' | 'register'>('landing')
+  const [mode, setMode] = useState<'landing' | 'login' | 'register' | 'client'>('landing')
   const [email, setEmail] = useState('')
-  const [role, setPickedRole] = useState<Role>(savedRole)
+  const [account, setAccount] = useState<'staff' | 'client'>('staff')
+  const [staffRole, setStaffRole] = useState<'member' | 'manager'>(savedRole === 'manager' ? 'manager' : 'member')
 
   if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onRegister={() => setMode('register')} />
 
   const register = mode === 'register'
+  const isClient = account === 'client'
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    setRole(role)
-    onSignIn()
+    if (isClient) {
+      setMode('client')
+    } else {
+      setRole(staffRole)
+      onSignIn()
+    }
   }
 
   return (
@@ -35,45 +46,70 @@ export function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
           <span className="alt-cloud c1" /><span className="alt-cloud c2" /><span className="alt-cloud c3" />
         </div>
         <div className="alt-ground" aria-hidden="true" />
-        <form className="la-login-card" onSubmit={submit}>
-          <div className="la-login-head">
-            <h1>{register ? 'Start with the sample agency' : 'Log in to Remake'}</h1>
-            <p>Demo only. There is no password, and only the role you pick is saved.</p>
-          </div>
-          <label className="field">
-            <span className="field-label">Work email</span>
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@agency.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <fieldset className="la-roles">
-            <legend className="field-label">I am a</legend>
-            <label className="la-role">
-              <input type="radio" name="role" checked={role === 'member'} onChange={() => setPickedRole('member')} />
-              <strong>Team member</strong>
-              <span>Find videos and plan them for clients.</span>
-            </label>
-            <label className="la-role">
-              <input type="radio" name="role" checked={role === 'manager'} onChange={() => setPickedRole('manager')} />
-              <strong>Manager</strong>
-              <span>Approve plans or send them back.</span>
-            </label>
-          </fieldset>
-          <button type="submit" className="la-pill la-solid la-big">
-            {register ? 'Register and log in' : 'Log in'}
-          </button>
-          <p className="la-login-switch">
-            {register ? 'Already using Remake? ' : 'New here? '}
-            <button type="button" className="link-btn" onClick={() => setMode(register ? 'login' : 'register')}>
-              {register ? 'Log in' : 'Register free'}
+        {mode === 'client' ? (
+          <div className="la-login-card">
+            <div className="la-login-head">
+              <h1>Client login</h1>
+              <p>Client accounts are coming soon. Your agency will send you an invite to see your plans.</p>
+            </div>
+            <button type="button" className="la-pill la-outline la-big" onClick={() => setMode('login')}>
+              Back to log in
             </button>
-          </p>
-        </form>
+          </div>
+        ) : (
+          <form className="la-login-card" onSubmit={submit}>
+            <div className="la-login-head">
+              <h1>{register ? 'Start with the sample agency' : 'Log in to Remake'}</h1>
+              <p>Demo only. There is no password, and only the account type you pick is saved.</p>
+            </div>
+            <label className="field">
+              <span className="field-label">{isClient ? 'Email' : 'Work email'}</span>
+              <input
+                id="login-email"
+                type="email"
+                autoComplete="email"
+                placeholder={isClient ? 'you@company.com' : 'you@agency.com'}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <fieldset className="la-roles">
+              <legend className="field-label">Log in as</legend>
+              <label className="la-role">
+                <input type="radio" name="account" checked={!isClient} onChange={() => setAccount('staff')} />
+                <strong>Staff</strong>
+                <span>Find videos, plan them and approve them.</span>
+              </label>
+              <label className="la-role">
+                <input type="radio" name="account" checked={isClient} onChange={() => setAccount('client')} />
+                <strong>Client</strong>
+                <span>See your plans and how the month is going.</span>
+              </label>
+            </fieldset>
+            {!isClient && (
+              <fieldset className="la-seg">
+                <legend className="field-label">Your role</legend>
+                <label>
+                  <input type="radio" name="staff-role" checked={staffRole === 'member'} onChange={() => setStaffRole('member')} />
+                  <span>Team member</span>
+                </label>
+                <label>
+                  <input type="radio" name="staff-role" checked={staffRole === 'manager'} onChange={() => setStaffRole('manager')} />
+                  <span>Manager (approves)</span>
+                </label>
+              </fieldset>
+            )}
+            <button type="submit" className="la-pill la-solid la-big">
+              {isClient ? 'Continue' : register ? 'Register and log in' : 'Log in'}
+            </button>
+            <p className="la-login-switch">
+              {register ? 'Already using Remake? ' : 'New here? '}
+              <button type="button" className="link-btn" onClick={() => setMode(register ? 'login' : 'register')}>
+                {register ? 'Log in' : 'Register free'}
+              </button>
+            </p>
+          </form>
+        )}
       </section>
     </main>
   )
