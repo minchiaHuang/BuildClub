@@ -270,7 +270,7 @@ export function ResultsScreen(p: Props) {
           {best && <h1 className="best-title">Best to copy</h1>}
           {best && (
             <div className="best">
-              <BestVideo video={best} onOpen={() => p.onOpen(best.id)} />
+              <BestVideo key={best.id} video={best} onOpen={() => p.onOpen(best.id)} />
               <div className="best-body">
                 {bestTrend && (
                   <span className="best-trend">

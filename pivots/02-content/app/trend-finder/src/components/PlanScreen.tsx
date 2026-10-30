@@ -160,7 +160,7 @@ export function PlanScreen(p: Props) {
 
       <div className="plan-grid">
         <aside className="plan-ref">
-          <BestVideo video={video} />
+          <BestVideo key={video.id} video={video} />
           {hasScore(video) ? (
             <>
               <div className="plan-ref-score">
