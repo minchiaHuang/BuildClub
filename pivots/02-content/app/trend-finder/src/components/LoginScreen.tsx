@@ -115,7 +115,7 @@ function BaseLogin({ real, onSignIn, onBack }: { real: boolean; onSignIn: (accou
             {real ? (busy ? 'Signing in…' : 'Sign in') : 'Continue as demo agency'}
           </button>
           {onBack && (
-            <button type="button" className="btn login-btn" onClick={onBack}>
+            <button type="button" className="btn btn-ghost login-btn" onClick={onBack}>
               Back
             </button>
           )}
