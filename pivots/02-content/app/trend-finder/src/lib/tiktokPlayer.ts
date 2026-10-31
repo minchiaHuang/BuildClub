@@ -37,6 +37,18 @@ export const isPlayerError = (m: PlayerMessage) => m.type === 'onPlayerError'
 
 export const commandMessage = (type: PlayerCommand) => ({ type, 'x-tiktok-player': true })
 
+// Jumps the big player to a second. TikTok's embed player takes `seekTo` with the time in seconds.
+export function seekTo(frame: HTMLIFrameElement | null, sec: number) {
+  frame?.contentWindow?.postMessage({ type: 'seekTo', value: sec, 'x-tiktok-player': true }, TIKTOK_ORIGIN)
+}
+
+// The player's `onCurrentTime` message carries { currentTime, duration }; null for any other message.
+export function currentTimeOf(m: PlayerMessage): number | null {
+  if (m.type !== 'onCurrentTime' || typeof m.value !== 'object' || m.value === null) return null
+  const t = (m.value as Record<string, unknown>).currentTime
+  return typeof t === 'number' && Number.isFinite(t) ? t : null
+}
+
 export function sendCommand(frame: HTMLIFrameElement | null, type: PlayerCommand) {
   frame?.contentWindow?.postMessage(commandMessage(type), TIKTOK_ORIGIN)
 }

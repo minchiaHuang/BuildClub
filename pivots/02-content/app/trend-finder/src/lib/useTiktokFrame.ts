@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { READY_TIMEOUT_MS, isPlayerError, parsePlayerMessage } from './tiktokPlayer.ts'
+import { READY_TIMEOUT_MS, currentTimeOf, isPlayerError, parsePlayerMessage } from './tiktokPlayer.ts'
 
 // Listens to one TikTok player iframe. Messages are matched to the iframe by `event.source`.
 // Reports ready / muted state and a failure: an onPlayerError, or no onPlayerReady within 6 s of the page loading.
@@ -7,6 +7,8 @@ export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialM
   const [ready, setReady] = useState(false)
   const [muted, setMuted] = useState(opts.initialMuted)
   const [failed, setFailed] = useState(false)
+  // Where the player is now, in seconds; a ref because it changes several times a second and nothing re-renders for it.
+  const timeRef = useRef<number | null>(null)
   const timer = useRef<number | undefined>(undefined)
   // Ready can arrive before the iframe's load event (the player is script-driven); once it has, never arm the timer again.
   const readyRef = useRef(false)
@@ -26,6 +28,8 @@ export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialM
       if (e.source !== frame.contentWindow) return
       const m = parsePlayerMessage(e.origin, e.data)
       if (!m) return
+      const at = currentTimeOf(m)
+      if (at !== null) timeRef.current = at
       if (m.type === 'onPlayerReady') {
         readyRef.current = true
         window.clearTimeout(timer.current)
@@ -51,5 +55,5 @@ export function useTiktokFrame(frame: HTMLIFrameElement | null, opts: { initialM
     }
   }, [frame])
 
-  return { ready, muted, setMuted, failed }
+  return { ready, muted, setMuted, failed, timeRef }
 }

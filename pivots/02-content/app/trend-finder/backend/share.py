@@ -75,12 +75,17 @@ def no_such_link() -> JSONResponse:
     return JSONResponse({"error": "This link isn't active."}, status_code=404)
 
 
+def active_link(load, token: str):
+    """The link behind a token, or None when it was never made or has been turned off."""
+    data = load(PREFIX + token)
+    return data if isinstance(data, dict) and "clientId" in data else None
+
+
 def make_router(db, load, save) -> APIRouter:
     router = APIRouter()
 
     def link_of(token: str):
-        data = load(PREFIX + token)
-        return data if isinstance(data, dict) and "clientId" in data else None
+        return active_link(load, token)
 
     def keys_of(client_id: str) -> list:
         with db() as conn:

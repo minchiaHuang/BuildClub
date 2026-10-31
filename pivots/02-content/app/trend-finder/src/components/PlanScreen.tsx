@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { useManagerName } from '../lib/appContext'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { dueLabel, formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
+import type { PlayerControl } from './BestVideo'
+import { TimedComments } from './TimedComments'
+import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { lastSentBack } from '../lib/memory'
 
 interface Props {
@@ -51,6 +54,7 @@ export function PlanScreen(p: Props) {
   const reopened = idea.status === 'waiting' && !!idea.approvedAt
   const editable = idea.status === 'saved' || idea.status === 'rejected' || reopened
   const comments = idea.shotComments ?? {}
+  const playerControl = useRef<PlayerControl | null>(null)
   const shotComment = (i: number) =>
     comments[i] && (
       <span className="shot-comment">
@@ -144,7 +148,7 @@ export function PlanScreen(p: Props) {
 
       <div className="plan-grid">
         <aside className="plan-ref">
-          <BestVideo key={video.id} video={video} />
+          <BestVideo key={video.id} video={video} control={playerControl} />
           {hasScore(video) ? (
             <>
               <div className="plan-ref-score">
@@ -174,6 +178,13 @@ export function PlanScreen(p: Props) {
               </>
             )}
           </span>
+          <TimedComments
+            key={idea.id}
+            ideaId={idea.id}
+            videoId={idea.videoId}
+            control={playerControl}
+            canSeek={!!video.live && video.platform === 'tiktok' && !!tiktokVideoId(video.url)}
+          />
         </aside>
 
         <div className="plan-main">
