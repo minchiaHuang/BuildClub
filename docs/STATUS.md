@@ -1,6 +1,6 @@
 # STATUS
 
-Remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (2026-10-31). Phase 2b (shot checklist and real-footage takes) is merged (PR #6, 4277192, 2026-10-31). Phase 2c (edit to a publishable MP4, then Annie's approval) is split into 2c-1 and 2c-2. 2c-1 ("Make the video") is merged (PR #7, 359791c, 2026-11-01). 2c-2 (Annie approves the finished video on the no-login review link) is implemented on `feat/remake-cut-approval`, e2e done at 1440 and 390, final Opus review With fixes (all fixed, re-review clean), PR #8 open, waiting for merge.
+Remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (2026-10-31). Phase 2b (shot checklist and real-footage takes) is merged (PR #6, 4277192, 2026-10-31). Phase 2c (edit to a publishable MP4, then Annie's approval) is split into 2c-1 and 2c-2. 2c-1 ("Make the video") is merged (PR #7, 359791c, 2026-11-01). 2c-2 (Annie approves the finished video on the no-login review link) is merged (PR #8, 27496cb, 2026-11-01) after an e2e re-run at 1440 and 390 (35/35 each). Phase 2 (2a-2c) is done. `bash bin/verify.sh` GREEN on the merged tree (2026-11-01).
 
 ## Last verification (2026-11-01)
 - feat/remake-rough-cut @ 678b5a5: `bash bin/verify.sh` GREEN (backend 410 passed, 1 skipped; unit 78); `npm run build` and `npm run lint` exit 0. Final Opus review: With fixes, all fixed and re-reviewed clean.
