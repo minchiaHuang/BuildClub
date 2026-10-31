@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AgencySettings, ClientEvent, Role, SavedIdea } from './types'
-import { clients as sampleClients, formats, videos } from './data/sample'
+import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
 import { formatTrend, groupFailures, hasDate, outlierScore, platformList, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
@@ -34,6 +34,14 @@ import {
   findPatterns,
   likeImage,
   likeVideo,
+  loadIdeas,
+  loadLibrary,
+  loadList,
+  IdeasConflict,
+  SaveError,
+  saveIdeas,
+  saveLibrary,
+  saveList,
   searchAll,
   searchLive,
 } from './lib/live'
@@ -48,9 +56,13 @@ import { ShortlistBoard } from './components/ShortlistBoard'
 import { AddClientScreen } from './components/AddClientScreen'
 import { logout, me } from './lib/auth'
 import { nextView, onUnauthorized } from './lib/authGate'
+import { markMigrated, pickInitialIdeas, wasMigrated } from './lib/migrateLocal'
+import { applyDraft, changedIdeas, rebaseIdeas } from './lib/ideasSync'
 
 // Where the user was when the session ended, so signing back in returns there (also after a reload).
 const RETURN_KEY = 'remake.return-to.v1'
+// Edits not yet on the server when the session ended, kept so a reload before signing back in doesn't lose them.
+const DRAFT_KEY = 'remake.draft-ideas.v1'
 interface ReturnTo {
   view: View
   workspace: Workspace
@@ -95,6 +107,7 @@ export default function App() {
   // 'open' = the API has no accounts (demo sign-in above); otherwise the API's session decides.
   const [auth, setAuth] = useState<'checking' | 'open' | 'signed-out' | 'signed-in'>('checking')
   const returnTo = useRef<ReturnTo | null>(null)
+  const keepDraft = useRef<() => void>(() => {})
   const restoreView = useCallback(() => {
     let back = returnTo.current
     if (!back) {
@@ -128,9 +141,16 @@ export default function App() {
   useEffect(() => {
     here.current = { view, workspace, planIdeaId }
   }, [view, workspace, planIdeaId])
+  const authNow = useRef(auth)
+  useEffect(() => {
+    authNow.current = auth
+  }, [auth])
   useEffect(() => {
     onUnauthorized(() => {
+      // Only a signed-in session can end; a 401 on the sign-in page (e.g. the landing page's example search) is normal.
+      if (authNow.current !== 'signed-in') return
       returnTo.current = here.current
+      keepDraft.current()
       try {
         sessionStorage.setItem(RETURN_KEY, JSON.stringify(here.current))
       } catch {
@@ -173,6 +193,159 @@ export default function App() {
       if (ok) setQuery((q) => ({ ...q, days: 3650 }))
     })
   }, [])
+
+  // The API keeps clients, saved ideas and the videos behind them. Its copy wins on load; after that every
+  // change is saved back. Only the first load can move this browser's older ideas up (see migrateLocal).
+  const access = auth === 'open' || auth === 'signed-in'
+  const [synced, setSynced] = useState(false)
+  const [syncProblem, setSyncProblem] = useState<string | null>(null)
+  // Bumped by Retry and after signing back in, so every save effect looks again for changes the API doesn't hold.
+  const [retryTick, setRetryTick] = useState(0)
+  const saveFailed = useCallback((what: string, e: unknown) => {
+    // A 401 sends the user to the sign-in page; the save is tried again after that.
+    if (e instanceof SaveError && e.status === 401) return
+    setSyncProblem(`Couldn't save your ${what}. Your changes are still here; check your connection, then press Retry.`)
+  }, [])
+  const saved = useCallback(() => setSyncProblem(null), [])
+  // The ideas list is saved one request at a time, each with the revision the last one returned.
+  const ideasRev = useRef<string | null>(null)
+  const ideasQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const ideasGen = useRef(0)
+  // What the API already holds, so the copy just loaded from it isn't written straight back.
+  const onServer = useRef<{ clients: Client[] | null; ideas: SavedIdea[] | null; library: string | null }>({
+    clients: null,
+    ideas: null,
+    library: null,
+  })
+  const ideasNow = useRef(ideas)
+  useEffect(() => {
+    ideasNow.current = ideas
+  }, [ideas])
+  useEffect(() => {
+    keepDraft.current = () => {
+      try {
+        const draft = changedIdeas(onServer.current.ideas ?? [], ideasNow.current)
+        if (draft.length) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      } catch {
+        // Without storage the edits are still kept while this tab stays open.
+      }
+    }
+  }, [])
+  useEffect(() => {
+    if (!live || !access || synced) return
+    Promise.all([loadList<Client>('clients'), loadIdeas(), loadLibrary().catch(() => null)])
+      .then(async ([savedClients, loadedIdeas, library]) => {
+        if (library) {
+          // Add the saved videos this browser hasn't seen; its own copies stay as they are.
+          setLiveStore((prev) => {
+            const add = <T extends { id: string }>(mine: T[], theirs: T[]) => {
+              const ids = new Set(mine.map((x) => x.id))
+              return [...mine, ...theirs.filter((x) => !ids.has(x.id))]
+            }
+            return { videos: add(prev.videos, library.videos), formats: add(prev.formats, library.formats) }
+          })
+          onServer.current.library = libraryKey(library)
+        }
+        // Nothing saved for clients yet: this browser's list is kept and saved up by the effect below.
+        if (savedClients?.length) {
+          setClients(savedClients)
+          onServer.current.clients = savedClients
+        }
+        const sampleIds = new Set(sampleIdeas.map((i) => i.id))
+        const local = ideasNow.current.filter((i) => !sampleIds.has(i.id))
+        const pick = pickInitialIdeas(loadedIdeas.items, local, wasMigrated())
+        let rev = loadedIdeas.rev
+        if (pick.upload) rev = await saveIdeas(pick.ideas, rev)
+        const held = pick.upload ? pick.ideas : (loadedIdeas.items ?? [])
+        let draft: SavedIdea[] | null = null
+        try {
+          const raw = sessionStorage.getItem(DRAFT_KEY)
+          draft = raw ? (JSON.parse(raw) as SavedIdea[]) : null
+          sessionStorage.removeItem(DRAFT_KEY)
+        } catch {
+          draft = null
+        }
+        const shown = draft?.length ? applyDraft(held, draft) : held
+        // When the shown list is the held one, keep the very same object so nothing is saved back.
+        onServer.current.ideas = held
+        setIdeas(shown)
+        ideasRev.current = rev
+        markMigrated()
+        setSynced(true)
+      })
+      .catch((e) => {
+        if (!(e instanceof SaveError && e.status === 401))
+          setSyncProblem("Couldn't load your data. Reload the page to try again; nothing will be saved until it loads.")
+      })
+  }, [live, access, synced, setClients, setIdeas, setLiveStore])
+  useEffect(() => {
+    if (!synced || clients === onServer.current.clients) return
+    const prev = onServer.current.clients
+    onServer.current.clients = clients
+    saveList('clients', clients)
+      .then(saved)
+      .catch((e) => {
+        if (onServer.current.clients === clients) onServer.current.clients = prev // so Retry sends it again
+        saveFailed('clients', e)
+      })
+  }, [synced, clients, retryTick, saved, saveFailed])
+  useEffect(() => {
+    if (!synced || ideas === onServer.current.ideas) return
+    const prev = onServer.current.ideas
+    onServer.current.ideas = ideas
+    const gen = ideasGen.current
+    ideasQueue.current = ideasQueue.current
+      .then(async () => {
+        if (gen !== ideasGen.current) return // a newer list arrived from the API since this edit
+        let attempt = ideas
+        let base = prev ?? []
+        for (let tries = 0; ; tries++) {
+          try {
+            ideasRev.current = await saveIdeas(attempt, ideasRev.current)
+            break
+          } catch (e) {
+            if (!(e instanceof IdeasConflict) || tries >= 3) throw e
+            // Another tab saved first: take its list, put this edit on top, and save again.
+            ideasGen.current += 1
+            ideasRev.current = e.rev
+            const merged = rebaseIdeas(base, attempt, e.items)
+            base = e.items
+            attempt = merged
+            onServer.current.ideas = merged
+            setSyncProblem('This list was changed in another tab, so we loaded the latest and kept your edit.')
+          }
+        }
+        if (attempt !== ideas) {
+          // Show the merged list, keeping anything edited since; the effect saves that remainder.
+          const final = attempt
+          setIdeas((cur) => (cur === ideas ? final : rebaseIdeas(ideas, cur, final)))
+        } else saved()
+      })
+      .catch((e) => {
+        if (onServer.current.ideas === ideas) onServer.current.ideas = prev // so Retry sends it again
+        saveFailed('ideas', e)
+      })
+  }, [synced, ideas, retryTick, setIdeas, saved, saveFailed])
+  // The videos and breakdowns behind saved ideas, kept on the API like the ideas themselves.
+  const library = useMemo(() => {
+    const ids = new Set(ideas.map((i) => i.videoId))
+    const savedVideos = liveStore.videos.filter((v) => ids.has(v.id))
+    const formatIds = new Set(savedVideos.map((v) => v.formatId))
+    return { videos: savedVideos, formats: liveStore.formats.filter((f) => formatIds.has(f.id)) }
+  }, [ideas, liveStore])
+  useEffect(() => {
+    if (!synced) return
+    const key = libraryKey(library)
+    if (key === onServer.current.library) return
+    const prev = onServer.current.library
+    onServer.current.library = key
+    saveLibrary(library)
+      .then(saved)
+      .catch((e) => {
+        if (onServer.current.library === key) onServer.current.library = prev
+        saveFailed('saved videos', e)
+      })
+  }, [synced, library, retryTick, saved, saveFailed])
 
   // Each screen starts at the top, like a new page.
   useEffect(() => {
@@ -639,6 +812,7 @@ export default function App() {
           onSignIn={() => {
             if (auth === 'signed-out') {
               setAuth('signed-in')
+              setRetryTick((t) => t + 1)
               // Back from an ended session: return to where the user was, not the overview.
               if (restoreView()) return
             } else setSignedIn(true)
@@ -656,7 +830,10 @@ export default function App() {
       // Nothing stored to clear.
     }
     returnTo.current = null
-    void logout().then(() => setAuth('signed-out'))
+    void logout().then(() => {
+      setSynced(false)
+      setAuth('signed-out')
+    })
   }
 
 
@@ -687,6 +864,14 @@ export default function App() {
           <strong>{inClient ? client.name : 'All clients'}</strong>
         </header>
 
+        {syncProblem && (
+          <div className="sync-note" role="status">
+            <span>{syncProblem}</span>
+            <button type="button" className="link-btn" onClick={() => { setSyncProblem(null); setRetryTick((t) => t + 1) }}>
+              Retry
+            </button>
+          </div>
+        )}
         <main className="main">
           {view === 'add-client' && (
             <AddClientScreen
@@ -869,4 +1054,10 @@ export default function App() {
     </div>
     </AppContext.Provider>
   )
+}
+
+// Order doesn't matter when comparing what's saved, so compare by id.
+function libraryKey(library: { videos: { id: string }[]; formats: { id: string }[] }) {
+  const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id)
+  return JSON.stringify([[...library.videos].sort(byId), [...library.formats].sort(byId)])
 }
