@@ -117,7 +117,7 @@ export function SharedReviewPage({ token }: { token: string }) {
             <div className="review-stack">
               {review.cuts.map((item) => (
                 <SharedCutCard
-                  key={item.idea.id}
+                  key={`${item.idea.id}:${item.cut.version}`}
                   item={item}
                   token={token}
                   onDecided={decided}
@@ -290,10 +290,10 @@ function SharedCutCard({ item, token, onDecided, onAlreadyReviewed, onReplaced, 
     decideCut(token, idea.id, approved, cut.version, approved ? undefined : text.trim())
       .then(() => onDecided(`${approved ? 'Approved' : 'Sent back'} the video: ${title}`))
       .catch((e: Error) => {
-        if (e instanceof VideoReplaced) return onReplaced()
-        if (e instanceof AlreadyReviewed) return onAlreadyReviewed()
         if (e instanceof LinkClosed) return onClosed()
         setBusy(false)
+        if (e instanceof VideoReplaced) return onReplaced()
+        if (e instanceof AlreadyReviewed) return onAlreadyReviewed()
         setError(`${e.message} Please try again.`)
       })
   }
