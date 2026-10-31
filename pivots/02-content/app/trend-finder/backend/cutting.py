@@ -2,9 +2,12 @@
 ffmpeg filtergraph strings, tool output parsers). Nothing here runs a program or touches the database."""
 
 import json
+import math
+import os
 import re
 import shutil
 import string
+import subprocess
 from pathlib import Path
 
 import analyze
@@ -14,6 +17,8 @@ Word = tuple[float, float, str]  # start, end, text (seconds)
 FILLERS = {"um", "umm", "uh", "uhh", "er", "erm", "hm", "hmm"}  # English only; Chinese fillers are unverified
 MIN_FRAGMENT = 0.08  # seconds; shorter keep intervals are dropped
 FADE = 0.012         # seconds of fade at every seam
+MAX_INPUT_SEC = 600  # total length of the chosen takes
+WHISPER_TIMEOUT = 900
 LOUDNORM = "I=-13:TP=-1.5:LRA=11"  # reel-studio finish.py target, not a platform rule
 
 NO_FFMPEG = ("ffmpeg isn't installed on this computer, so the cut can't be made. "
@@ -199,3 +204,172 @@ def missing_tools() -> str | None:
     if not (Path(analyze.WHISPER).is_file() and Path(analyze.MODEL).is_file()):
         return NO_WHISPER
     return None
+
+
+class CutError(Exception):
+    """A one-sentence, human-readable reason the cut could not be made."""
+
+
+def run(cmd: list[str], *, timeout: float | None = None) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    except FileNotFoundError:
+        raise CutError(NO_WHISPER if cmd[0] == analyze.WHISPER else NO_FFMPEG)
+    except subprocess.TimeoutExpired:
+        raise CutError(f"{Path(cmd[0]).name} took too long, so the cut was stopped.")
+
+
+def _ffmpeg(args: list[str], what: str, *, quiet: bool = True) -> subprocess.CompletedProcess:
+    """Run ffmpeg; a failure becomes a CutError carrying the tail of stderr."""
+    r = run(["ffmpeg", "-y", "-nostdin", "-v", "error" if quiet else "info", *args])
+    if r.returncode != 0:
+        raise CutError(f"{what} failed: {r.stderr.strip()[-200:]}")
+    return r
+
+
+def probe(path: Path) -> dict:
+    r = run(["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)])
+    if r.returncode != 0:
+        raise CutError(f"Could not read {Path(path).name}: {r.stderr.strip()[-200:]}")
+    data = json.loads(r.stdout or "{}")
+    streams = data.get("streams", [])
+    v = next((s for s in streams if s.get("codec_type") == "video"), {})
+    a = next((s for s in streams if s.get("codec_type") == "audio"), {})
+    fps = 0.0
+    if v.get("avg_frame_rate", "0/0") not in ("0/0", "0"):
+        n, d = v["avg_frame_rate"].split("/")
+        fps = round(float(n) / float(d), 3) if float(d) else 0.0
+    return {"duration": float(data.get("format", {}).get("duration") or 0),
+            "width": v.get("width"), "height": v.get("height"), "fps": fps, "hasAudio": bool(a),
+            "vcodec": v.get("codec_name"), "acodec": a.get("codec_name"), "pix_fmt": v.get("pix_fmt"),
+            "sample_rate": int(a["sample_rate"]) if a.get("sample_rate") else None}
+
+
+def measure_loudness(path: Path) -> dict:
+    """Integrated loudness (LUFS) and true peak (dBFS) from ebur128's closing summary."""
+    r = run(["ffmpeg", "-nostdin", "-i", str(path), "-af", "ebur128=peak=true", "-f", "null", "-"])
+    summary = r.stderr[r.stderr.rfind("Summary:"):]
+    i = re.search(r"\bI:\s+(-?[\d.]+|-inf) LUFS", summary)
+    pk = re.search(r"Peak:\s+(-?[\d.]+|-inf) dBFS", summary)
+    if r.returncode != 0 or not i or not pk:
+        raise CutError("Could not measure the loudness of the result.")
+    return {"I": float(i.group(1)), "peak": float(pk.group(1))}
+
+
+def transcribe_words(wav: Path, work: Path) -> list[Word]:
+    """Word timings from whisper.cpp. A missing tool or a failed run is an error, never an empty list."""
+    if not (Path(analyze.WHISPER).is_file() and Path(analyze.MODEL).is_file()):
+        raise CutError(NO_WHISPER)
+    base = Path(work) / "words"
+    base.with_suffix(".json").unlink(missing_ok=True)
+    r = run([analyze.WHISPER, "-m", str(analyze.MODEL), "-f", str(wav), "-l", "auto", "-ml", "1", "-sow",
+             "-ojf", "-of", str(base), "-np"], timeout=WHISPER_TIMEOUT)
+    if r.returncode != 0:
+        raise CutError(f"Finding the words failed: {r.stderr.strip()[-200:]}")
+    try:
+        return parse_words(json.loads(base.with_suffix(".json").read_text(encoding="utf-8", errors="replace")))
+    except (OSError, ValueError):
+        raise CutError("Finding the words failed: whisper.cpp produced no readable result.")
+
+
+def _render_pass(cmd: list[str], total: float, on_progress, err_path: Path) -> None:
+    """Run ffmpeg with `-progress pipe:1`, reporting a 0-1 fraction; stderr goes to a file so it can't block."""
+    with open(err_path, "w+") as err:
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err, stdin=subprocess.DEVNULL, text=True)
+        except FileNotFoundError:
+            raise CutError(NO_FFMPEG)
+        for line in proc.stdout:
+            frac = parse_progress(line, total)
+            if frac is not None:
+                on_progress(frac)
+        code = proc.wait()
+        err.seek(0)
+        tail = err.read().strip()[-200:]
+    if code != 0:
+        raise CutError(f"Rendering the video failed: {tail}")
+
+
+def render_cut(takes: list[dict], music: Path | None, speed: float, work: Path, out: Path, step,
+               *, words_fn=transcribe_words) -> dict:
+    """Join the takes, cut silences and fillers, speed up, mix music, two-pass loudnorm, and write `out`
+    (via out.with_suffix('.part')). `step(progress, text)` is called at each milestone. Intermediate
+    files stay in `work`; removing `work` is the caller's job."""
+    work, out = Path(work), Path(out)
+    work.mkdir(parents=True, exist_ok=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    step(0.02, "Checking the takes")
+    infos = [{**t, **probe(t["path"])} for t in takes]
+    if not infos:
+        raise CutError("There are no takes to cut.")
+    if sum(i["duration"] for i in infos) > MAX_INPUT_SEC:
+        raise CutError(f"The chosen takes are too long (over {MAX_INPUT_SEC // 60} minutes in total).")
+
+    step(0.10, "Joining the takes")
+    joined = work / "joined.mkv"
+    (work / "join.txt").write_text(build_join_graph(infos))
+    cmd = []
+    for i in infos:
+        cmd += ["-i", str(i["path"])]
+    _ffmpeg([*cmd, "-/filter_complex", str(work / "join.txt"), "-map", "[v]", "-map", "[a]",
+             "-c:v", "libx264", "-crf", "18", "-preset", "veryfast", "-c:a", "pcm_s16le", str(joined)],
+            "Joining the takes")
+    total = probe(joined)["duration"]
+
+    step(0.15, "Listening for words")
+    wav = work / "audio.wav"
+    _ffmpeg(["-i", str(joined), "-vn", "-ac", "1", "-ar", "16000", str(wav)], "Extracting the sound")
+    words = words_fn(wav, work)
+
+    if words:
+        step(0.50, "Finding silences")
+        r = _ffmpeg(["-i", str(joined), "-vn", "-af", "silencedetect=n=-35dB:d=0.15", "-f", "null", "-"],
+                    "Finding silences", quiet=False)
+        silences = parse_silences(r.stderr, total)
+    else:
+        step(0.50, "No speech found, so nothing was cut.")
+        silences = []
+    keeps = keep_intervals(words, silences, total)
+    if sum(b - a for a, b in keeps) < 1.0:
+        raise CutError("Less than a second would be left after cutting, so nothing was made.")
+
+    step(0.60, "Measuring the sound")
+    use_music = music is not None
+    src = ["-i", str(joined)] + (["-stream_loop", "-1", "-i", str(music)] if use_music else [])
+    g1, g2 = work / "g1.txt", work / "g2.txt"
+    g1.write_text(build_cut_graph(keeps, speed, music=use_music, audio_only=True, loudnorm=None))
+    r = _ffmpeg([*src, "-/filter_complex", str(g1), "-map", "[a]", "-f", "null", "-"],
+                "Measuring the sound", quiet=False)
+    measured = None
+    if "{" not in r.stderr:
+        raise CutError("Measuring the sound failed: ffmpeg gave no loudness reading.")
+    try:
+        measured = parse_loudnorm(r.stderr)
+    except (ValueError, KeyError):
+        raise CutError("Measuring the sound failed: the loudness reading was unreadable.")
+    if not all(math.isfinite(v) for v in measured.values()):
+        measured = None  # all-silent audio: nothing to normalise, so drop loudnorm from the final graph
+    graph = build_cut_graph(keeps, speed, music=use_music, audio_only=False, loudnorm=measured)
+    if measured is None:
+        graph = re.sub(r"loudnorm=[^,;]*,", "", graph)
+    g2.write_text(graph)
+
+    expected = output_duration(keeps, speed)
+    part = out.with_suffix(".part")
+    step(0.65, "Rendering")
+    _render_pass(["ffmpeg", "-y", "-nostdin", "-v", "error", *src, "-/filter_complex", str(g2),
+                  "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+                  "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+                  "-movflags", "+faststart", "-t", num(expected + 0.5), "-f", "mp4",
+                  "-progress", "pipe:1", "-nostats", str(part)],
+                 expected, lambda f: step(0.65 + 0.30 * f, "Rendering"), work / "render.err")
+
+    step(0.97, "Checking the result")
+    p = probe(part)
+    got = (p["width"], p["height"], p["fps"], p["vcodec"], p["acodec"], p["pix_fmt"], p["sample_rate"])
+    if got != (1080, 1920, 30, "h264", "aac", "yuv420p", 48000):
+        part.unlink(missing_ok=True)
+        raise CutError("The finished video didn't match the expected format, so it was discarded.")
+    os.replace(part, out)
+    return {"size": out.stat().st_size, "durationSec": p["duration"]}
