@@ -552,7 +552,9 @@ def search_reddit(query: str):
 def health():
     # yt-dlp alone is enough for live YouTube search; TikTok, Instagram, Reddit and X need the Apify token.
     return {"live": bool(TOKEN) or bool(shutil.which("yt-dlp")), "platforms": ["tiktok", "instagram", "youtube", "reddit", "x"],
-            "resultsPerSearch": RESULTS_PER_SEARCH}
+            "resultsPerSearch": RESULTS_PER_SEARCH,
+            # Demo mode (bin/isolated-backend.sh --demo-data): the app may keep and save its built-in sample clients.
+            "demo": os.environ.get("REMAKE_DEMO") == "1"}
 
 
 def saved_files():

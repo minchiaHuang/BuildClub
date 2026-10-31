@@ -55,6 +55,17 @@ export async function checkLive(): Promise<boolean> {
   }
 }
 
+// True when the API runs in demo mode (--demo-data); only then may the built-in sample clients be saved to it.
+export async function checkDemo(): Promise<boolean> {
+  try {
+    const r = await fetch('/api/health')
+    if (!r.ok) return false
+    return (await r.json()).demo === true
+  } catch {
+    return false
+  }
+}
+
 // Cuts by characters, not UTF-16 units, so an emoji is never split in half (the API rejects half of one).
 const cut = (s: string, n: number) => Array.from(s).slice(0, n).join('')
 

@@ -160,3 +160,10 @@ def test_run_json_reads_yt_dlp_output(monkeypatch):
         returncode=1, stdout="", stderr="ERROR: boom"))
     with pytest.raises(RuntimeError, match="boom"):
         youtube.run_json(["x"])
+
+
+def test_health_reports_demo_mode(client, monkeypatch):
+    monkeypatch.delenv("REMAKE_DEMO", raising=False)
+    assert client.get("/api/health").json()["demo"] is False
+    monkeypatch.setenv("REMAKE_DEMO", "1")
+    assert client.get("/api/health").json()["demo"] is True

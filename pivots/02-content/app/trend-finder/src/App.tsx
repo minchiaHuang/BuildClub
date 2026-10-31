@@ -30,6 +30,7 @@ import {
   analyzeVideo,
   applyBreakdown,
   askAnswer,
+  checkDemo,
   checkLive,
   checkNeeds,
   findPatterns,
@@ -234,8 +235,8 @@ export default function App() {
   }, [])
   useEffect(() => {
     if (!live || !access || synced) return
-    Promise.all([loadList<Client>('clients'), loadIdeas(), loadLibrary().catch(() => null)])
-      .then(async ([savedClients, loadedIdeas, library]) => {
+    Promise.all([loadList<Client>('clients'), loadIdeas(), loadLibrary().catch(() => null), checkDemo()])
+      .then(async ([savedClients, loadedIdeas, library, demo]) => {
         if (library) {
           // Add the saved videos this browser hasn't seen; its own copies stay as they are.
           setLiveStore((prev) => {
@@ -250,7 +251,7 @@ export default function App() {
         if (savedClients?.length) {
           setClients(savedClients)
           onServer.current.clients = savedClients
-        } else {
+        } else if (!demo) {
           // Nothing saved yet: keep this browser's own clients, but never the built-in samples (they would be
           // saved to the API as if they were real). The effect below saves what is left.
           setClients((prev) => withoutSamples(prev, sampleClients))
