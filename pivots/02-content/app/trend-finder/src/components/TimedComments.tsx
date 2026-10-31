@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import { MAX_COMMENT_LENGTH, addComment, formatAt, listComments, parseAt, sortByTime } from '../lib/comments.ts'
-import type { Comment } from '../lib/comments.ts'
+import type { Comment as BaseComment } from '../lib/comments.ts'
 import { LinkClosed } from '../lib/share.ts'
 import { me } from '../lib/auth'
 import type { PlayerControl } from './BestVideo'
+
+// The server says which door a comment came in by; older comments carry nothing and count as the link.
+type Comment = BaseComment & { source?: 'staff' | 'review' }
 
 const NAME_KEY = 'remake.reviewer-name'
 const storedName = () => {
@@ -123,7 +126,10 @@ export function TimedComments({ ideaId, videoId, token, control, canSeek, onClos
                 <span className="tc-at">{formatAt(c.atSec)}</span>
               )}
               <div className="tc-body">
-                <span className="small muted">{c.author}</span>
+                <span className="small muted">
+                  {c.author}
+                  {c.source === 'staff' ? ' · Team' : ' · via review link'}
+                </span>
                 <p>{c.text}</p>
               </div>
             </li>

@@ -37,11 +37,42 @@ def test_text_over_500_rejected(client, setup):
     assert client.post("/api/ideas/ia/comments", json=note(1, author="")).status_code == 422
 
 
-def test_200_per_video_cap(client, setup):
+def test_200_per_idea_cap(client, setup):
     for i in range(200):
         assert client.post("/api/ideas/ia/comments", json=note(i)).status_code == 200
     assert client.post("/api/ideas/ia/comments", json=note(1)).status_code == 409
-    assert client.post("/api/ideas/ia/comments", json=note(1, video="other")).status_code == 200
+    # Another idea has its own allowance.
+    assert client.post("/api/ideas/ib/comments", json=note(1, video="v-ib")).status_code == 200
+
+
+def test_junk_video_id_rejected_on_both_routes(client, setup):
+    token = client.post("/api/share", json={"clientId": "a"}).json()["token"]
+    for n in range(3):
+        assert client.post(f"/api/review/{token}/ideas/ia/comments", json=note(1, video=f"junk{n}")).status_code == 422
+        assert client.post("/api/ideas/ia/comments", json=note(1, video=f"junk{n}")).status_code == 422
+    assert client.get("/api/ideas/ia/comments").json() == []
+
+
+def test_missing_idea_is_404(client, setup):
+    assert client.post("/api/ideas/nope/comments", json=note(1, video="v-nope")).status_code == 404
+    assert client.get("/api/ideas/nope/comments").json() == []
+
+
+def test_at_sec_must_be_finite_and_bounded(client, setup):
+    for raw in ("Infinity", "NaN", "86401", "1e30"):
+        body = '{"videoId": "v-ia", "atSec": %s, "text": "x", "author": "A"}' % raw
+        r = client.post("/api/ideas/ia/comments", content=body, headers={"content-type": "application/json"})
+        assert r.status_code == 422, raw
+    assert client.post("/api/ideas/ia/comments", json=note(86400)).status_code == 200
+
+
+def test_source_is_set_by_the_server(client, setup):
+    token = client.post("/api/share", json={"clientId": "a"}).json()["token"]
+    spoof = {**note(1), "source": "staff"}
+    assert client.post(f"/api/review/{token}/ideas/ia/comments", json=spoof).json()["source"] == "review"
+    assert client.post("/api/ideas/ia/comments", json={**note(2), "source": "review"}).json()["source"] == "staff"
+    got = client.get(f"/api/review/{token}/ideas/ia/comments").json()
+    assert [c["source"] for c in got] == ["review", "staff"]
 
 
 def test_share_link_can_comment_only_own_client(client, setup):
