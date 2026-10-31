@@ -187,3 +187,31 @@ def test_approve_after_resend_drops_old_tags(client, two_clients):
     assert r.status_code == 200
     assert "rejectTags" not in r.json()
     assert "rejectTags" not in stored(client)["ia"]
+
+
+def test_reject_then_resend_keeps_history(client, two_clients):
+    token, _ = link(client, "a")
+    client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "rejected",
+                                                     "reason": "too long", "tags": ["Too hard or costly"]})
+    sent = next(i for i in client.get("/api/ideas").json() if i["id"] == "ia")
+    assert [h["decision"] for h in sent["history"]] == ["rejected"]
+    # Staff sends it again from a copy that still holds the history, with the reason cleared.
+    resend = {k: v for k, v in sent.items() if k not in ("rejectReason", "rejectTags")}
+    resend.update(status="waiting", sentAt=sent["decidedAt"] + 1)
+    client.put("/api/ideas", json=[resend, idea("ib", "b")])
+    client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "approved"})
+    done = next(i for i in client.get("/api/ideas").json() if i["id"] == "ia")
+    assert [h["decision"] for h in done["history"]] == ["rejected", "approved"]
+    assert done["history"][0]["reason"] == "too long"
+    assert done["history"][0]["tags"] == ["Too hard or costly"]
+    assert done["history"][0]["decidedAt"] > 0
+
+
+def test_decide_twice_returns_404(client, two_clients):
+    token, _ = link(client, "a")
+    body = {"ideaId": "ia", "decision": "approved"}
+    assert client.post(f"/api/review/{token}/decide", json=body).status_code == 200
+    again = client.post(f"/api/review/{token}/decide", json=body)
+    assert again.status_code == 404
+    saved = next(i for i in client.get("/api/ideas").json() if i["id"] == "ia")
+    assert len(saved["history"]) == 1
