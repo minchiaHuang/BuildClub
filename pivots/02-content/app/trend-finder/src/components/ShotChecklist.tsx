@@ -13,7 +13,8 @@ interface Props {
 export function ShotChecklist({ ideaId, status, shots }: Props) {
   const [takes, setTakes] = useState<Take[] | null>(null)
   const [loadError, setLoadError] = useState(false)
-  const [busyShot, setBusyShot] = useState<number | null>(null)
+  // Shots with an upload still running; several shots can upload at once.
+  const [busy, setBusy] = useState<ReadonlySet<number>>(new Set())
   const [errors, setErrors] = useState<Record<number, string>>({})
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
@@ -50,9 +51,21 @@ export function ShotChecklist({ ideaId, status, shots }: Props) {
   const upload = async (shot: number, file: File) => {
     const problem = checkFile(file)
     if (problem) return setError(shot, problem)
-    setBusyShot(shot)
-    await run(shot, async () => [...(takes ?? []), await uploadTake(ideaId, shot, file)])
-    setBusyShot(null)
+    setError(shot)
+    setBusy((b) => new Set(b).add(shot))
+    try {
+      const added = await uploadTake(ideaId, shot, file)
+      // Add to the list as it is now: choices and deletes made during a long upload must not be undone.
+      setTakes((prev) => [...(prev ?? []), added])
+    } catch (e) {
+      setError(shot, (e as Error).message)
+    } finally {
+      setBusy((b) => {
+        const next = new Set(b)
+        next.delete(shot)
+        return next
+      })
+    }
   }
 
   const { done, total } = checklistProgress(shots.length, takes ?? [])
@@ -132,13 +145,13 @@ export function ShotChecklist({ ideaId, status, shots }: Props) {
                 </ul>
               )}
               {editable && (
-                <label className={`btn btn-ghost btn-sm take-add${busyShot === i ? ' is-busy' : ''}`} aria-disabled={busyShot === i}>
-                  {busyShot === i ? 'Uploading…' : 'Add take'}
+                <label className={`btn btn-ghost btn-sm take-add${busy.has(i) ? ' is-busy' : ''}`} aria-disabled={busy.has(i)}>
+                  {busy.has(i) ? 'Uploading…' : 'Add take'}
                   <input
                     type="file"
                     hidden
                     accept="video/mp4,video/quicktime,.mp4,.mov"
-                    disabled={busyShot === i}
+                    disabled={busy.has(i)}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       e.target.value = ''

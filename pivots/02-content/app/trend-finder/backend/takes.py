@@ -91,7 +91,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
         if declared.isdigit() and int(declared) > MAX_TAKE_BYTES:
             return error(413, LIMIT_TEXT)
 
-        folder = media_dir() / idea_id
+        root = media_dir().resolve()
+        folder = (root / idea_id).resolve()
+        if folder.parent != root:  # an id like ".." must not lead out of the media folder
+            return error(404, "That plan doesn't exist.")
         folder.mkdir(parents=True, exist_ok=True)
         take_id = secrets.token_urlsafe(9)
         part = folder / f".{take_id}.part"
@@ -106,6 +109,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
 
         name = unquote(request.headers.get("x-filename", ""))[:MAX_NAME].strip() or f"take.{ext}"
         with takes_lock:
+            current = find_idea(idea_id)  # the plan may have been reopened while the body was arriving
+            if current is None or current["status"] != "approved":
+                part.unlink(missing_ok=True)
+                return error(409, "Only an approved plan can take footage.")
             with db() as conn:
                 count = conn.execute("SELECT COUNT(*) FROM takes WHERE idea_id = ? AND shot = ?",
                                      (idea_id, shot)).fetchone()[0]

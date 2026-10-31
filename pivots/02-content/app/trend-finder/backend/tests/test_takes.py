@@ -194,3 +194,24 @@ def test_reopened_plan_keeps_takes_read_only(client, setup):
     for r in (client.post(f"/api/ideas/ia/takes/{t['id']}/choose"), client.delete(f"/api/ideas/ia/takes/{t['id']}")):
         assert r.status_code == 409 and r.json()["error"] == "Only an approved plan can take footage."
     assert client.get("/api/ideas/ia/takes").json() == [t]
+
+
+def test_reopen_during_upload_refuses_the_take(client, setup):
+    def chunks():  # the plan is reopened (Edit) while the body is still arriving
+        yield MP4
+        store_ideas(idea("ia", "waiting"), idea("ib"))
+        yield b"\x00" * 16
+
+    r = up(client, body=chunks())
+    assert r.status_code == 409 and r.json()["error"] == "Only an approved plan can take footage."
+    assert media_files() == []
+    with server.db() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM takes").fetchone()[0] == 0
+
+
+def test_idea_id_cannot_leave_the_media_folder(client, setup):
+    store_ideas(idea(".."), idea("ia"))
+    r = client.post("/api/ideas/%2E%2E/shots/0/takes", content=MP4, headers={"content-type": "video/mp4"})
+    assert r.status_code == 404
+    outside = [p for p in server.MEDIA_DIR.parent.glob("*.mp4")]
+    assert outside == [] and media_files() == []

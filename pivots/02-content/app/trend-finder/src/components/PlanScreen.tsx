@@ -305,7 +305,7 @@ export function PlanScreen(p: Props) {
             )}
           </section>
 
-          <ShotChecklist ideaId={idea.id} status={idea.status} shots={shots} />
+          <ShotChecklist key={idea.id} ideaId={idea.id} status={idea.status} shots={shots} />
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">
