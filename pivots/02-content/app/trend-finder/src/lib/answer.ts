@@ -1,7 +1,7 @@
 import type { Video } from '../types'
 import type { Interpretation } from './parseQuery'
 import type { FormatTrend } from './metrics'
-import { outlierScore, plural, stageText, times } from './metrics'
+import { meanScore, plural, stageText, times } from './metrics'
 
 // Lowercase the first letter only, so platform names keep their capitals mid-sentence.
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
@@ -19,7 +19,7 @@ export function buildAnswer(interp: Interpretation, results: Video[], trends: Fo
   const ranked = trends
     .map((t) => {
       const vids = results.filter((v) => v.formatId === t.format.id)
-      const avg = vids.reduce((s, v) => s + outlierScore(v), 0) / Math.max(vids.length, 1)
+      const avg = meanScore(vids)
       return { t, vids, avg }
     })
     .filter((r) => r.vids.length > 0)
@@ -39,7 +39,7 @@ export function buildAnswer(interp: Interpretation, results: Video[], trends: Fo
   } else if (/^(is|are|does|do|should|can|could|will)\b/.test(q)) {
     const early = lead.t.stage === 'early' || lead.t.stage === 'rising'
     lines.push(
-      `${early ? 'Yes, there is still room.' : 'Probably late.'} "${lead.t.format.name}" is ${lead.t.stage === 'one-off' ? 'a one-off' : lead.t.stage}: ${lowerFirst(stageText(lead.t))}.`,
+      `${early ? 'Yes, there is still room.' : 'Probably late.'} "${lead.t.format.name}" is ${{ early: 'early', rising: 'rising', everywhere: 'peaked', 'one-off': 'a one-off' }[lead.t.stage]}: ${lowerFirst(stageText(lead.t))}.`,
       `The newest matching video was posted ${lead.t.newestDays} days ago.`,
     )
   } else {

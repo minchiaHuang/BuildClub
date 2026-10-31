@@ -1,16 +1,21 @@
-import type { Client } from '../types'
+import type { Client, Format, SavedIdea, Video } from '../types'
 import { formats } from '../data/sample'
+import { ClientMemory } from './ClientMemory'
 
 interface Props {
   client: Client
   onChange: (patch: Partial<Client>) => void
+  // For client memory, to name each plan.
+  ideas: SavedIdea[]
+  videoById: Map<string, Video>
+  formatById: Map<string, Format>
 }
 
 // Everything a format can need, so the agency can tick what this client can't do.
 const allNeeds = [...new Set(formats.flatMap((f) => f.needs))]
 const allAudiences = [...new Set(formats.flatMap((f) => f.audiences))]
 
-export function SettingsScreen({ client, onChange }: Props) {
+export function SettingsScreen({ client, onChange, ideas, videoById, formatById }: Props) {
   const toggleCannot = (need: string) =>
     onChange({
       cannot: client.cannot.includes(need) ? client.cannot.filter((n) => n !== need) : [...client.cannot, need],
@@ -94,6 +99,8 @@ export function SettingsScreen({ client, onChange }: Props) {
           ))}
         </div>
       </fieldset>
+
+      <ClientMemory client={client} ideas={ideas} videoById={videoById} formatById={formatById} />
     </section>
   )
 }

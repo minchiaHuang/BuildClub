@@ -1,17 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Client } from '../types'
 import type { Workspace } from '../state'
-import { AGENCY_NAME } from '../state'
+import { useApp } from '../lib/appContext'
 
-export type View = 'overview' | 'search' | 'results' | 'saved' | 'approvals' | 'plans' | 'plan' | 'settings'
+export type View =
+  | 'overview'
+  | 'search'
+  | 'results'
+  | 'shortlist'
+  | 'review'
+  | 'plan'
+  | 'settings'
+  | 'channel'
+  | 'add-client'
 
 const paths: Record<string, string> = {
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm9 16-4.3-4.3',
   saved: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',
   approvals: 'M20 6 9 17l-5-5',
   plans: 'M8 4h11v16H8zM5 4v16M11 8h5M11 12h5M11 16h3',
-  tracking: 'M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v6h-4z',
   settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4',
+  channel: 'M4 6h16M4 12h10M4 18h6M17 14l3 3-3 3',
   overview: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   out: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
 }
@@ -40,14 +49,16 @@ interface Props {
   setWorkspace: (w: Workspace) => void
   view: View
   setView: (v: View) => void
-  counts: { saved: number; waiting: number; plans: number }
+  counts: { shortlist: number }
   onSignOut: () => void
+  onAddClient: () => void
   open: boolean
   onClose: () => void
   live: boolean
 }
 
-function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'>) {
+function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace' | 'onAddClient'>) {
+  const { agency } = useApp()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const current = clients.find((c) => c.id === workspace)
@@ -74,7 +85,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
       <button className="switcher-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className={`avatar ${current ? '' : 'avatar-agency'}`}>{current ? initials(current.name) : '▦'}</span>
         <span className="switcher-text">
-          <span className="switcher-label">{current ? 'Client' : AGENCY_NAME}</span>
+          <span className="switcher-label">{current ? 'Client' : agency.agencyName}</span>
           <strong>{current ? current.name : 'All clients'}</strong>
         </span>
         <span className="switcher-caret" aria-hidden="true">
@@ -107,11 +118,18 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
             </button>
           ))}
           <div className="switcher-sep" />
-          <button role="menuitem" className="switcher-item switcher-add" disabled title="Coming later">
+          <button
+            role="menuitem"
+            className="switcher-item switcher-add"
+            onClick={() => {
+              setOpen(false)
+              onAddClient()
+            }}
+          >
             <span className="avatar avatar-add">+</span>
             <span>
               <strong>Add client</strong>
-              <span className="small muted">Coming soon</span>
+              <span className="small muted">Name, audience, what they can't film</span>
             </span>
           </button>
         </div>
@@ -121,6 +139,8 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
 }
 
 export function Sidebar(p: Props) {
+  const { agency, role } = useApp()
+  const userName = role === 'manager' ? agency.managerName : 'Team member'
   const inClient = p.workspace !== 'all'
   const item = (v: View, icon: keyof typeof paths, label: string, count?: number, active = p.view === v) => (
     <button
@@ -145,38 +165,42 @@ export function Sidebar(p: Props) {
           <span className="brand-mark" aria-hidden="true">
             ↗
           </span>
-          Trend Finder
+          Remake
         </div>
 
-        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} />
+        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} onAddClient={p.onAddClient} />
 
         <nav className="side-nav">
           {inClient ? (
             <>
               {item('search', 'search', 'Search', undefined, p.view === 'search' || p.view === 'results')}
-              {item('saved', 'saved', 'Saved ideas', p.counts.saved)}
-              {item('approvals', 'approvals', 'Approvals', p.counts.waiting)}
-              {item('plans', 'plans', 'Recreate plans', p.counts.plans, p.view === 'plans' || p.view === 'plan')}
-              <button className="side-link" disabled title="Coming later">
-                <Icon name="tracking" />
-                <span>Tracking</span>
-                <span className="soon">Soon</span>
-              </button>
+              {item(
+                'shortlist',
+                'saved',
+                'Shortlist',
+                p.counts.shortlist,
+                ['shortlist', 'review', 'plan'].includes(p.view),
+              )}
               <div className="side-sep" />
+              {item('channel', 'channel', 'Channel')}
               {item('settings', 'settings', 'Client settings')}
             </>
           ) : (
             <>
               {item('overview', 'overview', 'Overview')}
+              {item('channel', 'channel', 'Channel')}
               <p className="side-hint">Pick a client above to search and save ideas.</p>
             </>
           )}
         </nav>
 
         <div className="side-foot">
+          <a className="link-btn" href="/method" target="_blank" rel="noreferrer">
+            How we calculate this
+          </a>
           {p.live ? (
-            <span className="live-pill" title="Search results are real TikTok videos">
-              Live TikTok data
+            <span className="live-pill" title="Search results are real videos from the platforms you pick">
+              Live data
             </span>
           ) : (
             <span className="sample-pill" title="All accounts and numbers are made up for this demo">
@@ -184,10 +208,10 @@ export function Sidebar(p: Props) {
             </span>
           )}
           <div className="side-user">
-            <span className="avatar avatar-user">D</span>
+            <span className="avatar avatar-user">{initials(userName) || '?'}</span>
             <span className="side-user-text">
-              <strong>Demo user</strong>
-              <span className="small muted">{AGENCY_NAME}</span>
+              <strong>{role === 'manager' ? `${userName} (manager)` : userName}</strong>
+              <span className="small muted">{agency.agencyName}</span>
             </span>
             <button className="icon-btn" onClick={p.onSignOut} aria-label="Sign out" title="Sign out">
               <Icon name="out" />

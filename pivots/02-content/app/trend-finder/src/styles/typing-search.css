@@ -1,0 +1,17 @@
+/* Animated search bar on the Altitude landing page. */
+.tsearch { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); margin: 0 auto 22px; padding: 8px 8px 8px 12px; border-radius: 999px; text-align: left; }
+.tsearch-platform { display: grid; place-items: center; flex: none; animation: tsearch-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.tsearch-text { flex: 1; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tsearch-caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.18em; background: currentColor; animation: tsearch-blink 1s steps(1) infinite; }
+.tsearch-go { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; transition: transform 200ms ease; }
+.tsearch-go.is-searching { animation: tsearch-pulse 900ms ease-in-out infinite; }
+@keyframes tsearch-blink { 50% { opacity: 0; } }
+@keyframes tsearch-in { from { transform: scale(0.4); opacity: 0; } }
+@keyframes tsearch-pulse { 50% { transform: scale(1.12); } }
+
+/* Altitude: white frosted bar on the sky, black button. */
+.tsearch-altitude { background: rgb(255 255 255 / 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgb(255 255 255 / 0.9); box-shadow: 0 14px 40px rgb(30 50 80 / 0.15); color: #1d1d1f; }
+.tsearch-altitude .tsearch-go { background: #0b0b0c; color: #fff; }
+
+@media (max-width: 600px) { .tsearch-text { font-size: 15px; } .tsearch-go { width: 36px; height: 36px; } }
+@media (prefers-reduced-motion: reduce) { .tsearch-caret, .tsearch-platform, .tsearch-go.is-searching { animation: none; } }

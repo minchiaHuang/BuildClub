@@ -146,7 +146,8 @@ const v = (
   keywords: ['tofu'],
 })
 
-export const videos: Video[] = [
+// Instagram rows are kept for when we bring Instagram back; the app only uses TikTok for now.
+const allVideos: Video[] = [
   // Crispy ASMR: big on TikTok, barely on Instagram yet
   v('t1', 'tiktok', '@smallkitchen.sample', 'Crispy tofu in 5 min', 2_400_000, 3_100, 9_000, 9, 13, 41_000, 120_000, 'crispy-asmr'),
   v('t2', 'tiktok', '@weeknight.wok.sample', 'The crunch at the end', 980_000, 12_000, 20_000, 6, 14, 15_000, 48_000, 'crispy-asmr'),
@@ -183,6 +184,8 @@ export const videos: Video[] = [
   v('t14', 'tiktok', '@kitchen.tricks.sample', 'No tofu press? Do this', 380_000, 140_000, 160_000, 15, 15, 3_000, 22_000, 'press-hack'),
   v('i12', 'instagram', '@tidy.kitchen.sample', 'Tofu press hack', 95_000, 31_000, 40_000, 11, 16, 900, null, 'press-hack'),
 ]
+
+export const videos = allVideos.filter((v) => v.platform === 'tiktok')
 
 export const clients: Client[] = [
   {
@@ -229,10 +232,10 @@ const idea = (clientId: string, videoId: string, status: SavedIdea['status'], du
 export const sampleIdeas: SavedIdea[] = [
   idea('evergreen', 't1', 'approved', 2),
   idea('evergreen', 't9', 'approved', 5),
-  idea('evergreen', 'i2', 'approved', 8),
+  idea('evergreen', 't7', 'approved', 8),
   idea('evergreen', 't6', 'approved', 12),
-  idea('evergreen', 'i5', 'approved', 15),
+  idea('evergreen', 't10', 'approved', 15),
   idea('evergreen', 't2', 'waiting', 14),
-  idea('evergreen', 'i6', 'waiting', 14),
+  idea('evergreen', 't11', 'waiting', 14),
   idea('evergreen', 't3', 'saved', 14),
 ]

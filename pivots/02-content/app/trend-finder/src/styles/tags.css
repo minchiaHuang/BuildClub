@@ -1,0 +1,98 @@
+/* Floating platform tags and the dark hero panel: used by the Altitude landing. */
+/* Shared hero pieces (landing + search) */
+.mn-panel {
+  --mx: 0; --my: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: radial-gradient(700px 380px at 50% 0%, rgb(60 90 180 / 0.22), transparent 70%),
+    linear-gradient(180deg, #0b1224, #050a17);
+  color: #eef1f7;
+  text-align: center;
+  isolation: isolate;
+}
+.mn-panel-compact { padding: 36px 24px 24px; margin: 0; }
+.mn-panel-compact .mn-stage { min-height: 170px; }
+.mn-panel-compact .mn-headline { font-size: clamp(34px, 5.4vw, 60px); }
+.mn-panel-compact .mn-pill { --size: 0.78; }
+.mn-panel-compact .mn-sub { margin-top: 12px; }
+
+.mn-stage { position: relative; display: grid; place-items: center; }
+.mn-headline {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  font-family: 'Inter Tight', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: clamp(46px, 8.6vw, 112px);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  background: linear-gradient(180deg, #ffffff 15%, #9aa3b5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: mn-rise 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.mn-sub { margin: 28px auto 0; max-width: 640px; color: #a9b1c2; font-size: 17px; line-height: 1.5; }
+
+.mn-pill {
+  --size: 1;
+  transform-origin: left center;
+  position: absolute;
+  transform: translate(calc(var(--mx) * var(--depth) * 26px), calc(var(--my) * var(--depth) * 18px))
+    scale(calc(var(--scale) * var(--size)));
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: blur(var(--blur));
+  opacity: calc(0.55 + var(--depth) * 0.45);
+  pointer-events: none;
+}
+.mn-pill-body {
+  --c1: #444; --c2: #222;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 18px 10px 10px;
+  border-radius: 999px;
+  font: 800 16px/1 'Inter', sans-serif;
+  letter-spacing: 0.04em;
+  color: #fff;
+  white-space: nowrap;
+  background: linear-gradient(180deg, var(--c1), var(--c2));
+  box-shadow: inset 0 2px 1px rgb(255 255 255 / 0.35), inset 0 -3px 6px rgb(0 0 0 / 0.25),
+    0 14px 26px -8px rgb(0 0 0 / 0.65), 0 3px 6px rgb(0 0 0 / 0.35);
+  rotate: var(--rot);
+  animation: mn-bob 6s ease-in-out var(--delay) infinite;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
+}
+.mn-pill-icon {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgb(255 255 255 / 0.95);
+  box-shadow: inset 0 -1px 2px rgb(0 0 0 / 0.2);
+  font-size: 16px; overflow: hidden;
+}
+.mn-tone-tiktok .mn-pill-body { --c1: #2a2a2e; --c2: #050505; box-shadow: inset 0 2px 1px rgb(255 255 255 / 0.25), -3px 0 0 #25f4ee, 3px 0 0 #fe2c55, 0 14px 26px -8px rgb(0 0 0 / 0.7); }
+.mn-tone-instagram .mn-pill-body { background: linear-gradient(120deg, #feda75, #fa7e1e 25%, #d62976 55%, #962fbf 80%, #4f5bd5); }
+.mn-tone-youtube .mn-pill-body { --c1: #ff4b4b; --c2: #d40000; }
+.mn-tone-reddit .mn-pill-body { --c1: #ff7a3d; --c2: #e83f00; }
+.mn-tone-x .mn-pill-body { --c1: #6b7a99; --c2: #3c4766; }
+.mn-tone-green .mn-pill-body { --c1: #3fd07a; --c2: #12994a; }
+.mn-tone-purple .mn-pill-body { --c1: #9b6bff; --c2: #6a35e6; }
+
+@keyframes mn-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+@keyframes mn-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-pill-body, .mn-headline { animation: none; }
+  .mn-pill { transition: none; transform: scale(calc(var(--scale) * var(--size))); }
+}
+.mn-pill-r { transform-origin: right center; }
+@media (max-width: 640px) {
+  .mn-pill { --size: 0.62; }
+  .mn-panel-compact .mn-pill { --size: 0.6; }
+}
+/* Phone: the hero pills float behind the headline (and dim) so they never cover its words */
+@media (max-width: 640px) {
+  .mn-pill { z-index: 1 !important; opacity: 0.55; }
+  .mn-headline { z-index: 4; }
+}

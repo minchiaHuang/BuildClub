@@ -1,16 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useCountUp } from '../lib/motion'
+import { resultsShortcuts, useResultsShortcuts } from '../lib/useShortcuts'
 import type { Format, IdeaStatus, Platform, Video } from '../types'
 import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, outlierScore, platformName, plural, scoreLine, stageText, tierName, tierOf, times } from '../lib/metrics'
+import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
+import { EvidenceChip } from './EvidenceChip'
+import { cachedLabel, type Cohort } from '../lib/evidence'
 import { PlatformLogo } from './PlatformToggles'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
+import { useManagerName } from '../lib/appContext'
 
 export type Chip =
   | { kind: 'keyword'; value: string }
@@ -29,22 +35,34 @@ interface Props {
   formats: Format[]
   allVideos: Video[]
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   onRemoveChip: (chip: Chip) => void
   likeThis: React.ReactNode
   // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
   live: boolean
+  // Platforms whose search failed in this live search; the rest still show.
+  failed: { platform: Platform; message: string }[]
+  // Platforms that answered with no videos.
+  empty: Platform[]
+  // Live mode: account medians are still being fetched, so scores will update in place.
+  scoring: boolean
   patterns: React.ReactNode
+  // Same-pattern accounts for each video id (live TikTok only); drives the evidence label.
+  cohorts: Map<string, Cohort>
   results: Video[]
   trends: FormatTrend[]
   sort: Sort
   setSort: (s: Sort) => void
   formatFilter: string | null
   setFormatFilter: (id: string | null) => void
-  savedVideoIds: Set<string>
-  // Status of each video's plan for this client (saved, sent, approved…).
+  // Status of each video's plan for this client (shortlisted, sent, approved…).
   ideaStatus: Map<string, IdeaStatus>
   onOpen: (id: string) => void
+  // Add to or take off the client's shortlist.
   onToggleSave: (id: string) => void
+  onGoShortlist: () => void
+  // Formats this client can't film (e.g. needs a kitchen), so they never lead the page.
+  blockedFormatIds: Set<string>
   clientName: string
   onPlan: (id: string) => void
   // Same search box as the search page, so a new search can start right here.
@@ -57,19 +75,45 @@ interface Props {
 const stageLabel = {
   early: 'Early',
   rising: 'Rising',
-  everywhere: 'Everywhere',
+  everywhere: 'Peaked',
   'one-off': 'One-off',
 }
 
 export function ResultsScreen(p: Props) {
+  const manager = useManagerName()
   const shown = p.formatFilter ? p.results.filter((v) => v.formatId === p.formatFilter) : p.results
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
-  const best = shown.length ? [...shown].sort((a, b) => outlierScore(b) - outlierScore(a))[0] : undefined
+  const [helpOpen, setHelpOpen] = useState(false)
+  useResultsShortcuts({
+    onToggleSave: p.onToggleSave,
+    onPlan: p.onPlan,
+    onToggleHelp: () => setHelpOpen((o) => !o),
+    onCloseHelp: () => setHelpOpen(false),
+    searchInputId: 'toolbar-keyword',
+  })
+  // Best to copy: the top-scoring video whose format several accounts are using (early or rising),
+  // that isn't already sent or approved and that this client can film. Falls back to the top score.
+  const trendOf = (v: Video) => p.trends.find((t) => t.format.id === v.formatId)
+  const ranked = [...shown].sort((a, b) => outlierScore(b) - outlierScore(a) || b.views - a.views)
+  const open = ranked.filter((v) => {
+    const s = p.ideaStatus.get(v.id)
+    return s !== 'waiting' && s !== 'approved' && !p.blockedFormatIds.has(v.formatId)
+  })
+  const proven = open.filter((v) => ['early', 'rising'].includes(trendOf(v)?.stage ?? ''))
+  const best = proven[0] ?? open[0] ?? ranked[0]
+  const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformCounts = (['tiktok', 'instagram'] as Platform[])
-    .map((pl) => ({ pl, n: shown.filter((v) => v.platform === pl).length }))
+  const platformCounts = (['tiktok', 'instagram', 'youtube', 'reddit', 'x'] as Platform[])
+    .map((pl) => {
+      const vs = shown.filter((v) => v.platform === pl)
+      // Each platform has its own search, so its cache state comes from its own videos.
+      const cached = p.live ? vs.filter((v) => v.fromCache) : []
+      const fetchedAt = cached.length ? Math.max(...cached.map((v) => v.fetchedAt ?? 0)) : 0
+      return { pl, n: vs.length, cache: cached.length ? cachedLabel(fetchedAt, Date.now()) : null }
+    })
     .filter((x) => x.n > 0)
+  const shortlisted = [...p.ideaStatus.values()].filter((s) => s === 'saved').length
   const i = p.interp
   const queryLabel = i.source ? '' : i.text.trim()
 
@@ -141,6 +185,7 @@ export function ResultsScreen(p: Props) {
         value={draft}
         onValueChange={setDraft}
         onSearch={p.onSearch}
+        onImage={p.onImage}
         platforms={p.query.platforms}
         onPlatformsChange={(platforms) => p.setQuery({ ...p.query, platforms })}
         live={p.live}
@@ -169,13 +214,31 @@ export function ResultsScreen(p: Props) {
         ))}
       </div>
 
+      {groupFailures(p.failed).map((g) => (
+        <p key={g.platforms.join()} className="error" role="alert">
+          {platformList(g.platforms)}: <ErrorText text={g.message} onSearch={p.onSearch} />
+        </p>
+      ))}
+
+      {p.scoring && (
+        <p className="small muted" role="status">
+          Checking each account's usual views… scores update in about a minute.
+        </p>
+      )}
+
+      {p.empty.map((pl) => (
+        <p key={pl} className="error" role="alert">
+          {platformName[pl]}: No videos found.
+        </p>
+      ))}
+
       {p.likeThis}
 
       {p.answer && (
         <div className="answer" role="note">
           <div className="answer-head">
             <strong>{i.text.trim()}</strong>
-            <span className="ai-tag">Answer · sample</span>
+            <span className="ai-tag">{p.live ? 'Answer · from these results' : 'Answer · sample'}</span>
           </div>
           {p.answer.lines.map((line) => (
             <p key={line}>{line}</p>
@@ -207,38 +270,53 @@ export function ResultsScreen(p: Props) {
                 {n}
               </span>
             ))}
+            {platformCounts.map(({ pl, cache }) =>
+              cache ? (
+                <span key={`cache-${pl}`} className="summary-cached">
+                  {platformName[pl]} · {cache}
+                </span>
+              ) : null,
+            )}
           </p>
 
           {best && <h1 className="best-title">Best to copy</h1>}
           {best && (
             <div className="best">
-              <BestVideo video={best} onOpen={() => p.onOpen(best.id)} />
+              <BestVideo key={best.id} video={best} onOpen={() => p.onOpen(best.id)} />
               <div className="best-body">
-                <strong className="best-hook">"{best.hook}"</strong>
-                <span className="small muted">
-                  {compact(best.views)} views from an account with {compact(best.followers)} followers ·{' '}
-                  {best.handle} · {agoShort(best.daysAgo)} ago
-                </span>
-                {/* Usual → this video, so the jump reads without decoding the × score. */}
-                <div className="best-compare" aria-label={scoreLine(best)}>
-                  <span className="cmp-num cmp-from">{compact(best.medianViews ?? best.followers)}</span>
-                  <span className="cmp-arrow" aria-hidden="true">→</span>
-                  <span className={`cmp-num cmp-to score-${tierOf(outlierScore(best))}`}>{compact(best.views)}</span>
-                  <span className="cmp-cap">{best.medianViews === null ? 'followers' : 'usual views'}</span>
-                  <span />
-                  <span className="cmp-cap">this video</span>
-                  <span className={`tier tier-${tierOf(outlierScore(best))} cmp-tier`}>
-                    {tierName[tierOf(outlierScore(best))]} · {times(outlierScore(best))}
+                {bestTrend && (
+                  <span className="best-trend">
+                    <span className={`stage-pill stage-pill-${bestTrend.stage}`}>{stageLabel[bestTrend.stage]}</span>
+                    {stageText(bestTrend)}
                   </span>
-                </div>
+                )}
+                <strong className="best-hook">"{best.hook}"</strong>
+                <EvidenceChip video={best} cohort={p.cohorts.get(best.id)} />
+                <span className="small muted">
+                  {hasScore(best) && best.platform !== 'reddit'
+                    ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
+                    : `${compact(best.views)} ${viewsWord(best)}`}
+                  {best.comments !== undefined && ` · ${compact(best.comments)} comments`}{' '}
+                  ·{' '}
+                  {best.handle}
+                  {hasDate(best) && ` · ${agoShort(best.daysAgo)} ago`}
+                </span>
+                {/* Usual → this video, so the jump reads without decoding the × score. Keyed so it animates once per pick. */}
+                {hasScore(best) && <BestCompare key={best.id} video={best} />}
                 <div className="best-actions">
-                  <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
-                    {bestStatus && bestStatus !== 'saved'
-                      ? `Open plan · ${bestStatus === 'waiting' ? 'Waiting for Annie' : bestStatus === 'approved' ? 'Approved' : 'Not approved'}`
-                      : bestStatus === 'saved'
-                        ? 'Continue plan'
-                        : `Plan a version for ${p.clientName}`}
-                  </button>
+                  {bestStatus === 'saved' ? (
+                    <button className="btn btn-primary" aria-pressed="true" onClick={() => p.onToggleSave(best.id)}>
+                      ✓ Shortlisted for {p.clientName}
+                    </button>
+                  ) : bestStatus ? (
+                    <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
+                      Open plan · {bestStatus === 'waiting' ? `Waiting for ${manager}` : bestStatus === 'approved' ? 'Approved' : 'Sent back'}
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => p.onToggleSave(best.id)}>
+                      Add to shortlist for {p.clientName}
+                    </button>
+                  )}
                   <button className="btn btn-ghost" onClick={() => p.onOpen(best.id)}>
                     See why it worked
                   </button>
@@ -247,51 +325,46 @@ export function ResultsScreen(p: Props) {
             </div>
           )}
 
-          {p.patterns ?? (
-            <div className="trends">
-              <div className="section-head">
-                <div className="section-title">
-                  <h2>Ideas many accounts are copying</h2>
-                  <p className="section-sub">
-                    The same idea working for several accounts means it's a trend, not luck. Tap one to see those videos.
-                  </p>
-                </div>
-                {p.formatFilter && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => p.setFormatFilter(null)}>
-                    Show all videos
-                  </button>
-                )}
-              </div>
-              <div className="trend-row">
-                {p.trends.map((t) => {
-                  const active = p.formatFilter === t.format.id
-                  return (
-                    <button
-                      key={t.format.id}
-                      className={`trend-card stage-${t.stage} ${active ? 'trend-active' : ''}`}
-                      aria-pressed={active}
-                      onClick={() => p.setFormatFilter(active ? null : t.format.id)}
-                    >
-                      <span className={`stage-pill stage-pill-${t.stage}`}>{stageLabel[t.stage]}</span>
-                      <strong>{t.format.name}</strong>
-                      <span className="trend-text">{stageText(t)}</span>
-                      <span className="trend-counts">
-                        <PlatformLogo platform="tiktok" size={12} /> {t.counts.tiktok}
-                        <PlatformLogo platform="instagram" size={12} /> {t.counts.instagram}
-                      </span>
+          {p.patterns ??
+            (p.trends.length > 1 && (
+              <div className="format-filter" role="group" aria-label="Filter by format">
+                <span className="field-label">Formats in these results</span>
+                <div className="chip-row">
+                  {p.trends.map((t) => {
+                    const active = p.formatFilter === t.format.id
+                    return (
+                      <button
+                        key={t.format.id}
+                        type="button"
+                        className={`fchip ${active ? 'fchip-on' : ''}`}
+                        aria-pressed={active}
+                        title={stageText(t)}
+                        onClick={() => p.setFormatFilter(active ? null : t.format.id)}
+                      >
+                        <span className={`stage-pill stage-pill-${t.stage}`}>{stageLabel[t.stage]}</span>
+                        {t.format.name}
+                        <span className="fchip-count">{plural(t.accounts, 'account')}</span>
+                      </button>
+                    )
+                  })}
+                  {p.formatFilter && (
+                    <button type="button" className="link-btn" onClick={() => p.setFormatFilter(null)}>
+                      Show all
                     </button>
-                  )
-                })}
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            ))}
 
           <div className="grid-head">
             <h2>
               {p.live ? 'All videos' : activeTrend ? activeTrend.format.name : 'All videos'}{' '}
               <span className="muted">· {shown.length}</span>
             </h2>
-            <div className="filters">{filterControls}</div>
+            <div className="filters">
+              {filterControls}
+              <ShortcutsHint open={helpOpen} setOpen={setHelpOpen} />
+            </div>
           </div>
 
           <div className="grid">
@@ -299,15 +372,101 @@ export function ResultsScreen(p: Props) {
               <VideoTile
                 key={v.id}
                 video={v}
-                saved={p.savedVideoIds.has(v.id)}
                 onOpen={() => p.onOpen(v.id)}
                 onToggleSave={() => p.onToggleSave(v.id)}
                 status={p.ideaStatus.get(v.id)}
+                cohort={p.cohorts.get(v.id)}
               />
             ))}
           </div>
         </>
       )}
+
+      {shortlisted > 0 && (
+        <div className="shortlist-tray" role="status">
+          <span>
+            <strong>{shortlisted}</strong> shortlisted for {p.clientName}
+          </span>
+          <button className="btn btn-primary btn-sm" onClick={p.onGoShortlist}>
+            Go to shortlist
+          </button>
+        </div>
+      )}
     </section>
+  )
+}
+
+// Small "?" button by the toolbar with a popover listing the keyboard shortcuts (also opens with ?).
+function ShortcutsHint({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
+  const wrap = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [open, setOpen])
+  return (
+    <div className="kbd-hint" ref={wrap}>
+      <button
+        type="button"
+        className="kbd-hint-btn"
+        aria-label="Keyboard shortcuts"
+        title="Keyboard shortcuts (?)"
+        aria-expanded={open}
+        aria-controls="kbd-hint-pop"
+        onClick={() => setOpen(!open)}
+      >
+        ?
+      </button>
+      {open && (
+        <div className="kbd-hint-pop" id="kbd-hint-pop" role="note" aria-label="Keyboard shortcuts">
+          <strong className="kbd-hint-title">Keyboard shortcuts</strong>
+          <dl>
+            {resultsShortcuts.map((s) => (
+              <div key={s.keys}>
+                <dt>
+                  {s.keys.split(' / ').map((k, i) => (
+                    <span key={k}>
+                      {i > 0 && ' / '}
+                      <kbd>{k}</kbd>
+                    </span>
+                  ))}
+                </dt>
+                <dd>{s.label}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Usual → this video for the Best to copy card. The big number counts up and the bar grows in
+// when the card first appears (or a new video takes the spot), not on every render.
+function BestCompare({ video }: { video: Video }) {
+  const usual = video.medianViews ?? video.followers
+  const tier = tierOf(outlierScore(video))
+  const shownViews = useCountUp(video.views)
+  // How big the usual is next to this video, as a share of the bar (kept visible even when tiny).
+  const usualShare = Math.min(Math.max(usual / Math.max(video.views, 1), 0.02), 1)
+  return (
+    <div className="best-compare" aria-label={scoreLine(video)}>
+      <span className="cmp-num cmp-from">{compact(usual)}</span>
+      <span className="cmp-arrow" aria-hidden="true">→</span>
+      <span className={`cmp-num cmp-to score-${tier}`}>{compact(shownViews)}</span>
+      <span className="cmp-cap">{video.medianViews === null ? 'followers' : 'usual views'}</span>
+      <span />
+      <span className="cmp-cap">this video</span>
+      <span className="cmp-bar" aria-hidden="true" style={{ '--usual': usualShare } as React.CSSProperties}>
+        <span className={`cmp-bar-this score-${tier}`} />
+        <span className="cmp-bar-usual" />
+      </span>
+      <span className={`tier tier-${tier} cmp-tier`}>
+        {tierName[tier]} · {times(outlierScore(video))}
+      </span>
+    </div>
   )
 }

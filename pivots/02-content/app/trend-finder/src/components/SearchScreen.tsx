@@ -1,12 +1,16 @@
 import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
+// The Altitude hero holds the search box.
+import { AltitudeHero } from './themes/AltitudeHero'
 
 interface Props {
   query: Query
   setQuery: (q: Query) => void
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   clientName: string
   // Live mode searches real TikTok videos; otherwise the sample tofu data.
   live: boolean
@@ -26,8 +30,27 @@ interface Props {
 
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
+  const searchBox = (
+        <SearchBox
+          inputId="keyword"
+          value={query.keyword}
+          onValueChange={(text) => setQuery({ ...query, keyword: text })}
+          onSearch={onSearch}
+          onImage={props.onImage}
+          platforms={query.platforms}
+          onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
+          live={live}
+          clientName={clientName}
+          clientExamples={props.clientExamples}
+          chipGroups={props.chipGroups}
+          pulse={props.pulse}
+          onRefreshPulse={props.onRefreshPulse}
+          autoFocus
+        />
+  )
   return (
     <section className="search-screen">
+      <AltitudeHero clientName={clientName}>{searchBox}</AltitudeHero>
       <div className="search-intro">
         <span className="eyebrow">{clientName} · Search</span>
         {props.planned > 0 && (
@@ -45,25 +68,9 @@ export function SearchScreen(props: Props) {
         <p className="lede">
           {live
             ? 'Type what this client is about. We search TikTok live, rank videos by how far they beat the account’s size, and show which sounds and hashtags keep coming up.'
-            : 'Type a niche or ask a question in plain words. We search Instagram and TikTok, rank videos from small accounts with big views, and show which formats are spreading.'}
+            : 'Type a niche or ask a question in plain words. We search TikTok, rank videos from small accounts with big views, and show which formats are spreading.'}
         </p>
       </div>
-
-      <SearchBox
-        inputId="keyword"
-        value={query.keyword}
-        onValueChange={(text) => setQuery({ ...query, keyword: text })}
-        onSearch={onSearch}
-        platforms={query.platforms}
-        onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
-        live={live}
-        clientName={clientName}
-        clientExamples={props.clientExamples}
-        chipGroups={props.chipGroups}
-        pulse={props.pulse}
-        onRefreshPulse={props.onRefreshPulse}
-        autoFocus
-      />
 
       {props.lastSearch && (
         <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>
@@ -73,13 +80,13 @@ export function SearchScreen(props: Props) {
 
       {error && (
         <p className="error" role="alert">
-          {error}
+          <ErrorText text={error} onSearch={props.onSearch} />
         </p>
       )}
       <p className="hint">
         {live
           ? 'Live TikTok search. Each new search costs a few cents of Apify credit; repeats within 24 hours are free.'
-          : 'Sample data covers one niche for now: tofu. Add an Apify key to turn on live TikTok search (see README).'}
+          : 'Sample data covers one niche for now: tofu.'}
       </p>
     </section>
   )

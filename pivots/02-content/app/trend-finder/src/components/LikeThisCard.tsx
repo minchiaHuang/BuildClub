@@ -1,7 +1,7 @@
 import type { Format, Video } from '../types'
 import type { MediaSource } from '../lib/parseQuery'
 import type { FormatTrend } from '../lib/metrics'
-import { outlierScore, plural, platformName, stageText, times } from '../lib/metrics'
+import { meanScore, outlierScore, plural, platformName, stageText, times } from '../lib/metrics'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   trend: FormatTrend | undefined
   matches: Video[]
   clientName: string
+  // True when the breakdown is the AI's reading of the real video.
+  real?: boolean
   onPlan: (videoId: string) => void
 }
 
@@ -20,9 +22,9 @@ const verdicts = {
   'one-off': { label: 'Not proven yet', tone: 'one-off' },
 } as const
 
-export function LikeThisCard({ source, format, trend, matches, clientName, onPlan }: Props) {
+export function LikeThisCard({ source, format, trend, matches, clientName, real, onPlan }: Props) {
   const best = [...matches].sort((a, b) => outlierScore(b) - outlierScore(a))[0]
-  const avg = matches.reduce((s, v) => s + outlierScore(v), 0) / Math.max(matches.length, 1)
+  const avg = meanScore(matches)
   const verdict = trend ? verdicts[trend.stage] : null
 
   return (
@@ -41,7 +43,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
       <div className="like-body">
         <div className="answer-head">
           <span className="eyebrow">Find more like this</span>
-          <span className="ai-tag">Match · mock</span>
+          <span className="ai-tag">{real ? 'AI breakdown' : 'Match · mock'}</span>
         </div>
         <h2>This looks like: {format.name}</h2>
 
@@ -55,6 +57,9 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
           </div>
         )}
 
+        {real && source.kind === 'image' ? (
+          <p>{format.summary}</p>
+        ) : (
         <dl className="why why-compact">
           <div>
             <dt>Hook</dt>
@@ -69,11 +74,12 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
             <dd>{format.why.format}</dd>
           </div>
         </dl>
+        )}
 
         {best && (
           <div className="like-actions">
             <button className="btn btn-primary" onClick={() => onPlan(best.id)}>
-              Plan a version for {clientName}
+              Add to shortlist for {clientName}
             </button>
             <span className="small muted">Uses the best match below as the reference.</span>
           </div>

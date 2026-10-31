@@ -1,0 +1,15 @@
+/* Client portal: a client's own plans, read-only, without the agency sidebar. */
+.portal { min-height: 100vh; display: flex; flex-direction: column; }
+.portal-bar {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px max(16px, 3vw); border-bottom: 1px solid var(--line); background: var(--frost);
+  -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px);
+}
+.portal-bar .side-brand { padding: 0; }
+.portal-user { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.portal .board-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { .portal .board-cols { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .portal-user .small { display: none; } }
+
+.portal-shots summary { cursor: pointer; width: fit-content; }
+.portal-shots ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }

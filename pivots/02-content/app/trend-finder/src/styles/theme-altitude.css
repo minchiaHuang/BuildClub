@@ -1,0 +1,226 @@
+/* Altitude direction (Ref 1). Everything here is scoped under :root[data-ui="altitude"]. */
+:root[data-ui="altitude"] {
+  --bg: #f2f3f5;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --surface-3: #e3e6ea;
+  --fg: #0b0b0c;
+  --muted: #64666c;
+  --line: #e4e6ea;
+  --line-strong: #d0d3d9;
+  --accent: #0b0b0c;
+  --accent-hover: #2a2b2e;
+  --accent-soft: #eceef1;
+  --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --radius: 20px;
+  --radius-lg: 24px;
+  --sky-top: #8fb8e6;
+  --sky-mid: #c4dcf3;
+  --sky-low: #e8f1fa;
+  --sky-tint: linear-gradient(180deg, rgb(196 220 243 / 0.55), rgb(232 241 250 / 0) 320px);
+  --shadow-md: 0 1px 2px rgb(10 20 40 / 0.04), 0 10px 30px rgb(10 20 40 / 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-ui="altitude"] {
+    --bg: #0d0f12;
+    --surface: #16191d;
+    --surface-2: #1d2126;
+    --surface-3: #262b31;
+    --fg: #f3f4f6;
+    --muted: #a0a4ab;
+    --line: #262a30;
+    --line-strong: #353a41;
+    --accent: #f3f4f6;
+    --accent-hover: #d6d8dc;
+    --accent-fg: #0b0b0c;
+    --accent-soft: #23272d;
+    --sky-top: #1c3456;
+    --sky-mid: #2a4a72;
+    --sky-low: #1a2638;
+    --sky-tint: linear-gradient(180deg, rgb(42 74 114 / 0.35), rgb(26 38 56 / 0) 320px);
+  }
+}
+
+/* Type */
+:root[data-ui="altitude"] h1,
+:root[data-ui="altitude"] h2,
+:root[data-ui="altitude"] h3,
+:root[data-ui="altitude"] .stat-num,
+:root[data-ui="altitude"] .side-brand { font-family: var(--font-display); letter-spacing: -0.035em; }
+:root[data-ui="altitude"] h1 { font-weight: 600; }
+
+/* Canvas with a hint of sky */
+:root[data-ui="altitude"] body { background: var(--bg); }
+:root[data-ui="altitude"] .shell-main { background: var(--sky-tint), var(--bg); background-repeat: no-repeat; }
+:root[data-ui="altitude"] .main { padding-top: 44px; }
+
+/* Buttons: black pills, outline pills */
+:root[data-ui="altitude"] .btn { border-radius: var(--radius-pill); font-weight: 500; padding-inline: 20px; }
+:root[data-ui="altitude"] .btn-sm { border-radius: var(--radius-pill); padding-inline: 14px; }
+:root[data-ui="altitude"] .btn-primary { box-shadow: none; }
+:root[data-ui="altitude"] .btn-ghost { background: transparent; border-color: var(--fg); }
+:root[data-ui="altitude"] .btn-ghost:hover:not(:disabled) { background: var(--surface); }
+:root[data-ui="altitude"] .review-actions .btn { border-radius: var(--radius-pill); }
+:root[data-ui="altitude"] .pill { border-radius: var(--radius-pill); }
+
+/* Cards */
+:root[data-ui="altitude"] .board-card,
+:root[data-ui="altitude"] .stat,
+:root[data-ui="altitude"] .review-card,
+:root[data-ui="altitude"] .search-box { border-radius: var(--radius); border-color: transparent; box-shadow: var(--shadow-md); }
+:root[data-ui="altitude"] .best {
+  border-radius: var(--radius-lg);
+  background: radial-gradient(120% 80% at 80% 0%, rgb(196 220 243 / 0.7), transparent 60%), var(--surface);
+  box-shadow: var(--shadow-md);
+}
+:root[data-ui="altitude"] .drawer { border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
+:root[data-ui="altitude"] .drawer-head { background: var(--sky-tint), var(--surface); }
+
+/* Sidebar */
+:root[data-ui="altitude"] .sidebar { background: var(--surface); border-right-color: var(--line); }
+:root[data-ui="altitude"] .side-link { border-radius: var(--radius-pill); }
+:root[data-ui="altitude"] .brand-mark { border-radius: 50%; }
+:root[data-ui="altitude"] .login { background: radial-gradient(70% 50% at 50% 0%, var(--sky-mid), transparent 70%), var(--bg); }
+
+/* ---------- Search hero ---------- */
+:root[data-ui="altitude"] .search-intro { text-align: center; justify-items: center; }
+:root[data-ui="altitude"] .search-intro > .eyebrow,
+:root[data-ui="altitude"] .search-intro > h1,
+:root[data-ui="altitude"] .search-intro > .lede { display: none; }
+:root[data-ui="altitude"] .search-intro { gap: 0; margin-bottom: 12px; }
+:root[data-ui="altitude"] .search-intro .progress-line { margin: 0 auto; }
+
+:root[data-ui="altitude"] .alt-hero {
+  position: relative; overflow: hidden; isolation: isolate;
+  margin: -8px 0 8px; border-radius: 28px; min-height: 400px;
+  display: grid; place-items: center; padding: 48px 20px 64px; text-align: center;
+}
+:root[data-ui="altitude"] .alt-sky {
+  position: absolute; inset: 0; z-index: -2;
+  background:
+    radial-gradient(60% 50% at 20% 10%, rgb(255 255 255 / 0.55), transparent 70%),
+    linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 45%, var(--sky-low) 70%);
+}
+:root[data-ui="altitude"] .alt-cloud {
+  position: absolute; border-radius: 50%; filter: blur(14px); opacity: 0.85;
+  background:
+    radial-gradient(closest-side, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0) 100%);
+  animation: alt-drift 60s linear infinite alternate;
+}
+:root[data-ui="altitude"] .alt-cloud::after {
+  content: ''; position: absolute; inset: -20% 25% 30% -30%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.9), transparent);
+}
+:root[data-ui="altitude"] .c1 { width: 340px; height: 120px; top: 6%; left: 4%; }
+:root[data-ui="altitude"] .c2 { width: 280px; height: 100px; top: 18%; right: 6%; animation-duration: 75s; animation-direction: alternate-reverse; }
+:root[data-ui="altitude"] .c3 { width: 420px; height: 130px; top: 40%; left: 30%; opacity: 0.6; animation-duration: 90s; }
+:root[data-ui="altitude"] .c4 { width: 200px; height: 70px; top: 2%; left: 52%; opacity: 0.7; animation-duration: 55s; }
+@keyframes alt-drift { from { transform: translateX(-30px); } to { transform: translateX(40px); } }
+@media (prefers-color-scheme: dark) {
+  :root[data-ui="altitude"] .alt-cloud { opacity: 0.18; }
+}
+:root[data-ui="altitude"] .alt-ground {
+  position: absolute; z-index: -1; left: -20%; right: -20%; top: 62%; height: 120%;
+  border-radius: 50% 50% 0 0 / 22% 22% 0 0;
+  background: linear-gradient(180deg, #f7f8fa, var(--bg) 30%);
+  box-shadow: 0 -18px 40px rgb(255 255 255 / 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-ui="altitude"] .alt-ground { background: linear-gradient(180deg, #181b20, var(--bg) 30%); box-shadow: none; }
+}
+:root[data-ui="altitude"] .alt-hero-inner { display: grid; justify-items: center; gap: 22px; max-width: 1080px; width: 100%; }
+:root[data-ui="altitude"] .alt-eyebrow { font-size: var(--text-sm); font-weight: 500; color: #24324a; }
+@media (prefers-color-scheme: dark) { :root[data-ui="altitude"] .alt-eyebrow { color: #cfdcef; } }
+:root[data-ui="altitude"] .alt-headline {
+  display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 20px; width: 100%;
+  font-size: clamp(28px, 3.1vw, 44px); line-height: 1.02; font-weight: 600; letter-spacing: -0.045em;
+}
+:root[data-ui="altitude"] .alt-left { justify-self: end; text-align: right; }
+:root[data-ui="altitude"] .alt-right { justify-self: start; text-align: left; text-wrap: balance; }
+:root[data-ui="altitude"] .alt-rot { display: inline-grid; overflow: hidden; padding-bottom: 0.12em; }
+:root[data-ui="altitude"] .alt-rot > span {
+  grid-area: 1 / 1; text-wrap: balance; opacity: 0; transform: translateY(100%);
+  transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 500ms ease;
+}
+:root[data-ui="altitude"] .alt-rot > span.is-on { opacity: 1; transform: none; }
+:root[data-ui="altitude"] .alt-rot > span.is-out { opacity: 0; transform: translateY(-100%); }
+
+/* Object on the horizon: three tilted video cards */
+:root[data-ui="altitude"] .alt-object {
+  position: relative; width: 150px; height: 190px; display: block;
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: drop-shadow(0 26px 22px rgb(20 30 50 / 0.22));
+}
+:root[data-ui="altitude"] .alt-object:hover { transform: translateY(-8px); }
+:root[data-ui="altitude"] .alt-card {
+  position: absolute; left: 30px; top: 10px; width: 92px; height: 164px; border-radius: 18px;
+  border: 3px solid #1b1c1f;
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-ui="altitude"] .k1 { background: linear-gradient(160deg, #dfe6ee, #b9c3cf); transform: rotate(-16deg) translateX(-26px); }
+:root[data-ui="altitude"] .k2 { background: linear-gradient(160deg, #f4f5f7, #cdd3da); transform: rotate(10deg) translateX(26px); }
+:root[data-ui="altitude"] .k3 {
+  background: radial-gradient(80% 60% at 30% 20%, #6aa0d8, transparent 70%), linear-gradient(170deg, #2a2d33, #0d0e10);
+  display: grid; place-items: center;
+}
+:root[data-ui="altitude"] .alt-object:hover .k1 { transform: rotate(-20deg) translateX(-34px); }
+:root[data-ui="altitude"] .alt-object:hover .k2 { transform: rotate(14deg) translateX(34px); }
+:root[data-ui="altitude"] .alt-play {
+  width: 34px; height: 34px; border-radius: 50%; background: rgb(255 255 255 / 0.9);
+  clip-path: none; position: relative;
+}
+:root[data-ui="altitude"] .alt-play::after {
+  content: ''; position: absolute; left: 13px; top: 10px;
+  border-left: 12px solid #0b0b0c; border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+}
+:root[data-ui="altitude"] .alt-lede { max-width: 460px; margin: 0; color: var(--muted); font-size: var(--text-base); line-height: 1.5; }
+
+@media (max-width: 760px) {
+  :root[data-ui="altitude"] .alt-hero { min-height: 0; padding: 36px 16px 40px; border-radius: 22px; }
+  :root[data-ui="altitude"] .alt-headline { grid-template-columns: 1fr; gap: 14px; font-size: 32px; }
+  :root[data-ui="altitude"] .alt-left, :root[data-ui="altitude"] .alt-right { justify-self: center; text-align: center; }
+  :root[data-ui="altitude"] .alt-object { order: -1; justify-self: center; transform: scale(0.8); }
+  :root[data-ui="altitude"] .alt-ground { top: 30%; }
+  :root[data-ui="altitude"] .alt-rot > span { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ui="altitude"] .alt-cloud { animation: none; }
+  :root[data-ui="altitude"] .alt-rot > span,
+  :root[data-ui="altitude"] .alt-object,
+  :root[data-ui="altitude"] .alt-card { transition: none; }
+}
+
+/* Social icons popping out of the horizon (replaces the phone stack), and the search box inside the hero. */
+:root[data-ui="altitude"] .alt-icons { position: relative; display: block; width: 220px; height: 150px; justify-self: center; }
+:root[data-ui="altitude"] .alt-icon {
+  position: absolute; left: 50%; bottom: 0; display: grid; place-items: center;
+  border-radius: 50%; background: #fff; box-shadow: 0 10px 28px rgb(30 50 80 / 0.22);
+  transform: translate(-50%, 0) scale(0.2); opacity: 0;
+  animation: alt-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards, alt-bob 4s ease-in-out infinite;
+  animation-delay: calc(var(--n) * 120ms), calc(900ms + var(--n) * 300ms);
+  transition: translate var(--dur-slow) var(--ease);
+}
+:root[data-ui="altitude"] .alt-icon.i0 { --x: 0px; --y: -40px; padding: 6px; z-index: 2; }
+:root[data-ui="altitude"] .alt-icon.i1 { --x: -78px; --y: -10px; padding: 4px; }
+:root[data-ui="altitude"] .alt-icon.i2 { --x: 78px; --y: -10px; padding: 4px; }
+:root[data-ui="altitude"] .alt-icon.i3 { --x: -42px; --y: -96px; padding: 4px; }
+:root[data-ui="altitude"] .alt-icon.i4 { --x: 44px; --y: -98px; padding: 4px; }
+@keyframes alt-pop {
+  0% { transform: translate(-50%, 30px) scale(0.2); opacity: 0; }
+  100% { transform: translate(calc(-50% + var(--x)), var(--y)) scale(1); opacity: 1; }
+}
+@keyframes alt-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+:root[data-ui="altitude"] .alt-icons:hover .i1 { translate: -18px 4px; }
+:root[data-ui="altitude"] .alt-icons:hover .i2 { translate: 18px 4px; }
+:root[data-ui="altitude"] .alt-icons:hover .i3 { translate: -14px -12px; }
+:root[data-ui="altitude"] .alt-icons:hover .i4 { translate: 14px -12px; }
+:root[data-ui="altitude"] .alt-search { width: 100%; max-width: 760px; margin-top: 8px; text-align: left; position: relative; z-index: 1; }
+:root[data-ui="altitude"] .alt-search .search-box { box-shadow: 0 18px 48px rgb(30 50 80 / 0.16); }
+@media (max-width: 860px) {
+  :root[data-ui="altitude"] .alt-icons { order: -1; transform: scale(0.75); height: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ui="altitude"] .alt-icon { animation: none; opacity: 1; transform: translate(calc(-50% + var(--x)), var(--y)); transition: none; }
+}
+:root[data-ui="altitude"] :is(.alt-ground, .alt-sky) { pointer-events: none; }

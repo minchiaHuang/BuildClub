@@ -84,39 +84,16 @@ export function PlatformLogo({ platform, size = 18 }: { platform: LogoPlatform; 
 interface Props {
   selected: Platform[]
   onChange: (next: Platform[]) => void
-  showSoon?: boolean
-  // Live search covers TikTok only for now, so Instagram shows as coming soon.
-  live?: boolean
 }
 
-const order: LogoPlatform[] = ['instagram', 'tiktok', 'youtube', 'reddit', 'x']
-const searchable = (p: LogoPlatform): p is Platform => p === 'instagram' || p === 'tiktok'
+const order: Platform[] = ['tiktok', 'instagram', 'youtube', 'reddit', 'x']
 
-// Round, icon-only platform buttons. On = ring and a small tick; "Soon" = faded. At least one stays on.
-export function PlatformToggles({ selected, onChange, showSoon = false, live = false }: Props) {
-  const isOn = (p: Platform) => (live ? p === 'tiktok' : selected.includes(p))
-  const onNames = order.filter((p) => searchable(p) && isOn(p)).map((p) => logoName[p])
+// Round, icon-only platform buttons. On = ring and a small tick. At least one stays on.
+export function PlatformToggles({ selected, onChange }: Props) {
   return (
     <div className="platforms" role="group" aria-label="Platforms">
       {order.map((p) => {
-        // Live search is TikTok only; YouTube, Reddit and X aren't built yet.
-        const soon = !searchable(p) || (live && p === 'instagram')
-        if (soon && !showSoon && !searchable(p)) return null
-        if (soon) {
-          return (
-            <button
-              key={p}
-              type="button"
-              className="platform platform-soon"
-              disabled
-              aria-label={`${logoName[p]} (coming soon)`}
-              title={`${logoName[p]}: coming soon`}
-            >
-              <PlatformLogo platform={p} size={24} />
-            </button>
-          )
-        }
-        const on = isOn(p as Platform)
+        const on = selected.includes(p)
         return (
           <button
             key={p}
@@ -126,8 +103,7 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
             aria-label={logoName[p]}
             title={`${logoName[p]}: ${on ? 'on' : 'off'}`}
             onClick={() => {
-              if (live) return
-              const next = on ? selected.filter((x) => x !== p) : [...selected, p as Platform]
+              const next = on ? selected.filter((x) => x !== p) : [...selected, p]
               if (next.length) onChange(next)
             }}
           >
@@ -140,7 +116,7 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
           </button>
         )
       })}
-      <span className="platforms-note">{onNames.join(' + ')}</span>
+      <span className="platforms-note">Each platform is a separate search</span>
     </div>
   )
 }

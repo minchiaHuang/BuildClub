@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Platform, SavedIdea } from './types'
+import type { AgencySettings, Platform, SavedIdea } from './types'
 import { sampleIdeas } from './data/sample'
 
 export type Sort = 'outlier' | 'ratio' | 'newest' | 'fastest'
@@ -15,7 +15,7 @@ export interface Query {
 export const defaultQuery: Query = {
   // Starts empty so the search page shows example searches first.
   keyword: '',
-  platforms: ['instagram', 'tiktok'],
+  platforms: ['tiktok', 'instagram'],
   days: 30,
   maxLength: 0,
   clientId: 'evergreen',
@@ -41,12 +41,12 @@ export function useStored<T>(key: string, initial: T) {
   return [value, setValue] as const
 }
 
-export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v3', sampleIdeas)
+export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v4', sampleIdeas)
 
 // 'all' is the agency view across every client.
 export type Workspace = 'all' | string
 
-export const AGENCY_NAME = 'Sample Social Co.'
+export const defaultAgency: AgencySettings = { agencyName: 'Sample Social Co.', managerName: 'Annie' }
 
 export function inTwoWeeks(): string {
   const d = new Date()

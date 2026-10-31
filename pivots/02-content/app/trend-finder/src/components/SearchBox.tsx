@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Platform } from '../types'
 import type { ChipGroup } from '../lib/clientChips'
 import { PlatformToggles } from './PlatformToggles'
 import { ClientChips } from './ClientChips'
 import type { PulseInfo } from './ClientChips'
 import { VoiceButton } from './VoiceButton'
+import { usePastSearches } from '../lib/usePastSearches'
 
 interface Props {
   inputId: string
@@ -20,17 +21,22 @@ interface Props {
   pulse: PulseInfo
   onRefreshPulse: () => void
   autoFocus?: boolean
+  // Live mode: pick a screenshot to find videos like it.
+  onImage?: (file: File) => void
 }
 
 // The search card used on both the search page and the results page:
 // platforms, the search bar (with voice), and one row of "Trending now" chips for the client.
 export function SearchBox(p: Props) {
   const [listening, setListening] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const listId = useId()
+  const past = usePastSearches(p.value, p.live)
   const trending = p.chipGroups.find((g) => g.id === 'trending')
   const oneRow = trending
     ? [trending]
-    : // No trend data yet (e.g. before live search is on): the client's starter searches fill the same row.
-      [{ id: 'trending' as const, title: 'Trending now', chips: p.clientExamples.slice(0, 5).map((e) => ({ label: e, value: e })) }]
+    : // No trend data yet: the client's starter searches fill the row, labelled as what they are.
+      [{ id: 'starter' as const, title: 'Starter searches', chips: p.clientExamples.slice(0, 5).map((e) => ({ label: e, value: e })) }]
 
   return (
     <form
@@ -42,7 +48,7 @@ export function SearchBox(p: Props) {
     >
       <div className="search-on">
         <span className="field-label">Search on</span>
-        <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} showSoon live={p.live} />
+        <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} />
       </div>
 
       <label htmlFor={p.inputId} className="sr-only">
@@ -59,10 +65,19 @@ export function SearchBox(p: Props) {
                 ? 'Listening… say what you want to find'
                 : p.live
                   ? `e.g. ${p.clientExamples[0] ?? 'tofu recipe'}`
-                  : 'e.g. tofu, a question, or a TikTok / Reel link'
+                  : 'e.g. tofu, a question, or a TikTok link'
             }
             autoFocus={p.autoFocus}
+            list={p.live ? listId : undefined}
+            autoComplete="off"
           />
+          {p.live && (
+            <datalist id={listId}>
+              {past.map((q) => (
+                <option key={q} value={q} />
+              ))}
+            </datalist>
+          )}
           <VoiceButton
             onText={p.onValueChange}
             onDone={(text) => {
@@ -72,10 +87,38 @@ export function SearchBox(p: Props) {
             onListeningChange={setListening}
           />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={!p.value.trim()}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!p.value.trim()}
+          title={p.value.trim() ? undefined : 'Type what to search for first.'}
+        >
           {/https?:\/\//.test(p.value) ? 'Find more like this' : 'Find trending videos'}
         </button>
       </div>
+
+      {p.onImage && (
+        <div className="search-upload">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            aria-label="Upload a screenshot"
+            // The visible "Upload screenshot" button opens this input, so it is not a second Tab stop.
+            tabIndex={-1}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) p.onImage?.(file)
+            }}
+          />
+          <button type="button" className="btn btn-ghost" onClick={() => fileInput.current?.click()}>
+            Upload screenshot
+          </button>
+          <span className="small muted">Find videos like a screenshot.</span>
+        </div>
+      )}
 
       <ClientChips
         clientName={p.clientName}
