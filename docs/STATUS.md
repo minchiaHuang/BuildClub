@@ -1,10 +1,21 @@
 # STATUS
 
-Remake phase 1 (end-to-end review flow, design system, new backends) is merged on `feat/remake-e2e` and passed the end-to-end test; waiting for user testing.
+Remake phase 1 (end-to-end review flow, design system, new backends) is merged on `feat/remake-e2e` and passed the end-to-end test. All 13 items from the Opus review are fixed (2026-10-31); waiting for user testing.
 
 ## Last verification (2026-10-31)
 - `bash bin/verify.sh`: GREEN after every merge and at the final commit 47b27d8; `npm run build` and `npm run lint` exit 0.
 - End-to-end test (login, client search, shortlist, plan, batch send, signed-out review link, send-back, resend, approve, double-approve guard, client memory, turn off link) passed at 1440 and 390 widths, against a fresh backend with `--demo-data`.
+
+## Review fixes (2026-10-31)
+- `bash bin/verify.sh` GREEN at the fix commits. `npm run build` and `npm run lint` were clean after each merge. The end-to-end test passed 12/12 at both 1440 and 390, in demo mode.
+- Checked in a real browser:
+  - Real mode with an empty account shows "No clients yet" with no page errors, and sample clients are not saved.
+  - A plan edit made while the session was expired is kept through a page refresh and saved after signing in again.
+  - "Preview as Annie" is read-only: the decide buttons are hidden and the server status does not change.
+- Not checked in a browser:
+  - The Google sign-in error messages (unit tests only).
+  - The "via review link" label on comments.
+  - Comment seeking in a real TikTok player.
 
 ## Next-day environment (port 8805, real mode, no demo data)
 - Account: tommycat997@gmail.com, password given in chat.
