@@ -108,6 +108,20 @@ class SavedIdea(BaseModel):
     history: Optional[list[Decision]] = None
 
 
+class NewComment(BaseModel):
+    """A note pinned to a second of a plan's reference video."""
+    videoId: str
+    atSec: float = Field(ge=0)
+    text: str = Field(min_length=1, max_length=500)
+    author: str = Field(min_length=1, max_length=60)
+
+
+class Comment(NewComment):
+    id: str
+    ideaId: str
+    createdAt: int
+
+
 class Pattern(BaseModel):
     """A sound or hashtag shared by several accounts in a search (Pattern in src/lib/live.ts)."""
     kind: Literal["sound", "hashtag"]

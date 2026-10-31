@@ -36,6 +36,7 @@ import assist
 import channels
 import instagram
 import reddit
+import comments
 import share
 import x
 import youtube
@@ -790,6 +791,7 @@ def auth_me(request: Request):
 
 
 app.include_router(share.make_router(db, load, save))
+app.include_router(comments.make_router(load, save))
 
 
 budget_lock = threading.Lock()
