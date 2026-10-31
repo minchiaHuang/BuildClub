@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { IdeaStatus } from '../types'
 import type { CutState } from '../lib/cut'
-import { SPEEDS, canStartCut, checkMusic, deleteMusic, formatDuration, getCut, pollCut, putMusic, startCut } from '../lib/cut'
+import { SPEEDS, canStartCut, checkMusic, deleteMusic, formatDuration, getCut, pollCut, putMusic, reviewLine, sendCutForReview, startCut } from '../lib/cut'
+import { useManagerName } from '../lib/appContext'
+import { formatDay } from '../lib/dates'
 import { formatSize } from '../lib/takes'
 
 interface Props {
@@ -29,6 +31,8 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
   const [musicBusy, setMusicBusy] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
+  const manager = useManagerName()
 
   useEffect(() => {
     const ac = new AbortController()
@@ -90,6 +94,23 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
       setMusicBusy(false)
     }
   }
+
+  const send = async () => {
+    setError(null)
+    setSending(true)
+    try {
+      setCut(await sendCutForReview(ideaId))
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const review = cut?.review ?? null
+  const canSend = approved && !cut?.stale && !active && review?.status !== 'waiting' && review?.status !== 'approved'
+  // A reopened plan is hidden from the approver, so a waiting review must not promise that they will see it.
+  const line = !approved && review?.status === 'waiting' ? `Hidden from ${manager} while the plan is reopened.` : reviewLine(review, manager, formatDay)
 
   const upload = (file: File) => {
     const problem = checkMusic(file)
@@ -161,6 +182,8 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
               Make the video
             </button>
           )}
+          {review?.status === 'approved' && <span className="muted small">Making it again clears {manager}'s approval.</span>}
+          {review?.status === 'waiting' && <span className="muted small">Making it again takes it off {manager}'s list until you send it again.</span>}
         </div>
       )}
 
@@ -207,10 +230,17 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
             <a className="btn btn-ghost btn-sm" href={`${output.url}${output.url.includes('?') ? '&' : '?'}download=1`} download>
               Download
             </a>
+            {canSend && (
+              <button type="button" className="btn btn-primary btn-sm" disabled={sending} onClick={() => void send()}>
+                Send to {manager} for approval
+              </button>
+            )}
             <span className="muted small">
               {formatDuration(output.durationSec)} · {formatSize(output.size)}
             </span>
           </div>
+          {line && <p className="small cut-review-line">{line}</p>}
+          {review?.status === 'rejected' && review.reason && <p className="quote">{review.reason}</p>}
         </div>
       )}
     </section>

@@ -11,6 +11,8 @@ import {
   musicType,
   pollCut,
   putMusic,
+  reviewLine,
+  sendCutForReview,
   startCut,
 } from '../src/lib/cut.ts'
 
@@ -199,4 +201,31 @@ test('pollCut with an already-aborted signal never fetches', async () => {
   }
   assert.equal(final, null)
   assert.equal(f.calls.length, 0)
+})
+
+test('reviewLine words the three states and gives null without a review', () => {
+  const day = (ms) => `day${ms}`
+  assert.equal(reviewLine(null, 'Daphne', day), null)
+  assert.equal(reviewLine({ status: 'waiting', sentAt: 1 }, 'Daphne', day), "Waiting for Daphne's approval · sent day1")
+  assert.equal(reviewLine({ status: 'approved', sentAt: 1, decidedAt: 2 }, 'Daphne', day), 'Daphne approved this video · day2')
+  assert.equal(reviewLine({ status: 'rejected', sentAt: 1, decidedAt: 3, reason: 'too long' }, 'Daphne', day), 'Daphne sent this back · day3')
+})
+
+test('sendCutForReview posts with no body and returns the state; failures use the server error', async () => {
+  const f = fakeFetch([{ body: state('done', { review: { status: 'waiting', sentAt: 5 } }) }])
+  try {
+    const s = await sendCutForReview('i/1')
+    assert.equal(f.calls[0].url, '/api/ideas/i%2F1/cut/review')
+    assert.equal(f.calls[0].init.method, 'POST')
+    assert.equal(f.calls[0].init.body, undefined)
+    assert.equal(s.review.status, 'waiting')
+  } finally {
+    f.restore()
+  }
+  const g = fakeFetch([{ status: 409, body: { error: 'Make the video first.' } }])
+  try {
+    await assert.rejects(sendCutForReview('i'), /Make the video first\./)
+  } finally {
+    g.restore()
+  }
 })

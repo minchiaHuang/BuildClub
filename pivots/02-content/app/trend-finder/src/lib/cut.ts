@@ -1,6 +1,14 @@
 import type { IdeaStatus } from '../types'
 
 // The cut of an approved plan: its chosen takes joined into one publishable 9:16 MP4. Mirrors backend/renders.py.
+export interface CutReview {
+  status: 'waiting' | 'approved' | 'rejected'
+  sentAt: number
+  decidedAt?: number
+  // Why the approver sent it back.
+  reason?: string
+}
+
 export interface CutState {
   status: 'none' | 'queued' | 'running' | 'done' | 'failed'
   progress: number
@@ -12,6 +20,8 @@ export interface CutState {
   music: { name: string; size: number } | null
   // The last successful video; can be present while a new cut is queued, running or failed.
   output?: { url: string; size: number; durationSec: number }
+  // Where the video stands with the approver; null when it was never sent or was replaced since.
+  review: CutReview | null
 }
 
 // Same limits and copy as backend/renders.py.
@@ -86,6 +96,19 @@ export async function startCut(ideaId: string, shotCount: number, speed: number)
     body: JSON.stringify({ shotCount, speed }),
   })
   return send(r, "Couldn't start the cut.")
+}
+
+// Sends the finished video to the approver. Failures carry the server's reason.
+export async function sendCutForReview(ideaId: string): Promise<CutState> {
+  return send(await fetch(`${base(ideaId)}/review`, { method: 'POST' }), "Couldn't send the video.")
+}
+
+// The status line for a sent video; the reason is shown separately. null when it was never sent.
+export function reviewLine(r: CutReview | null, manager: string, day: (ms: number) => string): string | null {
+  if (!r) return null
+  if (r.status === 'waiting') return `Waiting for ${manager}'s approval · sent ${day(r.sentAt)}`
+  const when = day(r.decidedAt ?? r.sentAt)
+  return r.status === 'approved' ? `${manager} approved this video · ${when}` : `${manager} sent this back · ${when}`
 }
 
 // Resolves after ms, or early when the signal aborts.

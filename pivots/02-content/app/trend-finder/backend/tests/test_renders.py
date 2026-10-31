@@ -10,6 +10,7 @@ import pytest
 import cutting
 import renders
 import server
+from models import Shot
 from cutting import CutError
 from test_auth import add_user
 from test_takes import MP4, idea, store_ideas, up
@@ -101,7 +102,8 @@ def cut_dir(idea_id="ia"):
 
 def test_no_cut_yet(client, setup):
     assert client.get("/api/ideas/ia/cut").json() == {
-        "status": "none", "progress": 0, "step": "", "speed": 1.1, "stale": False, "music": None}
+        "status": "none", "progress": 0, "step": "", "speed": 1.1, "stale": False, "music": None,
+        "review": None}
     assert client.get("/api/ideas/nope/cut").status_code == 404
 
 
@@ -460,3 +462,125 @@ def test_stale_when_the_number_of_picked_shots_changes(client, setup, fake_pipel
     with_take(client, shot=1)
     assert client.get("/api/ideas/ia/cut?shots=2").json()["stale"] is True  # the plan gained a shot
     assert client.get("/api/ideas/ia/cut?shots=1").json()["stale"] is False  # orphan takes don't count
+
+
+# --- sending a finished cut for approval -------------------------------------------------------------------
+
+def finished_cut(client):
+    with_take(client)
+    assert start(client).status_code == 202
+    return wait_for(client)
+
+
+def review_link(client):
+    assert client.post("/api/share", json={"clientId": "a"}).status_code in (200, 201)
+
+
+def send(client, idea_id="ia"):
+    return client.post(f"/api/ideas/{idea_id}/cut/review")
+
+
+def review_rows():
+    with server.db() as conn:
+        return conn.execute("SELECT idea_id, status FROM cut_reviews").fetchall()
+
+
+def test_send_for_review_sets_waiting(client, setup, fake_pipeline):
+    finished_cut(client)
+    review_link(client)
+    r = send(client)
+    assert r.status_code == 200
+    review = r.json()["review"]
+    assert review["status"] == "waiting" and isinstance(review["sentAt"], int)
+    assert client.get("/api/ideas/ia/cut").json()["review"] == review
+
+
+def test_send_needs_a_cut_409(client, setup, fake_pipeline):
+    review_link(client)
+    r = send(client)
+    assert r.status_code == 409 and r.json()["error"] == "Make the video first."
+
+
+def test_send_stale_cut_409(client, setup, fake_pipeline):
+    finished_cut(client)
+    review_link(client)
+    other = with_take(client)
+    client.post(f"/api/ideas/ia/takes/{other['id']}/choose")
+    r = send(client)
+    assert r.status_code == 409
+    assert r.json()["error"] == "The takes or music changed after this was made. Make it again before sending it."
+
+
+def test_send_while_cutting_409(client, setup, slow_pipeline):
+    started, _ = slow_pipeline
+    review_link(client)
+    with_take(client)
+    start(client)
+    assert started.wait(5)
+    r = send(client)
+    assert r.status_code == 409 and r.json()["error"] == "Wait for the cut to finish before sending it."
+
+
+def test_send_needs_review_link_409(client, setup, fake_pipeline):
+    finished_cut(client)
+    r = send(client)
+    assert r.status_code == 409
+    assert r.json()["error"] == "This client's review link is turned off. Make a new one on the Shortlist first."
+
+
+def test_send_not_approved_409(client, setup, fake_pipeline):
+    review_link(client)
+    r = send(client, "iw")
+    assert r.status_code == 409 and r.json()["error"] == renders.NOT_APPROVED
+    assert send(client, "nope").status_code == 404
+
+
+def test_send_already_approved_409(client, setup, fake_pipeline):
+    finished_cut(client)
+    review_link(client)
+    assert send(client).status_code == 200
+    with server.db() as conn:
+        conn.execute("UPDATE cut_reviews SET status = 'approved', decided_at = 1 WHERE idea_id = 'ia'")
+    r = send(client)
+    assert r.status_code == 409 and r.json()["error"] == "This video is already approved."
+
+
+def test_recut_clears_review(client, setup, fake_pipeline):
+    finished_cut(client)
+    review_link(client)
+    send(client)
+    assert start(client).status_code == 202
+    assert wait_for(client)["review"] is None
+    assert review_rows() == []
+
+
+def test_failed_recut_keeps_review(client, setup, fake_pipeline, monkeypatch):
+    finished_cut(client)
+    review_link(client)
+    send(client)
+
+    def boom(*a, **k):
+        raise CutError("nope")
+
+    monkeypatch.setattr(renders, "run_pipeline", boom)
+    assert start(client).status_code == 202
+    state = wait_for(client)
+    assert state["status"] == "failed" and state["review"]["status"] == "waiting"
+
+
+def test_review_survives_restart(client, setup, fake_pipeline):
+    finished_cut(client)
+    review_link(client)
+    send(client)
+    renders.recover(server.db)
+    assert client.get("/api/ideas/ia/cut").json()["review"]["status"] == "waiting"
+
+
+def test_send_stale_shot_count_409(client, setup, fake_pipeline):
+    finished_cut(client)  # made for 1 shot
+    review_link(client)
+    shots = [Shot(time="0-3s", shot="a"), Shot(time="3-6s", shot="b")]
+    server.save("ideas", [idea("ia").model_copy(update={"shots": shots}), idea("ib")])
+    r = send(client)
+    assert r.status_code == 409
+    assert r.json()["error"] == "The takes or music changed after this was made. Make it again before sending it."
