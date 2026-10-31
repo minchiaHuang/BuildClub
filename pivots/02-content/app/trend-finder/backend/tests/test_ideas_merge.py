@@ -88,3 +88,21 @@ def test_frontend_fields_round_trip(client):
     assert saved["approvedAt"] == 4000
     assert saved["managerNote"] == "tighter hook"
     assert saved["shotComments"] == {"0": "closer"}
+
+
+def test_stage_dropped_when_not_approved(client):
+    saved = client.put("/api/ideas", json=[{**IDEA, "stage": "filming", "postedAt": 5000}]).json()[0]
+    assert "stage" not in saved and "postedAt" not in saved
+
+
+def test_reopened_plan_loses_stage(client):
+    client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 2000, "stage": "posted", "postedAt": 5000}])
+    saved = client.put("/api/ideas", json=[{**IDEA, "sentAt": 3000, "stage": "posted", "postedAt": 5000}]).json()[0]
+    assert saved["status"] == "waiting"
+    assert "stage" not in saved and "postedAt" not in saved
+
+
+def test_posted_at_only_when_posted(client):
+    moved = {**IDEA, "status": "approved", "decidedAt": 2000, "stage": "editing", "postedAt": 5000}
+    saved = client.put("/api/ideas", json=[moved]).json()[0]
+    assert saved["stage"] == "editing" and "postedAt" not in saved

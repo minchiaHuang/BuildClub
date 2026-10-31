@@ -1,5 +1,8 @@
 import pytest
 
+import server
+from models import SavedIdea
+
 A = {"id": "a", "name": "Tofu Bar", "niche": "food", "audience": "students",
      "monthlyTarget": 8, "examples": [], "cannot": []}
 B = {**A, "id": "b", "name": "Plant Pal"}
@@ -217,3 +220,11 @@ def test_decide_twice_returns_404(client, two_clients):
     assert again.json()["code"] == "not_waiting"
     saved = next(i for i in client.get("/api/ideas").json() if i["id"] == "ia")
     assert len(saved["history"]) == 1
+
+
+def test_review_link_never_shows_stage(client, two_clients):
+    # PUT drops a stage on a waiting idea, so write the store directly.
+    server.save("ideas", [SavedIdea(**idea("ia", "a", stage="filming", postedAt=5000))])
+    token, _ = link(client, "a")
+    item = client.get(f"/api/review/{token}").json()["ideas"][0]["idea"]
+    assert "stage" not in item and "postedAt" not in item

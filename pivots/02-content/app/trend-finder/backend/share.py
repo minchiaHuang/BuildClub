@@ -38,7 +38,8 @@ def bump_ideas_rev(db, load) -> int:
 
 def merge_ideas(stored: list, incoming: list) -> list:
     """Daphne's tab sends the whole list back. An idea decided after she last sent or saw it
-    keeps the decision; everything else (due date, notes, shots) comes from her copy."""
+    keeps the decision; everything else (due date, notes, shots, stage) comes from her copy.
+    A stage is dropped unless the plan is approved."""
     old = {i["id"]: i for i in stored or []}
     merged = []
     for idea in incoming:
@@ -51,6 +52,11 @@ def merge_ideas(stored: list, incoming: list) -> list:
         kept = (theirs or {}).get("history") or []
         if len(kept) > len(idea.get("history") or []):
             idea = {**idea, "history": kept}
+        # Only an approved plan is in production, and only a posted one has a posted date.
+        if idea.get("status") != "approved":
+            idea = {k: v for k, v in idea.items() if k not in ("stage", "postedAt")}
+        elif idea.get("stage") != "posted":
+            idea = {k: v for k, v in idea.items() if k != "postedAt"}
         merged.append(idea)
     return merged
 
