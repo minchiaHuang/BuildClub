@@ -1,6 +1,6 @@
 # STATUS
 
-Remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (2026-10-31). Phase 2b (shot checklist and real-footage takes) is on `feat/remake-shot-takes`, verified and in review.
+Remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (2026-10-31). Phase 2b (shot checklist and real-footage takes) is merged (PR #6, 4277192, 2026-10-31). Phase 2c (edit to a publishable MP4, then Annie's approval) is being planned on `feat/remake-rough-cut`, split into 2c-1 and 2c-2.
 
 ## Last verification (2026-10-31)
 - `bash bin/verify.sh`: GREEN after every merge and at the final commit 47b27d8; `npm run build` and `npm run lint` exit 0.
