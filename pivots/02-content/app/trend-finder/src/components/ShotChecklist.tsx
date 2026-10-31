@@ -7,10 +7,12 @@ interface Props {
   ideaId: string
   status: IdeaStatus
   shots: Shot[]
+  // Called whenever the loaded takes change: how many shots have a chosen take.
+  onProgress?: (done: number) => void
 }
 
 // Per-shot filming checklist: upload real takes for each shot, watch them, pick the one to use.
-export function ShotChecklist({ ideaId, status, shots }: Props) {
+export function ShotChecklist({ ideaId, status, shots, onProgress }: Props) {
   const [takes, setTakes] = useState<Take[] | null>(null)
   const [loadError, setLoadError] = useState(false)
   // Shots with an upload still running; several shots can upload at once.
@@ -27,6 +29,11 @@ export function ShotChecklist({ ideaId, status, shots }: Props) {
       live = false
     }
   }, [ideaId])
+
+  const shotCount = shots.length
+  useEffect(() => {
+    if (takes) onProgress?.(checklistProgress(shotCount, takes).done)
+  }, [takes, shotCount, onProgress])
 
   const editable = canEdit(status)
   if (!editable && (!takes || takes.length === 0) && !loadError) return null

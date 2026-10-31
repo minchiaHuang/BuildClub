@@ -10,6 +10,7 @@ import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { lastSentBack } from '../lib/memory'
 import { StageSelect } from './StageSelect'
 import { ShotChecklist } from './ShotChecklist'
+import { CutPanel } from './CutPanel'
 
 interface Props {
   idea: SavedIdea
@@ -49,6 +50,8 @@ export function PlanScreen(p: Props) {
   const [addedAt, setAddedAt] = useState<number | null>(null)
   // "Edit" on an approved plan asks first, because it sends the plan back for approval.
   const [confirmEdit, setConfirmEdit] = useState(false)
+  // Shots with a chosen take, reported by the shot checklist for the video panel.
+  const [shotsDone, setShotsDone] = useState(0)
 
   const shots = idea.shots ?? format.shotList
   // Approved plans are locked: the team films what the manager approved. Sent-back plans can be fixed and sent again.
@@ -305,7 +308,8 @@ export function PlanScreen(p: Props) {
             )}
           </section>
 
-          <ShotChecklist key={idea.id} ideaId={idea.id} status={idea.status} shots={shots} />
+          <ShotChecklist key={idea.id} ideaId={idea.id} status={idea.status} shots={shots} onProgress={setShotsDone} />
+          <CutPanel key={idea.id} ideaId={idea.id} status={idea.status} shotCount={shots.length} shotsDone={shotsDone} />
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">
