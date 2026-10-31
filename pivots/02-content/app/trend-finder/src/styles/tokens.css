@@ -67,6 +67,70 @@
   --dur-slow: 300ms;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
+  /* ---- Scales added for the single-source consolidation (values match what the stylesheets already used) ---- */
+  /* Type scale: new steps beside --text-xs/sm/base/md above */
+  --text-3xs: 10px;
+  --text-2xs: 11px;
+  --text-ms: 14px;
+  --text-body: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
+  --text-4xl: 30px;
+  --text-display: 52px;
+  --text-h1: clamp(30px, 8vw, 36px);
+  --text-h2: clamp(21px, 2.3vw, 25px);
+
+  /* Space scale (gaps) */
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 6px;
+  --space-sm: 8px;
+  --space-md: 10px;
+  --space-base: 12px;
+  --space-lg: 14px;
+  --space-xl: 16px;
+  --space-2xl: 18px;
+  --space-3xl: 24px;
+  --space-4xl: 28px;
+
+  /* Radius: extra step for the login card */
+  --radius-xl: 24px;
+
+  /* Layering */
+  --z-raised: 2;
+  --z-bar: 20;       /* sticky bars */
+  --z-action-bar: 25;
+  --z-dropdown: 30;
+  --z-drawer: 40;
+  --z-scrim: 55;
+  --z-sidebar: 60;
+
+  /* Motion: duration-* names, with the older --dur-* kept as the source values */
+  --duration-fast: var(--dur-fast);
+  --duration: var(--dur);
+  --duration-slow: var(--dur-slow);
+  --duration-hover: 200ms;   /* border / background hover on selectable cards */
+  --duration-pulse: 1.2s;    /* skeleton pulse, slow on purpose */
+
+  /* Colour aliases: --color-* names for the surface, text and status tokens above */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-hot: var(--hot);
+  --color-early: var(--early);
+  --color-rising: var(--rising);
+  --color-late: var(--late);
+  --color-danger: var(--no);
+
   color-scheme: light;
 }
 

@@ -15,32 +15,32 @@
 @keyframes ring-in { from { stroke-dashoffset: 100; } }
 
 /* Shortlist board header (title + monthly target) */
-.client { display: grid; gap: 28px; }
-.client-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
-.client-head > div:first-child { display: grid; gap: 8px; }
+.client { display: grid; gap: var(--space-4xl); }
+.client-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3xl); flex-wrap: wrap; }
+.client-head > div:first-child { display: grid; gap: var(--space-sm); }
 .target {
-  display: flex; align-items: center; gap: 16px; min-width: 220px;
+  display: flex; align-items: center; gap: var(--space-xl); min-width: 220px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); padding: 14px 20px 14px 14px;
 }
-.target-text { display: grid; gap: 2px; }
-.target-num { font-weight: 700; font-size: 28px; line-height: 1.1; letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
+.target-text { display: grid; gap: var(--space-3xs); }
+.target-num { font-weight: 700; font-size: var(--text-3xl); line-height: 1.1; letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
 .target-num .muted { font-size: var(--text-md); font-weight: 500; letter-spacing: 0; }
-.status-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.status-row { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
 .status-row .pill { font-variant-numeric: tabular-nums; }
 .status-row > .small { margin-left: 4px; }
 
 /* Overview */
-.overview { display: grid; gap: 28px; }
-.stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.overview { display: grid; gap: var(--space-4xl); }
+.stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-lg); }
 @media (max-width: 600px) { .stat-row { grid-template-columns: minmax(0, 1fr); } }
 .stat {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow-sm); padding: 18px 20px; display: grid; gap: 4px;
+  box-shadow: var(--shadow-sm); padding: 18px 20px; display: grid; gap: var(--space-2xs);
 }
-.stat-ring { display: flex; align-items: center; gap: 14px; }
-.stat-ring > div { display: grid; gap: 4px; }
-.stat-num { font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
+.stat-ring { display: flex; align-items: center; gap: var(--space-lg); }
+.stat-ring > div { display: grid; gap: var(--space-2xs); }
+.stat-num { font-weight: 700; font-size: var(--text-4xl); line-height: 1.1; letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
 .stat-num .muted { font-size: var(--text-md); font-weight: 500; letter-spacing: 0; }
 .table-wrap {
   overflow-x: auto; background: var(--surface); border: 1px solid var(--line);
@@ -54,18 +54,18 @@
 .client-table tr:last-child td { border-bottom: 0; }
 .client-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .client-table .pill, .client-table td .small { white-space: nowrap; }
-.progress { display: flex; align-items: center; gap: 10px; min-width: 140px; }
+.progress { display: flex; align-items: center; gap: var(--space-md); min-width: 140px; }
 .progress .small { font-variant-numeric: tabular-nums; }
 .due-soon { color: var(--hot); font-weight: 600; }
 
 /* Shortlist board: three columns, plus a small "Sent back" lane */
-.board-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.board-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-xl); align-items: start; }
 @media (max-width: 1000px) { .board-cols { grid-template-columns: minmax(0, 1fr); } }
 .board-col, .board-lane {
-  display: grid; gap: 12px; align-content: start;
+  display: grid; gap: var(--space-base); align-content: start;
   background: color-mix(in srgb, var(--surface-2) 70%, transparent); border-radius: var(--radius-lg); padding: 14px;
 }
-.board-col-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+.board-col-head { display: flex; align-items: center; gap: var(--space-sm); padding: 2px 4px; }
 .board-col-head h2 { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.01em; }
 .board-count {
   font-size: var(--text-xs); font-weight: 600; font-variant-numeric: tabular-nums;
@@ -78,16 +78,16 @@
 .board-empty { padding: 4px 4px 8px; }
 
 .board-batch {
-  display: grid; gap: 12px; background: var(--surface); border-radius: var(--radius);
+  display: grid; gap: var(--space-base); background: var(--surface); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); padding: 14px;
 }
-.board-batch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.board-batch-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
 .board-batch input[type="date"] { justify-self: start; }
 
-.board-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.board-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-md); }
 .board-list-lane { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .board-card {
-  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: start;
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--space-base); align-items: start;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); padding: 12px;
   transition: box-shadow var(--dur) var(--ease);
@@ -98,17 +98,17 @@
 .board-card-body strong { font-size: var(--text-base); letter-spacing: -0.01em; }
 .board-card-body .small { overflow-wrap: anywhere; }
 .board-reason { color: var(--no); background: var(--no-soft); border-radius: var(--radius-xs); padding: 6px 8px; margin-top: 4px; }
-.board-card-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.board-card-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); }
 
 /* The manager's review: a narrow, phone-sized column that reads like an iPhone app */
-.review { max-width: 440px; width: 100%; margin: 0 auto; display: grid; gap: 18px; }
+.review { max-width: 440px; width: 100%; margin: 0 auto; display: grid; gap: var(--space-2xl); }
 .review-back { justify-self: start; }
 .review-banner {
   font-size: var(--text-sm); color: var(--muted); background: var(--surface-2);
   border-radius: var(--radius-sm); padding: 10px 14px;
 }
-.review-head { gap: 6px; padding: 4px 4px 2px; }
-.review-head h1 { font-size: clamp(30px, 8vw, 36px); }
+.review-head { gap: var(--space-xs); padding: 4px 4px 2px; }
+.review-head h1 { font-size: var(--text-h1); }
 
 .review-stack { display: grid; }
 /* Each card sits in a slot that can close smoothly once the card has gone */
@@ -121,7 +121,7 @@
 .review-slot.is-collapsing .review-slot-inner { overflow: hidden; }
 
 .review-card {
-  position: relative; display: grid; gap: 16px;
+  position: relative; display: grid; gap: var(--space-xl);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md); padding: 18px;
   touch-action: pan-y; cursor: grab;
@@ -135,32 +135,32 @@
 
 /* Swipe hints: fade in as the card moves */
 .swipe-hint {
-  position: absolute; top: -14px; z-index: 2; pointer-events: none;
+  position: absolute; top: -14px; z-index: var(--z-raised); pointer-events: none;
   font-size: var(--text-sm); font-weight: 700; padding: 6px 12px; border-radius: var(--radius-pill);
   box-shadow: var(--shadow-sm); opacity: 0;
 }
 .swipe-hint-yes { left: 18px; background: var(--early); color: var(--early-fg); }
 .swipe-hint-no { right: 18px; background: var(--no); color: var(--surface); }
 
-.review-ref { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: center; }
+.review-ref { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: var(--space-lg); align-items: center; }
 .review-ref .thumb { border-radius: var(--radius-sm); }
-.review-ref > div { display: grid; gap: 4px; min-width: 0; }
+.review-ref > div { display: grid; gap: var(--space-2xs); min-width: 0; }
 .review-ref strong { font-size: var(--text-md); letter-spacing: -0.01em; }
 .review-card .quote { font-size: var(--text-base); }
 .review-shots {
-  margin: 0; padding: 14px 16px 14px 34px; display: grid; gap: 8px; font-size: 14px;
+  margin: 0; padding: 14px 16px 14px 34px; display: grid; gap: var(--space-sm); font-size: var(--text-ms);
   background: var(--surface-2); border-radius: var(--radius-sm);
 }
 .review-shots li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
-.review-actions { display: flex; gap: 10px; }
+.review-actions { display: flex; gap: var(--space-md); }
 .review-actions .btn { flex: 1; min-height: 50px; border-radius: var(--radius-sm); font-size: var(--text-md); }
-.review-reject { display: grid; gap: 10px; }
+.review-reject { display: grid; gap: var(--space-md); }
 .review-reject textarea { border-radius: var(--radius-sm); }
 
 /* Stream C: three decisions, shot comments, read-only view for team members */
 .review-card.is-readonly { cursor: default; }
-.review-meta { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.review-note { display: grid; gap: 6px; }
+.review-meta { display: flex; gap: var(--space-md); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.review-note { display: grid; gap: var(--space-xs); }
 .review-actions-3 { display: grid; grid-template-columns: 1fr 1fr; }
 .review-actions-3 .btn:last-child { grid-column: 1 / -1; }
 .shot-comment-btn { display: block; margin-top: 2px; font-size: var(--text-sm); }
@@ -169,20 +169,20 @@
 .manager-note .quote { margin: 0; }
 
 /* Client memory in client settings */
-.client-memory { display: grid; gap: 14px; max-width: 640px; }
-.client-memory-head { display: grid; gap: 4px; }
-.memory-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.client-memory { display: grid; gap: var(--space-lg); max-width: 640px; }
+.client-memory-head { display: grid; gap: var(--space-2xs); }
+.memory-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-md); }
 .memory-item {
-  display: grid; gap: 4px; padding: 14px 16px;
+  display: grid; gap: var(--space-2xs); padding: 14px 16px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
 }
 .memory-item .quote { margin: 4px 0 0; font-size: var(--text-sm); }
-.memory-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.memory-row { display: flex; gap: var(--space-md); align-items: center; justify-content: space-between; }
 .memory-approved, .memory-approved-with-changes { background: var(--early-soft); color: var(--early); }
 .memory-sent-back { background: var(--no-soft); color: var(--no); }
 
 @media (max-width: 600px) {
-  .review { gap: 14px; }
+  .review { gap: var(--space-lg); }
   .review-card { padding: 16px; }
 }
 
