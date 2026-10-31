@@ -48,6 +48,7 @@ def offline(tmp_path, monkeypatch):
     monkeypatch.setattr(server, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(server, "PINNED_DIR", tmp_path / "pinned")
     monkeypatch.setattr(server, "DB_PATH", tmp_path / "data.db")
+    monkeypatch.setattr(server, "MEDIA_DIR", tmp_path / "media")
     monkeypatch.setattr(analyze, "JOBS_DIR", tmp_path / "jobs")
     monkeypatch.setattr(channels, "CHANNELS_DIR", tmp_path / "channels")
     monkeypatch.setenv("TYPESAFE_API_KEY", "test-jev-key")
