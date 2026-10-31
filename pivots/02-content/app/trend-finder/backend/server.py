@@ -127,8 +127,9 @@ def password_ok(header: str) -> bool:
 # page and the approver's /review/<token> page can load), health, the landing-page stats, signing
 # in, and the approver's own API. Everything else under /api needs one. Matching is exact, or on
 # the "/api/review/" prefix with its trailing slash, so "/api/reviewX" is not let through.
-PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login", "/api/auth/config")
-PUBLIC_API_PREFIX = ("/api/review/", "/api/auth/google/")
+PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login", "/api/auth/config",
+              "/api/auth/google/start", "/api/auth/google/callback")
+PUBLIC_API_PREFIX = ("/api/review/",)
 
 
 DOC_PATHS = ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../lib/appContext'
 import { LandingAltitude } from './landing/LandingAltitude'
 import { login } from '../lib/auth'
+import { googleErrorMessage } from '../lib/googleError'
 
 interface Props {
   // `real` is true when the API has accounts: staff then sign in with email and password.
@@ -19,10 +20,19 @@ export function LoginScreen({ real = false, startAtLogin = false, onSignIn }: Pr
   const [mode, setMode] = useState<'landing' | 'login' | 'register' | 'client'>(startAtLogin ? 'login' : 'landing')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => googleErrorMessage(window.location.search))
   const [busy, setBusy] = useState(false)
   const [account, setAccount] = useState<'staff' | 'client'>('staff')
   const [staffRole, setStaffRole] = useState<'member' | 'manager'>(savedRole === 'manager' ? 'manager' : 'member')
+
+  // Show a failed Google sign-in once, then take the reason out of the address.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('google_error')) {
+      url.searchParams.delete('google_error')
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+    }
+  }, [])
 
   // The server says whether Google sign-in is set up; the button only shows when it is.
   const [google, setGoogle] = useState(false)
