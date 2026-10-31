@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '../lib/appContext'
 import { LandingAltitude } from './landing/LandingAltitude'
 import { login } from '../lib/auth'
@@ -23,6 +23,15 @@ export function LoginScreen({ real = false, startAtLogin = false, onSignIn }: Pr
   const [busy, setBusy] = useState(false)
   const [account, setAccount] = useState<'staff' | 'client'>('staff')
   const [staffRole, setStaffRole] = useState<'member' | 'manager'>(savedRole === 'manager' ? 'manager' : 'member')
+
+  // The server says whether Google sign-in is set up; the button only shows when it is.
+  const [google, setGoogle] = useState(false)
+  useEffect(() => {
+    fetch('/api/auth/config')
+      .then((r) => (r.ok ? r.json() : { google: false }))
+      .then((c: { google?: boolean }) => setGoogle(c.google === true))
+      .catch(() => setGoogle(false))
+  }, [])
 
   // "Try the demo" skips sign-up: enter the sample agency as a team member.
   const tryDemo = () => {
@@ -147,6 +156,11 @@ export function LoginScreen({ real = false, startAtLogin = false, onSignIn }: Pr
             <button type="submit" className="la-pill la-solid la-big" disabled={busy}>
               {isClient ? 'Continue' : register && !real ? 'Register and log in' : 'Log in'}
             </button>
+            {google && !isClient && (
+              <a className="la-pill la-outline la-big" href="/api/auth/google/start">
+                Continue with Google
+              </a>
+            )}
             {!real && (
               <p className="la-login-switch">
                 {register ? 'Already using Remake? ' : 'New here? '}

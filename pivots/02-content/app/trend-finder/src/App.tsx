@@ -23,6 +23,7 @@ import { ReviewScreen } from './components/ReviewScreen'
 // stream C: decisions and client memory
 import { applyDecision, type Decision } from './lib/memory'
 import { SettingsScreen } from './components/SettingsScreen'
+import { ChannelScreen } from './components/ChannelScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Platform, Video } from './types'
 import {
@@ -815,6 +816,7 @@ export default function App() {
     review: `${agency.managerName}'s review`,
     plan: 'search results',
     settings: 'settings',
+    channel: 'channel',
     shortlist: 'shortlist',
     'add-client': 'add client',
   }
@@ -902,7 +904,7 @@ export default function App() {
             />
           )}
 
-          {((!inClient && view !== 'add-client') || view === 'overview') && (
+          {((!inClient && view !== 'add-client' && view !== 'channel') || view === 'overview') && (
             <OverviewScreen
               clients={clients}
               ideas={shownIdeas}
@@ -914,6 +916,8 @@ export default function App() {
               onAddClient={() => setView('add-client')} // stream A: "Add client" on the overview
             />
           )}
+
+          {view === 'channel' && <ChannelScreen />}
 
           {inClient && view === 'search' && (
             <SearchScreen

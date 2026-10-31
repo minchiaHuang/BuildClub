@@ -20,6 +20,12 @@ SCHEMA = (
     "CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT, expires INTEGER)",
 )
 
+def migrate(conn: sqlite3.Connection) -> None:
+    """Databases made before Google sign-in have no google_sub column; add it and leave every row alone."""
+    if not any(col[1] == "google_sub" for col in conn.execute("PRAGMA table_info(users)")):
+        conn.execute("ALTER TABLE users ADD COLUMN google_sub TEXT")
+
+
 # Failed sign-ins per normalised email, kept in memory: a restart forgives them.
 failures: dict[str, list[float]] = {}
 failures_lock = threading.Lock()  # sign-ins run in a thread pool
