@@ -197,7 +197,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                 out["error"] = err
             folder = folder_of(idea_id)
             if size is not None and folder is not None and (folder / "final.mp4").is_file():
-                out["output"] = {"url": f"/api/ideas/{idea_id}/cut/file", "size": size, "durationSec": duration}
+                # The version changes with every new final.mp4, so a preview player reloads after a re-cut.
+                version = (folder / "final.mp4").stat().st_mtime_ns
+                out["output"] = {"url": f"/api/ideas/{idea_id}/cut/file?v={version}", "size": size,
+                                 "durationSec": duration}
                 # Stale when the video was made from other takes or other music than are chosen now. The speed
                 # is part of the fingerprint, but it is the one the video was made at, so it never differs.
                 current = signature([t[0] for t in chosen_ids(conn, idea_id, out_shots)], out_speed,

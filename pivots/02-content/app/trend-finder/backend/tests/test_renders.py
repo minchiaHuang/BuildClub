@@ -144,7 +144,8 @@ def test_cut_runs_and_reports_progress(client, setup, fake_pipeline):
     assert r.status_code == 202 and r.json()["status"] == "queued" and r.json()["progress"] == 0
     state = wait_for(client)
     assert state["status"] == "done" and state["progress"] == 1 and state["step"] == "Done"
-    assert state["output"] == {"url": "/api/ideas/ia/cut/file", "size": len(FINAL), "durationSec": 12.5}
+    assert state["output"]["url"].startswith("/api/ideas/ia/cut/file?v=")
+    assert {k: v for k, v in state["output"].items() if k != "url"} == {"size": len(FINAL), "durationSec": 12.5}
     assert state["stale"] is False and state["speed"] == 1.1 and "error" not in state
     assert fake_pipeline[0]["takes"][0]["id"] == t["id"] and fake_pipeline[0]["music"] is None
     assert fake_pipeline[0]["out"] == cut_dir() / "work" / "next.mp4"
@@ -237,6 +238,17 @@ def test_rerun_replaces_old_output(client, setup, monkeypatch):
     assert state["output"]["size"] == len(b"second-cut-longer") and state["speed"] == 1.25
     assert client.get("/api/ideas/ia/cut/file").content == b"second-cut-longer"
     assert not (cut_dir() / "work").exists()
+
+
+def test_output_url_changes_after_every_successful_run(client, setup, fake_pipeline):
+    with_take(client)
+    start(client)
+    first = wait_for(client)["output"]["url"]
+    assert client.get("/api/ideas/ia/cut").json()["output"]["url"] == first  # stable between runs
+    start(client)
+    second = wait_for(client)["output"]["url"]
+    assert second != first
+    assert client.get(second).status_code == 200  # the file route ignores the version
 
 
 def test_failed_rerun_keeps_old_output(client, setup, monkeypatch):
