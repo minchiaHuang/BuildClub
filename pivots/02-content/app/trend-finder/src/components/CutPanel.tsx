@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { IdeaStatus } from '../types'
 import type { CutState } from '../lib/cut'
 import { SPEEDS, canStartCut, checkMusic, deleteMusic, formatDuration, getCut, pollCut, putMusic, startCut } from '../lib/cut'
@@ -10,13 +10,15 @@ interface Props {
   shotCount: number
   // Shots (of shotCount) that have a chosen take.
   shotsDone: number
+  // Bumped whenever the takes change, so a finished cut can be checked for staleness without a reload.
+  takesRevision?: number
 }
 
 const speedLabel = (s: number) => (s === 1 ? 'Normal' : `${s}x`)
 const isActive = (c: CutState | null) => c?.status === 'queued' || c?.status === 'running'
 
 // "Make the video": joins the chosen takes of an approved plan into one publishable 9:16 MP4.
-export function CutPanel({ ideaId, status, shotCount, shotsDone }: Props) {
+export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision = 0 }: Props) {
   const [cut, setCut] = useState<CutState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   // Bumped to (re)load the state and resume polling when it is still active.
@@ -42,6 +44,13 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone }: Props) {
     })()
     return () => ac.abort()
   }, [ideaId, loadKey])
+
+  // Re-read the state (for `stale`) when the takes change, unless a job is active and already being polled.
+  const activeRef = useRef(false)
+  activeRef.current = isActive(cut)
+  useEffect(() => {
+    if (takesRevision > 0 && !activeRef.current) setLoadKey((k) => k + 1)
+  }, [takesRevision])
 
   const approved = status === 'approved'
   const active = isActive(cut)
@@ -190,7 +199,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone }: Props) {
       {output && (
         <div className="cut-output">
           {cut?.stale && <p className="small">The takes changed after this was made. Make it again.</p>}
-          <video controls playsInline preload="metadata" src={output.url} />
+          <video key={output.url} controls playsInline preload="metadata" src={output.url} />
           <div className="cut-output-meta">
             <a className="btn btn-ghost btn-sm" href={`${output.url}${output.url.includes('?') ? '&' : '?'}download=1`} download>
               Download
