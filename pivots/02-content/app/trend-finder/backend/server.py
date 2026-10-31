@@ -44,6 +44,7 @@ import analyze
 import auth
 import google_auth
 import publishing
+import takes
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
                     Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
@@ -51,6 +52,7 @@ from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, Ana
 HERE = Path(__file__).resolve().parent
 CACHE_DIR = HERE / "cache"
 PINNED_DIR = HERE / "pinned"  # searches saved for demos; never expire
+MEDIA_DIR = HERE / "media"  # uploaded takes, one folder per plan
 DB_PATH = HERE / "data.db"  # clients and saved ideas
 DIST_DIR = HERE.parent / "dist"  # the built front end (npm run build), so one address serves everything
 
@@ -663,7 +665,7 @@ def db() -> sqlite3.Connection:
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
     migrate_medians(conn)
-    for statement in auth.SCHEMA + publishing.SCHEMA:
+    for statement in auth.SCHEMA + publishing.SCHEMA + takes.SCHEMA:
         conn.execute(statement)
     auth.migrate(conn)
     return conn
@@ -800,6 +802,7 @@ app.include_router(share.make_router(db, load, save))
 app.include_router(comments.make_router(load, save))
 app.include_router(google_auth.make_router(db, session_cookie_secure))
 app.include_router(publishing.make_router(db, load))
+app.include_router(takes.make_router(db, load, lambda: MEDIA_DIR))
 publishing.seed_demo(db)
 
 
