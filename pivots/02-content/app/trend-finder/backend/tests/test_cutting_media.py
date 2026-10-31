@@ -1,6 +1,7 @@
 """Golden-file tests for the ffmpeg pipeline. Media is generated with lavfi into tmp_path."""
 
 import os
+import re
 import shutil
 import subprocess
 
@@ -92,13 +93,27 @@ def test_no_words_keeps_everything(tmp_path):
     assert any(t == "No speech found, so nothing was cut." for _, t in steps)
 
 
+def mean_volume(path, start, dur):
+    """Mean volume (dB) of a slice of the audio; -91 for digital silence."""
+    r = subprocess.run(["ffmpeg", "-nostdin", "-ss", str(start), "-t", str(dur), "-i", str(path), "-vn",
+                        "-af", "volumedetect", "-f", "null", "-"], capture_output=True, text=True)
+    m = re.search(r"mean_volume: (-?[\d.]+|-inf) dB", r.stderr)
+    return float(m.group(1)) if m else -91.0
+
+
 @need_ffmpeg
-def test_two_takes_are_joined_in_order(tmp_path):
-    a = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)])
-    b = make_clip(tmp_path / "b.mp4", [("tone", 880, 2.0)])
-    _, p, _ = cut(tmp_path, [{"path": a}, {"path": b}], words_fn=lambda w, d: [])
+@pytest.mark.parametrize("first,second", [("tone", "quiet"), ("quiet", "tone")])
+def test_two_takes_are_joined_in_order(tmp_path, first, second):
+    def part(kind, dur):
+        return [("tone", 440, dur)] if kind == "tone" else [("quiet", None, dur)]
+    a = make_clip(tmp_path / "a.mp4", part(first, 1.5))
+    b = make_clip(tmp_path / "b.mp4", part(second, 2.0))
+    _, p, out = cut(tmp_path, [{"path": a}, {"path": b}], words_fn=lambda w, d: [])
     assert p["duration"] == pytest.approx(3.5, abs=0.15)
     assert_spec(p)
+    head, tail = mean_volume(out, 0.2, 1.0), mean_volume(out, 1.9, 1.0)
+    loud, quiet = (head, tail) if first == "tone" else (tail, head)
+    assert loud > -35 and quiet < -60
 
 
 @need_ffmpeg
@@ -111,14 +126,20 @@ def test_take_without_audio_and_silent_output(tmp_path):
 
 @need_ffmpeg
 def test_music_is_mixed_and_looped(tmp_path):
-    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 2.0)])
+    # 0.8 s of speech-like tone then 1.2 s of silence; music is only 0.5 s long, so sound in the tail
+    # proves both that it is mixed and that it loops.
+    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 0.8), ("quiet", None, 1.2)])
     music = tmp_path / "m.wav"
-    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=f=220:d=0.7:r=44100", str(music)],
+    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=f=220:d=0.5:r=44100", str(music)],
                        capture_output=True, text=True, stdin=subprocess.DEVNULL)
     assert r.returncode == 0, r.stderr
-    _, p, _ = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [], music=music)
+    _, p, with_music = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [], music=music)
     assert p["duration"] == pytest.approx(2.0, abs=0.15)
     assert_spec(p)
+    (tmp_path / "plain").mkdir()
+    _, _, without = cut(tmp_path / "plain", [{"path": clip}], words_fn=lambda w, d: [])
+    assert mean_volume(without, 1.0, 0.8) < -60          # no music: the tail is silent
+    assert mean_volume(with_music, 1.0, 0.8) > -50       # music: still audible after its first 0.5 s
 
 
 @need_ffmpeg
@@ -145,3 +166,8 @@ def test_real_whisper_on_say_audio(tmp_path):
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(aiff), "-ac", "1", "-ar", "16000", str(wav)], check=True)
     words = cutting.transcribe_words(wav, tmp_path)
     assert words and all(s < e for s, e, _ in words)
+
+
+def test_run_times_out_with_a_human_sentence():
+    with pytest.raises(cutting.CutError, match="took too long"):
+        cutting.run(["sleep", "5"], timeout=0.2)

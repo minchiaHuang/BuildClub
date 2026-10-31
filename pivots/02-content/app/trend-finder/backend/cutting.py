@@ -8,6 +8,7 @@ import re
 import shutil
 import string
 import subprocess
+import threading
 from pathlib import Path
 
 import analyze
@@ -19,6 +20,7 @@ MIN_FRAGMENT = 0.08  # seconds; shorter keep intervals are dropped
 FADE = 0.012         # seconds of fade at every seam
 MAX_INPUT_SEC = 600  # total length of the chosen takes
 WHISPER_TIMEOUT = 900
+FFMPEG_TIMEOUT = 1800  # seconds; any single ffmpeg/ffprobe call, so a hung process can't stall the worker
 LOUDNORM = "I=-13:TP=-1.5:LRA=11"  # reel-studio finish.py target, not a platform rule
 
 NO_FFMPEG = ("ffmpeg isn't installed on this computer, so the cut can't be made. "
@@ -210,7 +212,7 @@ class CutError(Exception):
     """A one-sentence, human-readable reason the cut could not be made."""
 
 
-def run(cmd: list[str], *, timeout: float | None = None) -> subprocess.CompletedProcess:
+def run(cmd: list[str], *, timeout: float | None = FFMPEG_TIMEOUT) -> subprocess.CompletedProcess:
     try:
         return subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=timeout)
     except FileNotFoundError:
@@ -274,18 +276,35 @@ def transcribe_words(wav: Path, work: Path) -> list[Word]:
 
 def _render_pass(cmd: list[str], total: float, on_progress, err_path: Path) -> None:
     """Run ffmpeg with `-progress pipe:1`, reporting a 0-1 fraction; stderr goes to a file so it can't block."""
+    timed_out = False
     with open(err_path, "w+") as err:
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err, stdin=subprocess.DEVNULL, text=True)
         except FileNotFoundError:
             raise CutError(NO_FFMPEG)
-        for line in proc.stdout:
-            frac = parse_progress(line, total)
-            if frac is not None:
-                on_progress(frac)
-        code = proc.wait()
+
+        def expire():
+            nonlocal timed_out
+            timed_out = True
+            proc.kill()
+
+        timer = threading.Timer(FFMPEG_TIMEOUT, expire)
+        timer.start()
+        try:
+            for line in proc.stdout:
+                frac = parse_progress(line, total)
+                if frac is not None:
+                    on_progress(frac)
+            code = proc.wait()
+        finally:
+            timer.cancel()
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
         err.seek(0)
         tail = err.read().strip()[-200:]
+    if timed_out:
+        raise CutError("Rendering the video took too long, so the cut was stopped.")
     if code != 0:
         raise CutError(f"Rendering the video failed: {tail}")
 
