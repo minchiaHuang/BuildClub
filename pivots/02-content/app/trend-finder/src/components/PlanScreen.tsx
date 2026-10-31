@@ -9,6 +9,7 @@ import { TimedComments } from './TimedComments'
 import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { lastSentBack } from '../lib/memory'
 import { StageSelect } from './StageSelect'
+import { ShotChecklist } from './ShotChecklist'
 
 interface Props {
   idea: SavedIdea
@@ -303,6 +304,8 @@ export function PlanScreen(p: Props) {
               </div>
             )}
           </section>
+
+          <ShotChecklist ideaId={idea.id} status={idea.status} shots={shots} />
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">
