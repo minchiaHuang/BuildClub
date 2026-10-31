@@ -41,6 +41,7 @@ import x
 import youtube
 import analyze
 import auth
+import publishing
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
                     Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
@@ -657,7 +658,7 @@ def db() -> sqlite3.Connection:
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
     migrate_medians(conn)
-    for statement in auth.SCHEMA:
+    for statement in auth.SCHEMA + publishing.SCHEMA:
         conn.execute(statement)
     return conn
 
@@ -790,6 +791,7 @@ def auth_me(request: Request):
 
 
 app.include_router(share.make_router(db, load, save))
+app.include_router(publishing.make_router(db, load))
 
 
 budget_lock = threading.Lock()

@@ -64,10 +64,11 @@ PY
 fi
 rm -f "$tmp/.env" "$tmp/backend/.env"
 
+demo_env=(); [ "$demo" != 1 ] || demo_env=(REMAKE_DEMO=1)
 # Clean environment, dummy token, zero budgets: any paid call is rejected before it happens.
 cd "$tmp"
 clean_env=(env -i HOME="$HOME" PATH="$PATH"
-  APIFY_TOKEN=dummy DAILY_APIFY_USD=0 DAILY_CLAUDE_USD=0 DAILY_JEV_USD=0 DAILY_SCRAPECREATORS_CREDITS=0)
+  ${demo_env[@]+"${demo_env[@]}"} APIFY_TOKEN=dummy DAILY_APIFY_USD=0 DAILY_CLAUDE_USD=0 DAILY_JEV_USD=0 DAILY_SCRAPECREATORS_CREDITS=0)
 "${clean_env[@]}" "$venv/bin/uvicorn" server:app --app-dir backend --port "$port" >"$tmp/server.log" 2>&1 &
 pid=$!
 echo "temp dir: $tmp"; echo "url:      http://127.0.0.1:$port"; echo "pid:      $pid  (kill $pid to stop)"
