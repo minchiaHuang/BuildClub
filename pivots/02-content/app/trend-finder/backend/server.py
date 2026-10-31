@@ -44,6 +44,7 @@ import analyze
 import auth
 import google_auth
 import publishing
+import renders
 import takes
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
@@ -112,7 +113,13 @@ LIKE_USD = 0.01  # one small Claude call that turns a finished breakdown into se
 # Set APP_PASSWORD when the app is shared through a tunnel: the browser then asks for it once.
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
 
-app = FastAPI(title="Trend Finder API")
+@contextlib.asynccontextmanager
+async def lifespan(_app):
+    renders.recover(db)  # a cut that was running when the server stopped will never finish
+    yield
+
+
+app = FastAPI(title="Trend Finder API", lifespan=lifespan)
 
 
 def password_ok(header: str) -> bool:
@@ -665,7 +672,7 @@ def db() -> sqlite3.Connection:
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
     migrate_medians(conn)
-    for statement in auth.SCHEMA + publishing.SCHEMA + takes.SCHEMA:
+    for statement in auth.SCHEMA + publishing.SCHEMA + takes.SCHEMA + renders.SCHEMA:
         conn.execute(statement)
     auth.migrate(conn)
     return conn
@@ -803,6 +810,7 @@ app.include_router(comments.make_router(load, save))
 app.include_router(google_auth.make_router(db, session_cookie_secure))
 app.include_router(publishing.make_router(db, load))
 app.include_router(takes.make_router(db, load, lambda: MEDIA_DIR))
+app.include_router(renders.make_router(db, load, lambda: MEDIA_DIR))
 publishing.seed_demo(db)
 
 
