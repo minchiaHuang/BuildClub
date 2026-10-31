@@ -88,7 +88,7 @@ def active_link(load, token: str):
     return data if isinstance(data, dict) and "clientId" in data else None
 
 
-def make_router(db, load, save) -> APIRouter:
+def make_router(db, load, save, cuts=None) -> APIRouter:
     router = APIRouter()
 
     def link_of(token: str):
@@ -143,7 +143,7 @@ def make_router(db, load, save) -> APIRouter:
             if idea["clientId"] == link["clientId"] and idea["status"] == "waiting":
                 video = videos.get(idea["videoId"])
                 items.append({"idea": {k: v for k, v in idea.items() if k != "notes"}, "video": video, "format": formats.get((video or {}).get("formatId"))})
-        return {"client": {"name": name}, "ideas": items}
+        return {"client": {"name": name}, "ideas": items, "cuts": cuts(link["clientId"], token) if cuts else []}
 
     @router.post("/api/review/{token}/decide", response_model=ReviewIdea, response_model_exclude_none=True)
     def decide(token: str, body: DecideRequest):

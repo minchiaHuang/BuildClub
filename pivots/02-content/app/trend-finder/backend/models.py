@@ -338,9 +338,24 @@ class ReviewItem(BaseModel):
     format: Optional[dict] = None
 
 
+class ReviewCut(BaseModel):
+    url: str
+    durationSec: Optional[float] = None
+    version: str  # a decimal string: the version is a nanosecond timestamp, too big for a JS number
+    sentAt: int
+
+
+class ReviewCutItem(BaseModel):
+    idea: ReviewIdea
+    video: Optional[dict] = None
+    format: Optional[dict] = None
+    cut: ReviewCut
+
+
 class ReviewList(BaseModel):
     client: ReviewClient
     ideas: list[ReviewItem]
+    cuts: list[ReviewCutItem] = []
 
 
 class DecideRequest(BaseModel):
@@ -348,6 +363,12 @@ class DecideRequest(BaseModel):
     decision: Literal["approved", "rejected"]
     reason: Optional[str] = Field(default=None, max_length=1000)
     tags: Optional[list[Tag]] = Field(default=None, max_length=5)
+
+
+class CutDecideRequest(BaseModel):
+    decision: Literal["approved", "rejected"]
+    reason: Optional[str] = Field(default=None, max_length=1000)
+    version: str = Field(max_length=32)
 
 
 class LoginRequest(BaseModel):

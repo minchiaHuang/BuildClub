@@ -44,6 +44,7 @@ import analyze
 import auth
 import google_auth
 import publishing
+import cut_review
 import renders
 import takes
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
@@ -805,12 +806,13 @@ def auth_me(request: Request):
     return {"users": True, "email": user[0], "name": user[1], "agency": user[2]}
 
 
-app.include_router(share.make_router(db, load, save))
+app.include_router(share.make_router(db, load, save, lambda c, t: cut_review.waiting_cuts(db, load, lambda: MEDIA_DIR, c, t)))
 app.include_router(comments.make_router(load, save))
 app.include_router(google_auth.make_router(db, session_cookie_secure))
 app.include_router(publishing.make_router(db, load))
 app.include_router(takes.make_router(db, load, lambda: MEDIA_DIR))
 app.include_router(renders.make_router(db, load, lambda: MEDIA_DIR))
+app.include_router(cut_review.make_router(db, load, lambda: MEDIA_DIR))
 publishing.seed_demo(db)
 
 
