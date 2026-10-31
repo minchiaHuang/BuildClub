@@ -46,6 +46,16 @@ import { AppContext } from './lib/appContext'
 import type { AppContextValue } from './lib/appContext'
 import { ShortlistBoard } from './components/ShortlistBoard'
 import { AddClientScreen } from './components/AddClientScreen'
+import { logout, me } from './lib/auth'
+import { nextView, onUnauthorized } from './lib/authGate'
+
+// Where the user was when the session ended, so signing back in returns there (also after a reload).
+const RETURN_KEY = 'remake.return-to.v1'
+interface ReturnTo {
+  view: View
+  workspace: Workspace
+  planIdeaId: string | null
+}
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -81,6 +91,54 @@ export default function App() {
   // The last search that produced results, so the search page can offer a way back to it.
   const [lastSearch, setLastSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
+
+  // 'open' = the API has no accounts (demo sign-in above); otherwise the API's session decides.
+  const [auth, setAuth] = useState<'checking' | 'open' | 'signed-out' | 'signed-in'>('checking')
+  const returnTo = useRef<ReturnTo | null>(null)
+  const restoreView = useCallback(() => {
+    let back = returnTo.current
+    if (!back) {
+      try {
+        const raw = sessionStorage.getItem(RETURN_KEY)
+        back = raw ? (JSON.parse(raw) as ReturnTo) : null
+      } catch {
+        back = null
+      }
+    }
+    returnTo.current = null
+    try {
+      sessionStorage.removeItem(RETURN_KEY)
+    } catch {
+      // Nothing stored to clear.
+    }
+    if (!back) return false
+    setWorkspaceRaw(back.workspace)
+    setViewRaw(back.view)
+    setPlanIdeaId(back.planIdeaId)
+    return true
+  }, [setWorkspaceRaw])
+  useEffect(() => {
+    me().then((a) => {
+      setAuth(a.kind)
+      if (a.kind === 'signed-in') restoreView()
+    })
+  }, [restoreView])
+  // Any API call answered 401 means the session ended: remember the screen and go to the sign-in page.
+  const here = useRef({ view, workspace, planIdeaId })
+  useEffect(() => {
+    here.current = { view, workspace, planIdeaId }
+  }, [view, workspace, planIdeaId])
+  useEffect(() => {
+    onUnauthorized(() => {
+      returnTo.current = here.current
+      try {
+        sessionStorage.setItem(RETURN_KEY, JSON.stringify(here.current))
+      } catch {
+        // Without storage the screen is still kept while this tab stays open.
+      }
+      setAuth((a) => (a === 'signed-in' ? 'signed-out' : a))
+    })
+  }, [])
 
   // Live mode: real TikTok, Instagram, YouTube, Reddit or X search through the local API (npm run api). Without it, the app uses sample data.
   const [live, setLive] = useState(false)
@@ -568,19 +626,38 @@ export default function App() {
   }
   const counts = { shortlist: mine.length }
 
+  if (auth === 'checking') return null
   // Client accounts aren't live yet (see ClientPortal), so a saved client login goes back to the login screen.
-  if (!signedIn || role === 'client')
+  const gate = auth === 'signed-out' ? { kind: 'signed-out' as const } : { signedIn: auth === 'signed-in' || signedIn }
+  if (nextView(gate, 'app') === 'login' || role === 'client')
     return (
       <AppContext.Provider value={appContext}>
         {/* stream A: after login, staff land on the all-clients overview */}
         <LoginScreen
+          real={auth === 'signed-out'}
+          startAtLogin={auth === 'signed-out' && returnTo.current !== null}
           onSignIn={() => {
-            setSignedIn(true)
+            if (auth === 'signed-out') {
+              setAuth('signed-in')
+              // Back from an ended session: return to where the user was, not the overview.
+              if (restoreView()) return
+            } else setSignedIn(true)
             setWorkspace('all')
           }}
         />
       </AppContext.Provider>
     )
+
+  const signOut = () => {
+    if (auth !== 'signed-in') return setSignedIn(false)
+    try {
+      sessionStorage.removeItem(RETURN_KEY)
+    } catch {
+      // Nothing stored to clear.
+    }
+    returnTo.current = null
+    void logout().then(() => setAuth('signed-out'))
+  }
 
 
   const inClient = workspace !== 'all'
@@ -595,7 +672,7 @@ export default function App() {
         view={view}
         setView={setView}
         counts={counts}
-        onSignOut={() => setSignedIn(false)}
+        onSignOut={signOut}
         onAddClient={() => setView('add-client')}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
