@@ -39,6 +39,10 @@ export function SharedReviewPage({ token }: { token: string }) {
     setNotice('That plan was already reviewed. Here is what is still waiting.')
     load()
   }
+  const cutNoLongerWaiting = () => {
+    setNotice('This video is no longer waiting for you. Here is what is still waiting.')
+    load()
+  }
   const replaced = () => {
     setNotice(REPLACED)
     load()
@@ -121,7 +125,7 @@ export function SharedReviewPage({ token }: { token: string }) {
                   item={item}
                   token={token}
                   onDecided={decided}
-                  onAlreadyReviewed={alreadyReviewed}
+                  onAlreadyReviewed={cutNoLongerWaiting}
                   onReplaced={replaced}
                   onClosed={closed}
                 />

@@ -196,3 +196,21 @@ def test_signed_in_cut_file_still_needs_login(client, sent):
     assert client.get(f"/api/review/{sent}/cuts/ia/file").status_code == 200  # the approver needs no account
     assert login(client).status_code == 200
     assert client.get("/api/ideas/ia/cut/file").status_code == 200
+
+
+def test_reapproved_plan_hides_cut_when_takes_changed(client, sent):
+    server.save("ideas", [idea("ia", "waiting")])
+    assert client.get(f"/api/review/{sent}").json()["cuts"] == []
+    assert row()[0] == "waiting"  # the row stays; only the view is hidden
+    server.save("ideas", [idea("ia")])
+    other = with_take(client)
+    client.post(f"/api/ideas/ia/takes/{other['id']}/choose")
+    assert client.get(f"/api/review/{sent}").json()["cuts"] == []
+    assert client.get(f"/api/review/{sent}/cuts/ia/file").status_code == 404
+
+
+def test_reapproved_plan_lists_cut_again_when_nothing_changed(client, sent):
+    # Intended: same video, same takes, so the approver sees the waiting card again without a resend.
+    server.save("ideas", [idea("ia", "waiting")])
+    server.save("ideas", [idea("ia")])
+    assert len(client.get(f"/api/review/{sent}").json()["cuts"]) == 1

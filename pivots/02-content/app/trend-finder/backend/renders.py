@@ -127,6 +127,25 @@ def music_row(conn, idea_id: str):
     return conn.execute("SELECT id, ext, name, size FROM cut_music WHERE idea_id = ?", (idea_id,)).fetchone()
 
 
+def shot_count(idea: dict) -> Optional[int]:
+    """How many shots the plan lists itself, or None when it lists none (format shot lists are the page's to know)."""
+    return len(idea["shots"]) if idea.get("shots") else None
+
+
+def is_stale(conn, idea_id: str, shots: Optional[int] = None) -> bool:
+    """Whether the cut was made from other takes, other music or another shot count than the plan has now."""
+    row = conn.execute("SELECT out_signature, out_speed, out_shots FROM renders WHERE idea_id = ? AND out_size IS NOT NULL",
+                       (idea_id,)).fetchone()
+    if row is None:
+        return False
+    out_sig, out_speed, out_shots = row
+    music = music_row(conn, idea_id)
+    # The speed is part of the fingerprint, but it is the one the video was made at, so it never differs.
+    current = signature([t[0] for t in chosen_ids(conn, idea_id, out_shots)], out_speed, music[0] if music else None)
+    # The page sends the plan's current shot count; a plan that gained or lost a shot needs a new cut.
+    return current != out_sig or (shots is not None and shots != out_shots)
+
+
 def clear_work(root: Path, idea_id: str) -> None:
     shutil.rmtree(root / idea_id / "cut" / "work", ignore_errors=True)
 
@@ -241,12 +260,7 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                 version = (folder / "final.mp4").stat().st_mtime_ns
                 out["output"] = {"url": f"/api/ideas/{idea_id}/cut/file?v={version}", "size": size,
                                  "durationSec": duration}
-                # Stale when the video was made from other takes or other music than are chosen now. The speed
-                # is part of the fingerprint, but it is the one the video was made at, so it never differs.
-                current = signature([t[0] for t in chosen_ids(conn, idea_id, out_shots)], out_speed,
-                                    music[0] if music else None)
-                # The page sends the plan's current shot count; a plan that gained or lost a shot needs a new cut.
-                out["stale"] = current != out_sig or (shots is not None and shots != out_shots)
+                out["stale"] = is_stale(conn, idea_id, shots)
                 sent = review_row(conn, idea_id)
                 if sent is not None and sent[0] == version:  # a record of another video is not shown
                     out["review"] = {"status": sent[1], "sentAt": sent[2]}
@@ -306,7 +320,7 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                     refused = error(409, CUTTING)
                 elif version is None or have is None or have[0] is None:
                     refused = error(409, NO_CUT)
-                elif state_of(idea_id)["stale"]:
+                elif is_stale(conn, idea_id, shot_count(found)):
                     refused = error(409, STALE_CUT)
                 elif not has_review_link(conn, found["clientId"]):
                     refused = error(409, NO_LINK)

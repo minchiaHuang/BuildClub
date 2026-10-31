@@ -10,6 +10,7 @@ import pytest
 import cutting
 import renders
 import server
+from models import Shot
 from cutting import CutError
 from test_auth import add_user
 from test_takes import MP4, idea, store_ideas, up
@@ -573,3 +574,13 @@ def test_review_survives_restart(client, setup, fake_pipeline):
     send(client)
     renders.recover(server.db)
     assert client.get("/api/ideas/ia/cut").json()["review"]["status"] == "waiting"
+
+
+def test_send_stale_shot_count_409(client, setup, fake_pipeline):
+    finished_cut(client)  # made for 1 shot
+    review_link(client)
+    shots = [Shot(time="0-3s", shot="a"), Shot(time="3-6s", shot="b")]
+    server.save("ideas", [idea("ia").model_copy(update={"shots": shots}), idea("ib")])
+    r = send(client)
+    assert r.status_code == 409
+    assert r.json()["error"] == "The takes or music changed after this was made. Make it again before sending it."

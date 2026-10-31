@@ -32,6 +32,9 @@ def waiting(conn, load, root: Path, client_id: str, idea_id: str):
     review = renders.review_row(conn, idea_id)
     if version is None or review is None or review[1] != "waiting" or review[0] != version:
         return None
+    # A plan that was reopened and approved again may hold a video made from other takes since it was sent.
+    if renders.is_stale(conn, idea_id, renders.shot_count(idea)):
+        return None
     return folder / "final.mp4", review, idea
 
 

@@ -109,7 +109,8 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
 
   const review = cut?.review ?? null
   const canSend = approved && !cut?.stale && !active && review?.status !== 'waiting' && review?.status !== 'approved'
-  const line = reviewLine(review, manager, formatDay)
+  // A reopened plan is hidden from the approver, so a waiting review must not promise that they will see it.
+  const line = !approved && review?.status === 'waiting' ? `Hidden from ${manager} while the plan is reopened.` : reviewLine(review, manager, formatDay)
 
   const upload = (file: File) => {
     const problem = checkMusic(file)
@@ -182,6 +183,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
             </button>
           )}
           {review?.status === 'approved' && <span className="muted small">Making it again clears {manager}'s approval.</span>}
+          {review?.status === 'waiting' && <span className="muted small">Making it again takes it off {manager}'s list until you send it again.</span>}
         </div>
       )}
 
