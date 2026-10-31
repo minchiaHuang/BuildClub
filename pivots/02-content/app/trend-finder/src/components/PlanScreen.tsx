@@ -4,6 +4,7 @@ import { useManagerName } from '../lib/appContext'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { dueLabel, formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
+import { lastSentBack } from '../lib/memory'
 
 interface Props {
   idea: SavedIdea
@@ -63,7 +64,7 @@ export function PlanScreen(p: Props) {
   const note = idea.noteToApprover ?? defaultNote
 
   const send = () => {
-    onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined })
+    onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined, rejectTags: undefined })
     // Bring the confirmation into view.
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -355,7 +356,15 @@ export function PlanScreen(p: Props) {
           {idea.status === 'rejected' && (
             <section className="block">
               <h3>{APPROVER}'s feedback</h3>
-              <p className="quote">{idea.rejectReason || 'No reason given.'}</p>
+              {idea.rejectTags && idea.rejectTags.length > 0 && <p className="small">{idea.rejectTags.join(' · ')}</p>}
+              <p className="quote">{idea.rejectReason || (idea.rejectTags?.length ? 'No written reason.' : 'No reason given.')}</p>
+            </section>
+          )}
+          {idea.status !== 'rejected' && lastSentBack(idea) && (
+            <section className="block">
+              <h3>Last time {APPROVER} sent it back</h3>
+              {(lastSentBack(idea)?.tags?.length ?? 0) > 0 && <p className="small">{lastSentBack(idea)?.tags?.join(' · ')}</p>}
+              <p className="quote">{lastSentBack(idea)?.reason || 'No written reason.'}</p>
             </section>
           )}
 

@@ -326,6 +326,27 @@ export default function App() {
         saveFailed('ideas', e)
       })
   }, [synced, ideas, retryTick, setIdeas, saved, saveFailed])
+  // The approver answers on their own page, so coming back to this tab picks up their decisions. Only when
+  // everything here is already saved: an unsaved edit is never replaced.
+  useEffect(() => {
+    if (!synced) return
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || ideas !== onServer.current.ideas) return
+      loadIdeas()
+        .then((fresh) => {
+          if (!fresh.items || fresh.rev === ideasRev.current || ideasNow.current !== onServer.current.ideas) return
+          ideasGen.current += 1
+          ideasRev.current = fresh.rev
+          onServer.current.ideas = fresh.items
+          setIdeas(fresh.items)
+        })
+        .catch(() => {
+          // The next visit tries again.
+        })
+    }
+    document.addEventListener('visibilitychange', refresh)
+    return () => document.removeEventListener('visibilitychange', refresh)
+  }, [synced, ideas, setIdeas])
   // The videos and breakdowns behind saved ideas, kept on the API like the ideas themselves.
   const library = useMemo(() => {
     const ids = new Set(ideas.map((i) => i.videoId))

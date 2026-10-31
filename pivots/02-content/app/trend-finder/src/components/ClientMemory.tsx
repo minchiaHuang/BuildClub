@@ -1,5 +1,5 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
-import { decisionLabel, memorySummary, planTitle } from '../lib/memory'
+import { decisionLabel, memoryEvents, memorySummary, planTitle } from '../lib/memory'
 
 interface Props {
   client: Client
@@ -12,7 +12,7 @@ const day = (at: number) => new Date(at).toLocaleDateString(undefined, { day: 'n
 
 // What Remake has learned about this client: every manager decision, newest first, with the plan and the reason.
 export function ClientMemory({ client, ideas, videoById, formatById }: Props) {
-  const events = [...(client.memory ?? [])].reverse()
+  const events = memoryEvents(client, ideas).reverse()
   return (
     <section className="client-memory">
       <header className="client-memory-head">
@@ -33,6 +33,7 @@ export function ClientMemory({ client, ideas, videoById, formatById }: Props) {
                 </div>
                 <strong>{plan.title}</strong>
                 {plan.detail && <span className="small muted">{plan.detail}</span>}
+                {e.tags && e.tags.length > 0 && <span className="small muted">{e.tags.join(' · ')}</span>}
                 {e.reason && <p className="quote">{e.reason}</p>}
               </li>
             )

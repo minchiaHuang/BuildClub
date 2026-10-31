@@ -6,6 +6,7 @@
 @import './styles/search-results.css';
 @import './styles/drawer-plan.css';
 @import './styles/approvals.css';
+@import './styles/shared-review.css';
 @import './styles/typing-search.css';
 @import './styles/tags.css';
 /* Altitude design: layered on top of the base styles above (html[data-ui="altitude"] in index.html). */

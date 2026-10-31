@@ -1,0 +1,13 @@
+/* The approver's page at /review/<token>: the manager's review column, on its own page with no sidebar. */
+.shared-review { min-height: 100vh; padding: 28px max(16px, 3vw) 56px; background: var(--bg); }
+.shared-ref { grid-template-columns: minmax(0, 1fr); }
+.shared-ref:has(.thumb) { grid-template-columns: 76px minmax(0, 1fr); }
+.shared-answered { background: var(--early-soft); color: var(--early); border-radius: var(--radius-sm); padding: 10px 14px; margin: 0; }
+.shared-card { cursor: default; }
+.shared-card .chip-row { flex-wrap: wrap; }
+.shared-card .cchip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.shared-card .field { display: grid; gap: var(--space-xs); }
+.review-stack { gap: var(--space-2xl); }
+.board-link { display: grid; gap: var(--space-md); }
+.board-link-row { display: flex; gap: var(--space-md); flex-wrap: wrap; }
+.board-link input { width: 100%; }

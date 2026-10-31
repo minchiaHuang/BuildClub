@@ -119,6 +119,16 @@ export interface ClientEvent {
   kind: 'approved' | 'approved-with-changes' | 'sent-back'
   reason?: string
   at: number
+  // The preset reasons the approver ticked when sending a plan back.
+  tags?: string[]
+}
+
+// One answer from the approver on a plan, kept in SavedIdea.history (oldest first) so a resend still shows why it was sent back.
+export interface Decision {
+  decision: 'approved' | 'rejected'
+  reason?: string
+  tags?: string[]
+  decidedAt: number
 }
 
 export interface SavedIdea {
@@ -135,6 +145,12 @@ export interface SavedIdea {
   noteToApprover?: string
   sentAt?: number
   rejectReason?: string
+  // The preset reasons ticked when the plan was sent back.
+  rejectTags?: string[]
+  // When the approver last answered. The API keeps the newer of this and sentAt.
+  decidedAt?: number
+  // Every answer so far, oldest first. Only grows; the API keeps the longer copy.
+  history?: Decision[]
   // Set when the manager decides.
   approvedAt?: number
   // "Approve with changes": what the manager wants changed.

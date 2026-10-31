@@ -5,6 +5,8 @@ import { compact, hasScore, outlierScore, plural, times } from '../lib/metrics'
 import { dueLabel } from '../lib/dates'
 import { useManagerName } from '../lib/appContext'
 import { inTwoWeeks } from '../state'
+import { lastSentBack } from '../lib/memory'
+import { createShareLink, revokeClientLinks } from '../lib/share'
 import { ProgressRing } from './ProgressRing'
 import { Thumb } from './Thumb'
 
@@ -29,12 +31,17 @@ export function ShortlistBoard(p: Props) {
   const manager = useManagerName()
   const [dueDate, setDueDate] = useState(inTwoWeeks)
   const [note, setNote] = useState('')
+  // The approver's link for the client being shown: null url = turned off here.
+  const [link, setLink] = useState<{ clientId: string; url: string | null } | null>(null)
+  const [linkError, setLinkError] = useState('')
+  const [copied, setCopied] = useState(false)
   const mine = p.ideas.filter((i) => i.clientId === p.client.id)
   const by = (s: IdeaStatus) => mine.filter((i) => i.status === s)
   const shortlisted = by('saved')
   const waiting = by('waiting').sort((a, b) => (a.sentAt ?? 0) - (b.sentAt ?? 0))
   const approved = by('approved').sort((a, b) => a.dueDate.localeCompare(b.dueDate))
   const sentBack = by('rejected')
+  const shownLink = link?.clientId === p.client.id ? link.url : null
   const ready = shortlisted.filter((i) => shotsOf(i).length > 0)
   const needShots = shortlisted.filter((i) => shotsOf(i).length === 0)
   const progress = Math.min(approved.length / p.client.monthlyTarget, 1) * 100
@@ -57,8 +64,34 @@ export function ShortlistBoard(p: Props) {
       dueDate,
       noteToApprover: note.trim() || i.noteToApprover,
       rejectReason: undefined,
+      rejectTags: undefined,
     }))
     setNote('')
+    // The approver opens this link, so it is made as soon as there is something for them to review.
+    makeLink()
+  }
+
+  // Making the link again returns the client's existing one, so this is safe to call more than once.
+  const makeLink = () => {
+    setLinkError('')
+    createShareLink(p.client.id)
+      .then((l) => setLink({ clientId: p.client.id, url: l.url }))
+      .catch((e: Error) => setLinkError(e.message))
+  }
+  const turnOff = () => {
+    setLinkError('')
+    revokeClientLinks(p.client.id)
+      .then(() => setLink({ clientId: p.client.id, url: null }))
+      .catch((e: Error) => setLinkError(e.message))
+  }
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shownLink ?? '')
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setLinkError("Couldn't copy. Select the link and copy it by hand.")
+    }
   }
 
   const remove = (id: string) => p.onChangeIdeas((prev) => prev.filter((i) => i.id !== id))
@@ -81,7 +114,14 @@ export function ShortlistBoard(p: Props) {
           </span>
           {idea.status === 'rejected' && (
             <span className="board-reason small">
-              {manager}: {idea.rejectReason || 'No reason given.'}
+              {manager}: {idea.rejectTags?.length ? `${idea.rejectTags.join(' · ')}. ` : ''}
+              {idea.rejectReason || (idea.rejectTags?.length ? '' : 'No reason given.')}
+            </span>
+          )}
+          {idea.status !== 'rejected' && lastSentBack(idea) && (
+            <span className="board-reason small">
+              Last time {manager} sent it back: {lastSentBack(idea)?.tags?.length ? `${lastSentBack(idea)?.tags?.join(' · ')}. ` : ''}
+              {lastSentBack(idea)?.reason ?? ''}
             </span>
           )}
         </div>
@@ -185,9 +225,36 @@ export function ShortlistBoard(p: Props) {
               `Nothing waiting for ${manager}.`,
               'waiting',
               waiting.length > 0 && (
-                <button className="btn btn-primary btn-sm board-review" onClick={p.onReview}>
-                  Review as {manager}
-                </button>
+                <div className="board-link">
+                  {shownLink ? (
+                    <>
+                      <label className="field">
+                        <span className="field-label">Link for {manager} (no sign-in needed)</span>
+                        <input readOnly value={shownLink} onFocus={(e) => e.currentTarget.select()} />
+                      </label>
+                      <div className="board-link-row">
+                        <button className="btn btn-primary btn-sm" onClick={copyLink}>
+                          {copied ? 'Copied' : 'Copy link'}
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={turnOff}>
+                          Turn off link
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button className="btn btn-primary btn-sm" onClick={makeLink}>
+                      {link?.clientId === p.client.id ? 'Make a new link' : 'Get review link'}
+                    </button>
+                  )}
+                  {linkError && (
+                    <p className="error" role="alert">
+                      {linkError}
+                    </p>
+                  )}
+                  <button className="link-btn board-review" onClick={p.onReview}>
+                    Preview as {manager}
+                  </button>
+                </div>
               ),
             )}
             {column('Approved, ready to film', approved, `Plans ${manager} approves show up here.`, 'approved')}
