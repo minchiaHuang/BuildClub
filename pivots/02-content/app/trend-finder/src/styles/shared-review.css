@@ -27,3 +27,7 @@
 .tc-time { width: 96px; }
 .tc-form .field { display: grid; gap: var(--space-xs); }
 .tc-actions { display: flex; justify-content: flex-end; }
+
+/* The page is narrow on a phone: a grid track sizes to its widest unbreakable text (a pasted link), so let tracks shrink and long words wrap. */
+.shared-review .review, .shared-review .review-stack { grid-template-columns: minmax(0, 1fr); }
+.shared-review .review-card { min-width: 0; overflow-wrap: anywhere; }
