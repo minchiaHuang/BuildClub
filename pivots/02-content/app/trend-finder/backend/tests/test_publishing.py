@@ -56,3 +56,55 @@ def test_publisher_error_sets_failed_and_error_text(client, monkeypatch):
     assert r.status_code == 502
     row = client.get("/api/ideas/ok/publications").json()[0]
     assert row["status"] == "failed" and "Ayrshare not wired yet" in row["error"]
+
+
+def make_draft(client, monkeypatch):
+    monkeypatch.setenv("REMAKE_DEMO", "1")
+    put_ideas(client)
+    return client.post("/api/publications", json={"ideaId": "ok", "platform": "tiktok"}).json()["id"]
+
+
+def test_publish_twice_second_409(client, monkeypatch):
+    pid = make_draft(client, monkeypatch)
+    assert client.post(f"/api/publications/{pid}/publish").status_code == 200
+    assert client.post(f"/api/publications/{pid}/publish").status_code == 409
+
+
+def test_publish_does_not_call_publisher_again(client, monkeypatch):
+    calls = []
+
+    class Counting:
+        def publish(self, pub):
+            calls.append(pub["id"])
+            return "ext"
+    pid = make_draft(client, monkeypatch)
+    monkeypatch.setattr(publishing, "get_publisher", lambda: Counting())
+    client.post(f"/api/publications/{pid}/publish")
+    client.post(f"/api/publications/{pid}/publish")
+    assert calls == [pid]
+
+
+def test_publish_while_publishing_409(client, monkeypatch):
+    pid = make_draft(client, monkeypatch)
+    with server.db() as conn:
+        conn.execute("UPDATE publications SET status = 'publishing' WHERE id = ?", (pid,))
+    assert client.post(f"/api/publications/{pid}/publish").status_code == 409
+
+
+def test_failed_can_be_retried(client, monkeypatch):
+    pid = make_draft(client, monkeypatch)
+    monkeypatch.setattr(publishing, "get_publisher", lambda: type("Bad", (), {"publish": lambda s, p: 1 / 0})())
+    assert client.post(f"/api/publications/{pid}/publish").status_code == 502
+    monkeypatch.setattr(publishing, "get_publisher", lambda: publishing.FakePublisher())
+    r = client.post(f"/api/publications/{pid}/publish")
+    assert r.status_code == 200 and r.json()["status"] == "published"
+
+
+def test_demo_rows_hidden_when_demo_off(client, monkeypatch):
+    monkeypatch.setenv("REMAKE_DEMO", "1")
+    publishing.seed_demo(server.db)
+    assert len(client.get("/api/ideas/demo-ab/publications").json()) == 2
+    assert all(v["latest"] for v in client.get("/api/ideas/demo-ab/compare").json()["variants"])
+    monkeypatch.delenv("REMAKE_DEMO")
+    assert client.get("/api/ideas/demo-ab/publications").json() == []
+    assert client.get("/api/ideas/demo-ab/compare").json() == {"variants": []}

@@ -68,3 +68,11 @@ def test_demo_seeds_once(client, monkeypatch):
     with server.db() as conn:
         assert conn.execute("SELECT COUNT(*) FROM publications").fetchone()[0] == 2
     assert len(client.get("/api/ideas/demo-ab/compare").json()["variants"]) == 2
+
+
+def test_demo_source_metrics_ignored_outside_demo(client, monkeypatch):
+    monkeypatch.delenv("REMAKE_DEMO", raising=False)
+    ids = setup_variants(client, ("A",))
+    metrics(client, ids["A"], 100, 1000)
+    client.post(f"/api/publications/{ids['A']}/metrics", json={"views": 999, "fetchedAt": 2000, "source": "demo"})
+    assert by_variant(client)["A"]["latest"]["views"] == 100

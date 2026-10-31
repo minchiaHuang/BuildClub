@@ -88,6 +88,15 @@ def to_json(row) -> dict:
             "status": row[5], "externalId": row[6], "error": row[7], "createdAt": row[8]}
 
 
+def visible() -> str:
+    """Outside demo mode, rows a demo run seeded or the fake publisher made stay out of every read."""
+    return "" if is_demo() else " AND COALESCE(external_id, '') NOT LIKE 'fake-%' AND id NOT LIKE 'demo-%'"
+
+
+def metric_filter() -> str:
+    return "" if is_demo() else " AND COALESCE(source, '') != 'demo'"
+
+
 COLUMNS = "id, idea_id, variant, platform, scheduled_at, status, external_id, error, created_at"
 
 
@@ -110,13 +119,18 @@ def make_router(db, load) -> APIRouter:
 
     @router.post("/api/publications/{pid}/publish")
     def publish(pid: str):
+        publisher = get_publisher()
         with db() as conn:
             row = conn.execute(f"SELECT {COLUMNS} FROM publications WHERE id = ?", (pid,)).fetchone()
-        if row is None:
-            return JSONResponse({"error": "No such publication."}, status_code=404)
-        publisher = get_publisher()
-        if publisher is None:
-            return JSONResponse({"error": "Publishing is not enabled."}, status_code=503)
+            if row is None:
+                return JSONResponse({"error": "No such publication."}, status_code=404)
+            if publisher is None:
+                return JSONResponse({"error": "Publishing is not enabled."}, status_code=503)
+            # Claim the row atomically so a double click or a concurrent request cannot post twice.
+            claimed = conn.execute("UPDATE publications SET status = 'publishing' WHERE id = ? AND status IN ('draft', 'failed')",
+                                   (pid,)).rowcount
+        if not claimed:
+            return JSONResponse({"error": "Only a draft or failed publication can be published."}, status_code=409)
         try:
             external = publisher.publish(to_json(row))
         except Exception as exc:  # whatever the platform client raises is stored and shown
@@ -133,7 +147,7 @@ def make_router(db, load) -> APIRouter:
     @router.get("/api/ideas/{idea_id}/publications")
     def listing(idea_id: str):
         with db() as conn:
-            rows = conn.execute(f"SELECT {COLUMNS} FROM publications WHERE idea_id = ? ORDER BY created_at, variant",
+            rows = conn.execute(f"SELECT {COLUMNS} FROM publications WHERE idea_id = ?{visible()} ORDER BY created_at, variant",
                                 (idea_id,)).fetchall()
         return [to_json(r) for r in rows]
 
@@ -150,12 +164,12 @@ def make_router(db, load) -> APIRouter:
     @router.get("/api/ideas/{idea_id}/compare")
     def compare(idea_id: str):
         with db() as conn:
-            pubs = conn.execute("SELECT id, variant, platform FROM publications WHERE idea_id = ? ORDER BY variant, created_at",
+            pubs = conn.execute(f"SELECT id, variant, platform FROM publications WHERE idea_id = ?{visible()} ORDER BY variant, created_at",
                                 (idea_id,)).fetchall()
             variants = []
             for pid, variant, platform in pubs:
                 snap = conn.execute("SELECT views, likes, comments, shares, fetched_at, source FROM publication_metrics "
-                                    "WHERE publication_id = ? ORDER BY fetched_at DESC, rowid DESC LIMIT 1", (pid,)).fetchone()
+                                    f"WHERE publication_id = ?{metric_filter()} ORDER BY fetched_at DESC, rowid DESC LIMIT 1", (pid,)).fetchone()
                 latest = None if snap is None else {**dict(zip(COUNTS, snap[:4])), "fetchedAt": snap[4], "source": snap[5]}
                 variants.append({"variant": variant, "publicationId": pid, "platform": platform, "latest": latest,
                                  "viewsVsBest": None})
