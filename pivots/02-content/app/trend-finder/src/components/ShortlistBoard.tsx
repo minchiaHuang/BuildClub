@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
+import type { Client, Format, IdeaStatus, SavedIdea, Stage, Video } from '../types'
 import { compact, hasScore, outlierScore, plural, times } from '../lib/metrics'
 import { dueLabel } from '../lib/dates'
 import { useManagerName } from '../lib/appContext'
 import { inTwoWeeks } from '../state'
 import { lastSentBack } from '../lib/memory'
 import { createShareLink, revokeClientLinks } from '../lib/share'
+import { postedThisMonth, stageOf } from '../lib/stage'
 import { ProgressRing } from './ProgressRing'
+import { StageSelect } from './StageSelect'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -26,7 +28,8 @@ interface Props {
 const shotsOf = (idea: SavedIdea, f?: Format) => idea.shots ?? (idea.status === 'saved' ? [] : (f?.shotList ?? []))
 
 // One client's pipeline on one page: Shortlisted → Waiting for the manager → Approved (ready to film),
-// plus a small "Sent back" lane. Batch actions work on the whole Shortlisted column.
+// then an "In production" row (Filming → Editing → Posted this month), plus a small "Sent back" lane.
+// Batch actions work on the whole Shortlisted column.
 export function ShortlistBoard(p: Props) {
   const manager = useManagerName()
   const [dueDate, setDueDate] = useState(inTwoWeeks)
@@ -40,6 +43,17 @@ export function ShortlistBoard(p: Props) {
   const shortlisted = by('saved')
   const waiting = by('waiting').sort((a, b) => (a.sentAt ?? 0) - (b.sentAt ?? 0))
   const approved = by('approved').sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  const inStage = (s: Stage) => approved.filter((i) => stageOf(i) === s)
+  const toFilm = inStage('approved')
+  const filming = inStage('filming')
+  const editing = inStage('editing')
+  const postedNow = new Date()
+  const posted = inStage('posted')
+  const postedCount = postedThisMonth(mine, postedNow)
+  const postedRecent = posted
+    .filter((i) => postedThisMonth([i], postedNow) === 1)
+    .sort((a, b) => (b.postedAt ?? 0) - (a.postedAt ?? 0))
+  const postedEarlier = posted.length - postedRecent.length
   const sentBack = by('rejected')
   const shownLink = link?.clientId === p.client.id ? link.url : null
   const ready = shortlisted.filter((i) => shotsOf(i).length > 0)
@@ -129,6 +143,7 @@ export function ShortlistBoard(p: Props) {
           <button className="btn btn-ghost btn-sm" onClick={() => p.onOpenPlan(idea.id)}>
             Open plan
           </button>
+          <StageSelect idea={idea} name={(v.live ? v.hook : f?.name) ?? v.hook} onChange={(patch) => update(new Set([idea.id]), () => patch)} />
           <button className="link-btn" onClick={() => remove(idea.id)} aria-label={`Remove ${f?.name ?? v.hook}`}>
             Remove
           </button>
@@ -165,6 +180,7 @@ export function ShortlistBoard(p: Props) {
               {approved.length} <span className="muted">of {p.client.monthlyTarget}</span>
             </span>
             <span className="small muted">videos approved this month</span>
+            <span className="small muted">{postedCount} posted this month</span>
           </div>
         </div>
       </header>
@@ -257,7 +273,20 @@ export function ShortlistBoard(p: Props) {
                 </div>
               ),
             )}
-            {column('Approved, ready to film', approved, `Plans ${manager} approves show up here.`, 'approved')}
+            {column('Approved, ready to film', toFilm, `Plans ${manager} approves show up here.`, 'approved')}
+          </div>
+
+          <h2 className="board-row-title">In production</h2>
+          <div className="board-cols board-cols-production">
+            {column('Filming', filming, 'Nothing being filmed.', 'filming')}
+            {column('Editing', editing, 'Nothing being edited.', 'editing')}
+            {column(
+              'Posted this month',
+              postedRecent,
+              'Nothing posted this month.',
+              'posted',
+              postedEarlier > 0 && <span className="small muted">{plural(postedEarlier, 'video')} posted earlier</span>,
+            )}
           </div>
 
           {sentBack.length > 0 && (
