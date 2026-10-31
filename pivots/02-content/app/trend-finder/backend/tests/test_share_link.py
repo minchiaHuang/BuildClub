@@ -228,3 +228,13 @@ def test_review_link_never_shows_stage(client, two_clients):
     token, _ = link(client, "a")
     item = client.get(f"/api/review/{token}").json()["ideas"][0]["idea"]
     assert "stage" not in item and "postedAt" not in item
+
+
+def test_new_decision_clears_old_change_request(client, two_clients):
+    server.save("ideas", [SavedIdea(**idea("ia", "a", managerNote="tighter hook", shotComments={0: "closer"}, approvedAt=900))])
+    token, _ = link(client, "a")
+    client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "approved"})
+    saved = client.get("/api/ideas").json()[0]
+    assert saved["status"] == "approved"
+    assert "managerNote" not in saved and "shotComments" not in saved
+    assert saved["approvedAt"] == 900

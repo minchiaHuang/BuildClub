@@ -106,3 +106,8 @@ def test_posted_at_only_when_posted(client):
     moved = {**IDEA, "status": "approved", "decidedAt": 2000, "stage": "editing", "postedAt": 5000}
     saved = client.put("/api/ideas", json=[moved]).json()[0]
     assert saved["stage"] == "editing" and "postedAt" not in saved
+
+
+def test_long_manager_note_does_not_block_saves(client):
+    r = client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 2000, "managerNote": "x" * 2001}])
+    assert r.status_code == 200

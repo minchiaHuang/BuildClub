@@ -65,7 +65,8 @@ def decide_idea(ideas: list, client_id: str, idea_id: str, approved: bool, reaso
     """Annie's answer. Returns (new ideas list, decided idea) or None when she may not decide it."""
     for n, idea in enumerate(ideas or []):
         if idea["id"] == idea_id and idea["clientId"] == client_id and idea["status"] == "waiting":
-            decided = {k: v for k, v in idea.items() if k not in ("rejectReason", "rejectTags")}
+            # A new answer replaces the last one, including an earlier "approve with changes" note.
+            decided = {k: v for k, v in idea.items() if k not in ("rejectReason", "rejectTags", "managerNote", "shotComments")}
             decided.update(status="approved" if approved else "rejected", decidedAt=now_ms)
             entry = {"decision": decided["status"], "decidedAt": now_ms}
             if not approved and reason and reason.strip():
