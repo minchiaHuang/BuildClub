@@ -40,6 +40,12 @@ test('musicType falls back to the extension, case-insensitively', () => {
   assert.equal(musicType({ name: 'a.wav', type: 'audio/x-wav' }), 'audio/x-wav')
   assert.equal(musicType({ name: 'a.mp3', type: 'video/mp4' }), null)
   assert.equal(musicType({ name: 'a.ogg', type: '' }), null)
+  assert.equal(musicType({ name: 'a.m4a', type: 'audio/x-m4a' }), 'audio/mp4')
+  assert.equal(musicType({ name: 'a.mp3', type: 'audio/mp3' }), 'audio/mpeg')
+  assert.equal(musicType({ name: 'a.wav', type: 'audio/wave' }), 'audio/wav')
+  assert.equal(musicType({ name: 'a.ogg', type: 'audio/ogg' }), null)
+  assert.equal(musicType({ name: 'a.mp3', type: 'text/plain' }), null)
+  assert.equal(checkMusic({ name: 'a.m4a', type: 'audio/x-m4a', size: 10 }), null)
 })
 
 test('checkMusic uses the server copy', () => {
@@ -113,6 +119,16 @@ test('putMusic sends the licence header, type and encoded filename', async () =>
   assert.equal(init.headers['content-type'], 'audio/mpeg')
   assert.equal(init.headers['x-filename'], encodeURIComponent('é song.mp3'))
   assert.equal(res.music.size, 3)
+})
+
+test('putMusic sends the canonical type for a non-canonical browser type', async () => {
+  const f = fakeFetch([{ body: state('none') }])
+  try {
+    await putMusic('i', new File(['abc'], 'song.m4a', { type: 'audio/x-m4a' }))
+  } finally {
+    f.restore()
+  }
+  assert.equal(f.calls[0].init.headers['content-type'], 'audio/mp4')
 })
 
 test('pollCut reports each state and resolves on done', async () => {

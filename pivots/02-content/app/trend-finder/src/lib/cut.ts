@@ -22,10 +22,11 @@ const NOT_AUDIO = 'Upload an .mp3, .m4a or .wav audio file.'
 
 type MusicType = 'audio/mpeg' | 'audio/mp4' | 'audio/wav' | 'audio/x-wav'
 
-// The upload's Content-Type. Some browsers leave file.type empty, so the extension decides then.
+// The upload's Content-Type. Browsers leave file.type empty or report non-canonical audio types
+// (audio/x-m4a, audio/mp3, audio/wave ...), so the extension decides then. Non-audio types are refused.
 export function musicType(file: { name: string; type: string }): MusicType | null {
   if (file.type === 'audio/mpeg' || file.type === 'audio/mp4' || file.type === 'audio/wav' || file.type === 'audio/x-wav') return file.type
-  if (file.type) return null
+  if (file.type && !file.type.startsWith('audio/')) return null
   const ext = file.name.toLowerCase().split('.').pop()
   return ext === 'mp3' ? 'audio/mpeg' : ext === 'm4a' ? 'audio/mp4' : ext === 'wav' ? 'audio/wav' : null
 }
