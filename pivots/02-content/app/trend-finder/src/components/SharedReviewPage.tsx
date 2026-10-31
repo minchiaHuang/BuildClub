@@ -2,13 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Format, Video } from '../types'
 import { compact, hasScore, outlierScore, times } from '../lib/metrics'
 import { formatDay } from '../lib/dates'
-import { AlreadyReviewed, LinkClosed, REJECT_TAGS, loadReview, sendDecision } from '../lib/share'
-import type { Review, ReviewItem } from '../lib/share'
+import { AlreadyReviewed, LinkClosed, REJECT_TAGS, VideoReplaced, decideCut, loadReview, sendDecision } from '../lib/share'
+import type { Review, ReviewCutItem, ReviewItem } from '../lib/share'
+import { formatDuration } from '../lib/cut'
 import { Thumb } from './Thumb'
 import { BestVideo } from './BestVideo'
 import type { PlayerControl } from './BestVideo'
 import { TimedComments } from './TimedComments'
 import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
+
+const REPLACED = 'This video was replaced while you were watching. Here is the new one.'
 
 // The approver's page, opened from the link the team shares: no sidebar and no sign-in.
 export function SharedReviewPage({ token }: { token: string }) {
@@ -34,6 +37,10 @@ export function SharedReviewPage({ token }: { token: string }) {
   }
   const alreadyReviewed = () => {
     setNotice('That plan was already reviewed. Here is what is still waiting.')
+    load()
+  }
+  const replaced = () => {
+    setNotice(REPLACED)
     load()
   }
   const closed = () => setReview(null)
@@ -63,7 +70,7 @@ export function SharedReviewPage({ token }: { token: string }) {
     )
   }
 
-  const n = review.ideas.length
+  const n = review.ideas.length + review.cuts.length
   return (
     <main className="shared-review">
       <section className="review">
@@ -104,6 +111,24 @@ export function SharedReviewPage({ token }: { token: string }) {
             />
           ))}
         </div>
+        {review.cuts.length > 0 && (
+          <>
+            <h2 className="review-subhead">Videos to approve</h2>
+            <div className="review-stack">
+              {review.cuts.map((item) => (
+                <SharedCutCard
+                  key={item.idea.id}
+                  item={item}
+                  token={token}
+                  onDecided={decided}
+                  onAlreadyReviewed={alreadyReviewed}
+                  onReplaced={replaced}
+                  onClosed={closed}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </main>
   )
@@ -217,6 +242,82 @@ function SharedCard({ item, token, onDecided, onAlreadyReviewed, onClosed }: Car
               Cancel
             </button>
             <button className="btn btn-primary" onClick={() => send(false)} disabled={busy || (!tags.length && !text.trim())}>
+              Send back
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="review-actions">
+          <button className="btn btn-ghost" onClick={() => setBack(true)} disabled={busy}>
+            Send back
+          </button>
+          <button className="btn btn-primary" onClick={() => send(true)} disabled={busy}>
+            Approve
+          </button>
+        </div>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </article>
+  )
+}
+
+interface CutCardProps {
+  item: ReviewCutItem
+  token: string
+  onDecided: (label: string) => void
+  onAlreadyReviewed: () => void
+  onReplaced: () => void
+  onClosed: () => void
+}
+
+// A finished video waiting for the approver. It is played here and cannot be downloaded from the page.
+function SharedCutCard({ item, token, onDecided, onAlreadyReviewed, onReplaced, onClosed }: CutCardProps) {
+  const { idea, cut } = item
+  const title = item.format?.name ?? item.video?.hook ?? 'Plan'
+  const [back, setBack] = useState(false)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const send = (approved: boolean) => {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    decideCut(token, idea.id, approved, cut.version, approved ? undefined : text.trim())
+      .then(() => onDecided(`${approved ? 'Approved' : 'Sent back'} the video: ${title}`))
+      .catch((e: Error) => {
+        if (e instanceof VideoReplaced) return onReplaced()
+        if (e instanceof AlreadyReviewed) return onAlreadyReviewed()
+        if (e instanceof LinkClosed) return onClosed()
+        setBusy(false)
+        setError(`${e.message} Please try again.`)
+      })
+  }
+
+  return (
+    <article className="review-card shared-card shared-cut" data-idea={idea.id} data-cut aria-label={`Video for ${title}`}>
+      <div className="review-ref shared-ref">
+        <div>
+          <strong>{title}</strong>
+          <span className="small muted">Video for this plan · {formatDuration(cut.durationSec)}</span>
+        </div>
+      </div>
+      <video className="shared-cut-video" controls playsInline preload="metadata" src={cut.url} />
+      {back ? (
+        <div className="review-reject">
+          <label className="field">
+            <span className="field-label">What should change?</span>
+            <textarea rows={3} value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} />
+          </label>
+          <div className="review-actions">
+            <button className="btn btn-ghost" onClick={() => setBack(false)} disabled={busy}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={() => send(false)} disabled={busy || !text.trim()}>
               Send back
             </button>
           </div>
