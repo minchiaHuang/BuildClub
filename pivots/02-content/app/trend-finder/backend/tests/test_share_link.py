@@ -77,6 +77,7 @@ def test_revoked_token_404(client, two_clients):
     assert client.get(f"/api/review/{token}").status_code == 404
     r = client.post(f"/api/review/{token}/decide", json={"ideaId": "ia", "decision": "approved"})
     assert r.status_code == 404
+    assert r.json()["code"] == "link_closed"
     assert client.get("/api/review/not-a-token").status_code == 404
 
 
@@ -213,5 +214,6 @@ def test_decide_twice_returns_404(client, two_clients):
     assert client.post(f"/api/review/{token}/decide", json=body).status_code == 200
     again = client.post(f"/api/review/{token}/decide", json=body)
     assert again.status_code == 404
+    assert again.json()["code"] == "not_waiting"
     saved = next(i for i in client.get("/api/ideas").json() if i["id"] == "ia")
     assert len(saved["history"]) == 1

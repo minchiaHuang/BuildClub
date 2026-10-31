@@ -12,6 +12,8 @@ interface Props {
   videoById: Map<string, Video>
   formatById: Map<string, Format>
   onDecide: (ideaId: string, d: Decision) => void
+  // A preview from the team's side: the buttons are off, because a decision here would really be recorded.
+  readOnly?: boolean
   onBack: () => void
 }
 
@@ -35,9 +37,9 @@ const tokenMs = (name: string) => parseFloat(getComputedStyle(document.documentE
 // What the manager sees: each waiting plan with its reference, shots, the team's note and due date, and three choices:
 // approve, approve with changes, or send back. A narrow column so it reads like a phone view.
 // Team members see the same plans read-only. Demo only: the role is picked at login, nothing is checked.
-export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack }: Props) {
+export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, readOnly, onBack }: Props) {
   const manager = useManagerName()
-  const isManager = useApp().role === 'manager'
+  const isManager = useApp().role === 'manager' && !readOnly
   const [leaving, setLeaving] = useState<Leaving | null>(null)
   const timers = useRef<number[]>([])
   const pending = useRef<Leaving | null>(null)
@@ -108,7 +110,9 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
         ← Back to shortlist
       </button>
       <p className="review-banner">
-        {isManager
+        {readOnly
+          ? `Preview of ${manager}'s view. Read-only: ${manager} answers from the review link, so nothing here is recorded.`
+          : isManager
           ? `Preview of ${manager}'s view. In the real product this opens on ${manager}'s phone.`
           : `You're signed in as a team member. Only ${manager} can approve or send back plans.`}
       </p>

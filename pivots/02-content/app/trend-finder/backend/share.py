@@ -72,7 +72,7 @@ def decide_idea(ideas: list, client_id: str, idea_id: str, approved: bool, reaso
 
 
 def no_such_link() -> JSONResponse:
-    return JSONResponse({"error": "This link isn't active."}, status_code=404)
+    return JSONResponse({"error": "This link isn't active.", "code": "link_closed"}, status_code=404)
 
 
 def active_link(load, token: str):
@@ -147,7 +147,7 @@ def make_router(db, load, save) -> APIRouter:
             result = decide_idea(load("ideas"), link["clientId"], body.ideaId, body.decision == "approved",
                                  body.reason, int(time.time() * 1000), body.tags)
             if result is None:
-                return JSONResponse({"error": "This idea isn't waiting for review."}, status_code=404)
+                return JSONResponse({"error": "This idea isn't waiting for review.", "code": "not_waiting"}, status_code=404)
             ideas, decided = result
             save("ideas", [SavedIdea(**i) for i in ideas])
             bump_ideas_rev(db, load)

@@ -76,8 +76,8 @@ export async function sendDecision(
     body: JSON.stringify({ ideaId, decision: approved ? 'approved' : 'rejected', reason, tags }),
   })
   if (r.status === 404) {
-    const body = (await r.json().catch(() => null)) as { error?: string } | null
-    throw body?.error?.includes('link') ? new LinkClosed() : new AlreadyReviewed()
+    const body = (await r.json().catch(() => null)) as { code?: string } | null
+    throw body?.code === 'link_closed' ? new LinkClosed() : new AlreadyReviewed()
   }
   if (!r.ok) throw new Error("Couldn't save your answer.")
 }

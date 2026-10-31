@@ -58,7 +58,7 @@ import { AddClientScreen } from './components/AddClientScreen'
 import { logout, me } from './lib/auth'
 import { nextView, onUnauthorized } from './lib/authGate'
 import { markMigrated, pickInitialIdeas, wasMigrated } from './lib/migrateLocal'
-import { applyDraft, changedIdeas, rebaseIdeas } from './lib/ideasSync'
+import { applyDraft, keepUnsavedDraft, rebaseIdeas, sameIdeaList, withoutSamples } from './lib/ideasSync'
 
 // Where the user was when the session ended, so signing back in returns there (also after a reload).
 const RETURN_KEY = 'remake.return-to.v1'
@@ -218,19 +218,19 @@ export default function App() {
     ideas: null,
     library: null,
   })
+  const clientsNow = useRef(clients)
+  useEffect(() => {
+    clientsNow.current = clients
+  }, [clients])
   const ideasNow = useRef(ideas)
   useEffect(() => {
     ideasNow.current = ideas
   }, [ideas])
+  // The list the API last acknowledged. onServer.ideas is set before a save is sent, so it can't tell what a
+  // 401 on that save leaves unsaved.
+  const confirmedIdeas = useRef<SavedIdea[] | null>(null)
   useEffect(() => {
-    keepDraft.current = () => {
-      try {
-        const draft = changedIdeas(onServer.current.ideas ?? [], ideasNow.current)
-        if (draft.length) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-      } catch {
-        // Without storage the edits are still kept while this tab stays open.
-      }
-    }
+    keepDraft.current = () => keepUnsavedDraft(confirmedIdeas.current, ideasNow.current, DRAFT_KEY, sessionStorage)
   }, [])
   useEffect(() => {
     if (!live || !access || synced) return
@@ -247,17 +247,28 @@ export default function App() {
           })
           onServer.current.library = libraryKey(library)
         }
-        // Nothing saved for clients yet: this browser's list is kept and saved up by the effect below.
         if (savedClients?.length) {
           setClients(savedClients)
           onServer.current.clients = savedClients
+        } else {
+          // Nothing saved yet: keep this browser's own clients, but never the built-in samples (they would be
+          // saved to the API as if they were real). The effect below saves what is left.
+          setClients((prev) => withoutSamples(prev, sampleClients))
+          if (withoutSamples(clientsNow.current, sampleClients).length === 0) {
+            setWorkspaceRaw('all')
+            setViewRaw('overview')
+          }
         }
         const sampleIds = new Set(sampleIdeas.map((i) => i.id))
         const local = ideasNow.current.filter((i) => !sampleIds.has(i.id))
         const pick = pickInitialIdeas(loadedIdeas.items, local, wasMigrated())
         let rev = loadedIdeas.rev
-        if (pick.upload) rev = await saveIdeas(pick.ideas, rev)
-        const held = pick.upload ? pick.ideas : (loadedIdeas.items ?? [])
+        let held = loadedIdeas.items ?? []
+        if (pick.upload) {
+          const res = await saveIdeas(pick.ideas, rev)
+          rev = res.rev
+          held = res.items
+        }
         let draft: SavedIdea[] | null = null
         try {
           const raw = sessionStorage.getItem(DRAFT_KEY)
@@ -269,6 +280,7 @@ export default function App() {
         const shown = draft?.length ? applyDraft(held, draft) : held
         // When the shown list is the held one, keep the very same object so nothing is saved back.
         onServer.current.ideas = held
+        confirmedIdeas.current = held
         setIdeas(shown)
         ideasRev.current = rev
         markMigrated()
@@ -278,7 +290,7 @@ export default function App() {
         if (!(e instanceof SaveError && e.status === 401))
           setSyncProblem("Couldn't load your data. Reload the page to try again; nothing will be saved until it loads.")
       })
-  }, [live, access, synced, setClients, setIdeas, setLiveStore])
+  }, [live, access, synced, setClients, setIdeas, setLiveStore, setWorkspaceRaw])
   useEffect(() => {
     if (!synced || clients === onServer.current.clients) return
     const prev = onServer.current.clients
@@ -302,13 +314,21 @@ export default function App() {
         let base = prev ?? []
         for (let tries = 0; ; tries++) {
           try {
-            ideasRev.current = await saveIdeas(attempt, ideasRev.current)
+            const res = await saveIdeas(attempt, ideasRev.current)
+            ideasRev.current = res.rev
+            confirmedIdeas.current = res.items
+            // The API may have kept a newer answer from the approver than the one sent.
+            if (!sameIdeaList(res.items, attempt)) {
+              attempt = res.items
+              onServer.current.ideas = res.items
+            }
             break
           } catch (e) {
             if (!(e instanceof IdeasConflict) || tries >= 3) throw e
             // Another tab saved first: take its list, put this edit on top, and save again.
             ideasGen.current += 1
             ideasRev.current = e.rev
+            confirmedIdeas.current = e.items
             const merged = rebaseIdeas(base, attempt, e.items)
             base = e.items
             attempt = merged
@@ -339,6 +359,7 @@ export default function App() {
           ideasGen.current += 1
           ideasRev.current = fresh.rev
           onServer.current.ideas = fresh.items
+          confirmedIdeas.current = fresh.items
           setIdeas(fresh.items)
         })
         .catch(() => {
@@ -1025,6 +1046,7 @@ export default function App() {
               formatById={formatById}
               videoById={videoById}
               onDecide={decide}
+              readOnly
               onBack={() => setView('shortlist')}
             />
           )}

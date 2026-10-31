@@ -40,3 +40,37 @@ export function applyDraft(remote: SavedIdea[], draft: SavedIdea[]): SavedIdea[]
   const have = new Set(remote.map((i) => i.id))
   return [...out, ...draft.filter((i) => !have.has(i.id))]
 }
+
+const canon = (v: unknown): unknown =>
+  Array.isArray(v)
+    ? v.map(canon)
+    : v && typeof v === 'object'
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, canon(x)]))
+      : v
+
+// True when both lists hold the same ideas in the same order, whatever order the fields were written in.
+export function sameIdeaList(a: SavedIdea[], b: SavedIdea[]): boolean {
+  return JSON.stringify(canon(a)) === JSON.stringify(canon(b))
+}
+
+// Keeps the edits the server has not confirmed in sessionStorage, so a reload before signing back in doesn't lose them.
+// `confirmed` is the list the server last acknowledged (not the one a save in flight is about to become).
+export function keepUnsavedDraft(
+  confirmed: SavedIdea[] | null,
+  now: SavedIdea[],
+  key: string,
+  storage: Pick<Storage, 'setItem'>,
+): void {
+  try {
+    const draft = changedIdeas(confirmed ?? [], now)
+    if (draft.length) storage.setItem(key, JSON.stringify(draft))
+  } catch {
+    // Without storage the edits are still kept while this tab stays open.
+  }
+}
+
+// The items in `list` that are not this app's built-in samples.
+export function withoutSamples<T extends { id: string }>(list: T[], samples: { id: string }[]): T[] {
+  const ids = new Set(samples.map((s) => s.id))
+  return list.filter((x) => !ids.has(x.id))
+}
