@@ -33,4 +33,4 @@ Remake phase 1 (end-to-end review flow, design system, new backends) is merged o
 
 ## Next steps
 1. User testing on the 8805 environment.
-2. Phase 2: inventory for filming and editing.
+2. Phase 2 inventory done (2026-10-31): see `docs/phase2-scope.md`. User approved scope 2a-2c (stage board, shot checklist + real-footage upload, ffmpeg rough cut), real footage only. Next: implementation plan for 2a. Still open: rough cut vs finished cut, Annie approving the cut, video storage location.
