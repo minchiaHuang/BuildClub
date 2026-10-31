@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Format, Video } from '../types'
 import { compact, hasScore, outlierScore, times } from '../lib/metrics'
 import { formatDay } from '../lib/dates'
 import { AlreadyReviewed, LinkClosed, REJECT_TAGS, loadReview, sendDecision } from '../lib/share'
 import type { Review, ReviewItem } from '../lib/share'
 import { Thumb } from './Thumb'
+import { BestVideo } from './BestVideo'
+import type { PlayerControl } from './BestVideo'
+import { TimedComments } from './TimedComments'
+import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 
 // The approver's page, opened from the link the team shares: no sidebar and no sign-in.
 export function SharedReviewPage({ token }: { token: string }) {
@@ -125,6 +129,7 @@ function SharedCard({ item, token, onDecided, onAlreadyReviewed, onClosed }: Car
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const playerControl = useRef<PlayerControl | null>(null)
 
   const toggle = (t: string) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))
 
@@ -182,6 +187,15 @@ function SharedCard({ item, token, onDecided, onAlreadyReviewed, onClosed }: Car
           ))}
         </ol>
       )}
+      {v && v.live && <BestVideo video={v} control={playerControl} />}
+      <TimedComments
+        ideaId={idea.id}
+        videoId={idea.videoId}
+        token={token}
+        control={playerControl}
+        canSeek={!!v?.live && v.platform === 'tiktok' && !!tiktokVideoId(v.url)}
+        onClosed={onClosed}
+      />
       {back ? (
         <div className="review-reject">
           <fieldset className="chip-group">

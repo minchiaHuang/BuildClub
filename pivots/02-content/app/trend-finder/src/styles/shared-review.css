@@ -11,3 +11,17 @@
 .board-link { display: grid; gap: var(--space-md); }
 .board-link-row { display: flex; gap: var(--space-md); flex-wrap: wrap; }
 .board-link input { width: 100%; }
+
+/* Timed comments on the reference video (plan page and approver's page). */
+.timed-comments { display: grid; gap: var(--space-base); }
+.tc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-md); }
+.tc-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-base); align-items: start; }
+.tc-body p { margin: 0; overflow-wrap: anywhere; }
+.tc-at { font-variant-numeric: tabular-nums; font-size: var(--text-sm); font-weight: 600; background: var(--surface-2); border-radius: var(--radius-pill); padding: var(--space-2xs) var(--space-md); border: 0; color: var(--fg); }
+.tc-at-link { cursor: pointer; }
+.tc-at-link:hover { background: var(--surface-3); }
+.tc-form { display: grid; gap: var(--space-md); }
+.tc-row { display: flex; gap: var(--space-md); align-items: end; flex-wrap: wrap; }
+.tc-time { width: 96px; }
+.tc-form .field { display: grid; gap: var(--space-xs); }
+.tc-actions { display: flex; justify-content: flex-end; }

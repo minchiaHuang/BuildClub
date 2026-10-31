@@ -1,9 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { MutableRefObject } from 'react'
 import type { Video } from '../types'
 import { platformName } from '../lib/metrics'
 import { Thumb } from './Thumb'
-import { playerUrl, tiktokVideoId } from '../lib/tiktokPlayer.ts'
+import { playerUrl, seekTo, tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { useTiktokFrame } from '../lib/useTiktokFrame.ts'
+
+// What the comments box can ask of the player. Only TikTok's embed reports its time and accepts a jump.
+export interface PlayerControl {
+  time: () => number | null
+  seek: (sec: number) => void
+}
 
 const youtubeId = (url?: string) => url?.match(/\/shorts\/([\w-]+)/)?.[1]
 
@@ -23,9 +30,16 @@ function embedSrc(video: Video): string | undefined {
 // Large, watchable video for the "Best to copy" card: the real TikTok or YouTube player for live results,
 // a large cover for other live videos and for sample data (which has no real video behind it).
 // TikTok's player with its own controls and volume button. If TikTok blocks it (rate limit) or it errors, show the cover and a link.
-function TikTokVideo({ video, src }: { video: Video; src: string }) {
+function TikTokVideo({ video, src, control }: { video: Video; src: string; control?: MutableRefObject<PlayerControl | null> }) {
   const [frame, setFrame] = useState<HTMLIFrameElement | null>(null)
-  const { failed } = useTiktokFrame(frame, { initialMuted: false })
+  const { failed, timeRef } = useTiktokFrame(frame, { initialMuted: false })
+  useEffect(() => {
+    if (!control || !frame) return
+    control.current = { time: () => timeRef.current, seek: (sec) => seekTo(frame, sec) }
+    return () => {
+      control.current = null
+    }
+  }, [control, frame, timeRef])
   if (failed) {
     return (
       <div className="best-video best-video-fail">
@@ -50,9 +64,9 @@ function TikTokVideo({ video, src }: { video: Video; src: string }) {
   )
 }
 
-export function BestVideo({ video, onOpen }: { video: Video; onOpen?: () => void }) {
+export function BestVideo({ video, onOpen, control }: { video: Video; onOpen?: () => void; control?: MutableRefObject<PlayerControl | null> }) {
   const src = embedSrc(video)
-  if (src && video.platform === 'tiktok') return <TikTokVideo video={video} src={src} />
+  if (src && video.platform === 'tiktok') return <TikTokVideo video={video} src={src} control={control} />
   if (src) {
     return (
       <div className="best-video">
