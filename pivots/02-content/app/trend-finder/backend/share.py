@@ -38,7 +38,8 @@ def bump_ideas_rev(db, load) -> int:
 
 def merge_ideas(stored: list, incoming: list) -> list:
     """Daphne's tab sends the whole list back. An idea decided after she last sent or saw it
-    keeps the decision; everything else (due date, notes, shots) comes from her copy."""
+    keeps the decision; everything else (due date, notes, shots, stage) comes from her copy.
+    A stage is dropped unless the plan is approved."""
     old = {i["id"]: i for i in stored or []}
     merged = []
     for idea in incoming:
@@ -51,6 +52,11 @@ def merge_ideas(stored: list, incoming: list) -> list:
         kept = (theirs or {}).get("history") or []
         if len(kept) > len(idea.get("history") or []):
             idea = {**idea, "history": kept}
+        # Only an approved plan is in production, and only a posted one has a posted date.
+        if idea.get("status") != "approved":
+            idea = {k: v for k, v in idea.items() if k not in ("stage", "postedAt")}
+        elif idea.get("stage") != "posted":
+            idea = {k: v for k, v in idea.items() if k != "postedAt"}
         merged.append(idea)
     return merged
 
@@ -59,7 +65,8 @@ def decide_idea(ideas: list, client_id: str, idea_id: str, approved: bool, reaso
     """Annie's answer. Returns (new ideas list, decided idea) or None when she may not decide it."""
     for n, idea in enumerate(ideas or []):
         if idea["id"] == idea_id and idea["clientId"] == client_id and idea["status"] == "waiting":
-            decided = {k: v for k, v in idea.items() if k not in ("rejectReason", "rejectTags")}
+            # A new answer replaces the last one, including an earlier "approve with changes" note.
+            decided = {k: v for k, v in idea.items() if k not in ("rejectReason", "rejectTags", "managerNote", "shotComments")}
             decided.update(status="approved" if approved else "rejected", decidedAt=now_ms)
             entry = {"decision": decided["status"], "decidedAt": now_ms}
             if not approved and reason and reason.strip():

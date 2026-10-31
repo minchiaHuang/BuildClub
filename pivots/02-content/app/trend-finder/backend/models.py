@@ -105,6 +105,11 @@ class SavedIdea(BaseModel):
     # Daphne's production stage for an approved idea. No stage means "approved".
     stage: Optional[Literal["approved", "filming", "editing", "posted"]] = None
     postedAt: Optional[int] = None
+    # Set by the team's tab: when the plan was first approved (kept when "Edit" reopens it), the manager's
+    # "approve with changes" note and per-shot comments keyed by shot index.
+    approvedAt: Optional[int] = None
+    managerNote: Optional[str] = None
+    shotComments: Optional[dict[int, str]] = None
     # Every approver answer so far, oldest first. Only the review link appends to it.
     history: Optional[list[Decision]] = None
 

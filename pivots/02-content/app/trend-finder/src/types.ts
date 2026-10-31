@@ -131,6 +131,8 @@ export interface Decision {
   decidedAt: number
 }
 
+export type Stage = 'approved' | 'filming' | 'editing' | 'posted'
+
 export interface SavedIdea {
   id: string
   videoId: string
@@ -151,6 +153,10 @@ export interface SavedIdea {
   decidedAt?: number
   // Every answer so far, oldest first. Only grows; the API keeps the longer copy.
   history?: Decision[]
+  // Production stage of an approved plan; none means ready to film. The API drops it on any other status.
+  stage?: Stage
+  // When it moved to "posted"; kept only while posted.
+  postedAt?: number
   // Set when the manager decides.
   approvedAt?: number
   // "Approve with changes": what the manager wants changed.

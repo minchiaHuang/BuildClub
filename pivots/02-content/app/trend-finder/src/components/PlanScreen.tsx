@@ -8,6 +8,7 @@ import type { PlayerControl } from './BestVideo'
 import { TimedComments } from './TimedComments'
 import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { lastSentBack } from '../lib/memory'
+import { StageSelect } from './StageSelect'
 
 interface Props {
   idea: SavedIdea
@@ -74,7 +75,7 @@ export function PlanScreen(p: Props) {
   }
   const reopen = () => {
     setConfirmEdit(false)
-    onChange({ status: 'waiting', sentAt: Date.now(), approvedAt: idea.approvedAt ?? Date.now() })
+    onChange({ status: 'waiting', sentAt: Date.now(), approvedAt: idea.approvedAt ?? Date.now(), stage: undefined, postedAt: undefined })
   }
   const sendButton = (
     <button className="btn btn-primary" disabled={shots.length === 0} onClick={send}>
@@ -343,6 +344,10 @@ export function PlanScreen(p: Props) {
           {idea.status === 'approved' && (
             <section className={`block editor-brief${copied === 'done' ? ' is-copied' : ''}`}>
               <h3>For the editor</h3>
+              <div className="field">
+                <span className="field-label">Stage</span>
+                <StageSelect idea={idea} name={format.name} onChange={onChange} />
+              </div>
               <label className="field">
                 <span className="field-label">Due</span>
                 <input id="plan-due" type="date" value={idea.dueDate} onChange={(e) => onChange({ dueDate: e.target.value })} />

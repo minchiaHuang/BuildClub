@@ -61,6 +61,9 @@
 /* Shortlist board: three columns, plus a small "Sent back" lane */
 .board-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-xl); align-items: start; }
 @media (max-width: 1000px) { .board-cols { grid-template-columns: minmax(0, 1fr); } }
+/* Approved plans by production stage, under the first row */
+.board-row-title { font-size: var(--text-md); font-weight: 600; letter-spacing: -0.01em; margin: var(--space-xl) 4px var(--space-sm); }
+.stage-select { width: auto; min-width: 0; max-width: 100%; }
 .board-col, .board-lane {
   display: grid; gap: var(--space-base); align-content: start;
   background: color-mix(in srgb, var(--surface-2) 70%, transparent); border-radius: var(--radius-lg); padding: 14px;
@@ -72,7 +75,8 @@
   padding: 2px 8px; border-radius: var(--radius-pill); background: var(--surface); color: var(--muted);
 }
 .board-col-waiting .board-count { background: var(--rising-soft); color: var(--rising); }
-.board-col-approved .board-count { background: var(--early-soft); color: var(--early); }
+.board-col-approved .board-count, .board-col-filming .board-count,
+.board-col-editing .board-count, .board-col-posted .board-count { background: var(--early-soft); color: var(--early); }
 .board-lane .board-count { background: var(--no-soft); color: var(--no); }
 .board-review { justify-self: start; }
 .board-empty { padding: 4px 4px 8px; }

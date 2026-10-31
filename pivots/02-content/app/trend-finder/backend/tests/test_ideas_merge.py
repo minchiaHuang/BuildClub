@@ -79,3 +79,35 @@ def test_merge_history_never_shrinks(client):
     client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 4000, "sentAt": 3000, "history": h}])
     saved = client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 4000, "sentAt": 3000, "history": h[:1]}]).json()[0]
     assert saved["history"] == h
+
+
+def test_frontend_fields_round_trip(client):
+    sent = {**IDEA, "approvedAt": 4000, "managerNote": "tighter hook", "shotComments": {"0": "closer"}}
+    client.put("/api/ideas", json=[sent])
+    saved = client.get("/api/ideas").json()[0]
+    assert saved["approvedAt"] == 4000
+    assert saved["managerNote"] == "tighter hook"
+    assert saved["shotComments"] == {"0": "closer"}
+
+
+def test_stage_dropped_when_not_approved(client):
+    saved = client.put("/api/ideas", json=[{**IDEA, "stage": "filming", "postedAt": 5000}]).json()[0]
+    assert "stage" not in saved and "postedAt" not in saved
+
+
+def test_reopened_plan_loses_stage(client):
+    client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 2000, "stage": "posted", "postedAt": 5000}])
+    saved = client.put("/api/ideas", json=[{**IDEA, "sentAt": 3000, "stage": "posted", "postedAt": 5000}]).json()[0]
+    assert saved["status"] == "waiting"
+    assert "stage" not in saved and "postedAt" not in saved
+
+
+def test_posted_at_only_when_posted(client):
+    moved = {**IDEA, "status": "approved", "decidedAt": 2000, "stage": "editing", "postedAt": 5000}
+    saved = client.put("/api/ideas", json=[moved]).json()[0]
+    assert saved["stage"] == "editing" and "postedAt" not in saved
+
+
+def test_long_manager_note_does_not_block_saves(client):
+    r = client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 2000, "managerNote": "x" * 2001}])
+    assert r.status_code == 200
