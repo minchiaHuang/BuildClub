@@ -326,11 +326,11 @@ def test_stale_after_music_change_but_not_speed(client, setup, fake_pipeline):
     assert client.get("/api/ideas/ia/cut").json()["stale"] is True
 
 
-def test_stale_ignores_takes_beyond_the_shot_count(client, setup, fake_pipeline):
+def test_stale_ignores_unchosen_takes_beyond_the_shot_count(client, setup, fake_pipeline):
     with_take(client, shot=0)
     start(client, shots=1)
     wait_for(client)
-    with_take(client, shot=3)
+    with_take(client, shot=0)  # a second, unchosen take of a shot that is in the cut
     assert client.get("/api/ideas/ia/cut").json()["stale"] is False
 
 
@@ -450,3 +450,11 @@ def test_two_starts_cannot_both_pass(client, setup, slow_pipeline):
     assert sorted(results) == [202, 409, 409, 409]
     release.set()
     wait_for(client)
+
+
+def test_stale_when_the_number_of_picked_shots_changes(client, setup, fake_pipeline):
+    with_take(client, shot=0)
+    start(client, shots=1)
+    assert wait_for(client)["stale"] is False
+    with_take(client, shot=1)
+    assert client.get("/api/ideas/ia/cut").json()["stale"] is True

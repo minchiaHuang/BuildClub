@@ -180,8 +180,9 @@ def build_cut_graph(keeps: list[tuple[float, float]], speed: float, *, music: bo
     mixed = "as"
     if music:
         out = output_duration(keeps, speed)
-        parts.append(f"[1:a]atrim=0:{num(out)},volume=0.25,afade=t=in:d=1.2,"
-                     f"afade=t=out:st={num(out - 1.2)}:d=1.2[m]")
+        fade = min(1.2, out / 2)  # a very short video still gets a valid (non-negative) fade-out start
+        parts.append(f"[1:a]atrim=0:{num(out)},volume=0.25,afade=t=in:d={num(fade)},"
+                     f"afade=t=out:st={num(max(0, out - fade))}:d={num(fade)}[m]")
         parts.append("[as][m]amix=inputs=2:duration=first:normalize=0[am]")
         mixed = "am"
     if loudnorm is None:

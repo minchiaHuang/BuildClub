@@ -24,6 +24,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
   // Bumped to (re)load the state and resume polling when it is still active.
   const [loadKey, setLoadKey] = useState(0)
   const [speed, setSpeed] = useState(1.1)
+  const speedSynced = useRef(false) // the picker follows the loaded cut once, then the user's choice
   const [licensed, setLicensed] = useState(false)
   const [musicBusy, setMusicBusy] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -37,6 +38,8 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
         const state = await getCut(ideaId)
         if (ac.signal.aborted) return
         setCut(state)
+        if (!speedSynced.current && state.status !== 'none' && SPEEDS.includes(state.speed)) setSpeed(state.speed)
+        speedSynced.current = true
         if (isActive(state)) await pollCut(ideaId, (s) => setCut(s), { signal: ac.signal })
       } catch (e) {
         if (!ac.signal.aborted) setLoadError((e as Error).message)
@@ -198,7 +201,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
 
       {output && (
         <div className="cut-output">
-          {cut?.stale && <p className="small">The takes changed after this was made. Make it again.</p>}
+          {cut?.stale && <p className="small">The takes or music changed after this was made. Make it again.</p>}
           <video key={output.url} controls playsInline preload="metadata" src={output.url} />
           <div className="cut-output-meta">
             <a className="btn btn-ghost btn-sm" href={`${output.url}${output.url.includes('?') ? '&' : '?'}download=1`} download>

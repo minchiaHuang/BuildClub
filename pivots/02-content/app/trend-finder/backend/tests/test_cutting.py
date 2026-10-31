@@ -213,3 +213,9 @@ def test_wordless_spans_picks_takes_without_words():
     words = [(0.5, 1.0, "a"), (5.5, 6.0, "b")]
     spans = cutting.wordless_spans([2.0, 3.0, 3.0], words)
     assert spans == [(2.0, 5.0)]
+
+
+def test_cut_graph_music_fades_stay_non_negative_for_a_short_output():
+    graph = cutting.build_cut_graph([(0.0, 0.88)], 1.1, music=True, audio_only=False, loudnorm=None)
+    assert "afade=t=out:st=0.4:d=0.4" in graph and "st=-" not in graph
+    assert "afade=t=in:d=0.4" in graph

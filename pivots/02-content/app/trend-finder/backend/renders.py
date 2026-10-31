@@ -205,7 +205,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                 # is part of the fingerprint, but it is the one the video was made at, so it never differs.
                 current = signature([t[0] for t in chosen_ids(conn, idea_id, out_shots)], out_speed,
                                     music[0] if music else None)
-                out["stale"] = current != out_sig
+                # A different number of shots with a chosen take also means the cut no longer matches.
+                picked = conn.execute("SELECT COUNT(DISTINCT shot) FROM takes WHERE idea_id = ? AND chosen = 1",
+                                      (idea_id,)).fetchone()[0]
+                out["stale"] = current != out_sig or picked != out_shots
         return out
 
     def editable(idea_id: str):
