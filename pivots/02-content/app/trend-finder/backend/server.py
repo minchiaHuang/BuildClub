@@ -792,6 +792,7 @@ def auth_me(request: Request):
 
 app.include_router(share.make_router(db, load, save))
 app.include_router(publishing.make_router(db, load))
+publishing.seed_demo(db)
 
 
 budget_lock = threading.Lock()

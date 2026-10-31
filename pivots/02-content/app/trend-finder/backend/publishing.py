@@ -14,6 +14,10 @@ SCHEMA = (
     "CREATE TABLE IF NOT EXISTS publications (id TEXT PRIMARY KEY, idea_id TEXT NOT NULL, variant TEXT NOT NULL DEFAULT 'A', "
     "platform TEXT NOT NULL, scheduled_at INTEGER, status TEXT NOT NULL, external_id TEXT, error TEXT, created_at INTEGER NOT NULL)",
 )
+SCHEMA += (
+    "CREATE TABLE IF NOT EXISTS publication_metrics (publication_id TEXT NOT NULL, views INTEGER, likes INTEGER, "
+    "comments INTEGER, shares INTEGER, fetched_at INTEGER NOT NULL, source TEXT)",
+)
 PLATFORMS = ("tiktok", "instagram", "youtube")
 
 
@@ -49,6 +53,34 @@ class PublicationCreate(BaseModel):
     platform: str
     variant: str = "A"
     scheduledAt: Optional[int] = None
+
+
+class MetricsIn(BaseModel):
+    views: Optional[int] = None
+    likes: Optional[int] = None
+    comments: Optional[int] = None
+    shares: Optional[int] = None
+    fetchedAt: Optional[int] = None
+    source: Optional[str] = None
+
+
+COUNTS = ("views", "likes", "comments", "shares")
+
+
+def seed_demo(db) -> None:
+    """Demo mode only, and only into an empty table: one approved idea posted as two variants with numbers."""
+    if not is_demo():
+        return
+    now = int(time.time())
+    with db() as conn:
+        if conn.execute("SELECT COUNT(*) FROM publications").fetchone()[0]:
+            return
+        for variant, views, likes in (("A", 12400, 960), ("B", 8100, 540)):
+            pid = f"demo-{variant.lower()}"
+            conn.execute(f"INSERT INTO publications ({COLUMNS}) VALUES (?, 'demo-ab', ?, 'tiktok', NULL, 'published', ?, NULL, ?)",
+                         (pid, variant, f"fake-{pid}", now))
+            conn.execute("INSERT INTO publication_metrics VALUES (?, ?, ?, ?, ?, ?, 'demo')",
+                         (pid, views, likes, views // 100, views // 200, now))
 
 
 def to_json(row) -> dict:
@@ -104,5 +136,35 @@ def make_router(db, load) -> APIRouter:
             rows = conn.execute(f"SELECT {COLUMNS} FROM publications WHERE idea_id = ? ORDER BY created_at, variant",
                                 (idea_id,)).fetchall()
         return [to_json(r) for r in rows]
+
+    @router.post("/api/publications/{pid}/metrics")
+    def add_metrics(pid: str, body: MetricsIn):
+        with db() as conn:
+            if conn.execute("SELECT 1 FROM publications WHERE id = ?", (pid,)).fetchone() is None:
+                return JSONResponse({"error": "No such publication."}, status_code=404)
+            conn.execute("INSERT INTO publication_metrics VALUES (?, ?, ?, ?, ?, ?, ?)",
+                         (pid, body.views, body.likes, body.comments, body.shares,
+                          body.fetchedAt if body.fetchedAt is not None else int(time.time()), body.source))
+        return {"ok": True}
+
+    @router.get("/api/ideas/{idea_id}/compare")
+    def compare(idea_id: str):
+        with db() as conn:
+            pubs = conn.execute("SELECT id, variant, platform FROM publications WHERE idea_id = ? ORDER BY variant, created_at",
+                                (idea_id,)).fetchall()
+            variants = []
+            for pid, variant, platform in pubs:
+                snap = conn.execute("SELECT views, likes, comments, shares, fetched_at, source FROM publication_metrics "
+                                    "WHERE publication_id = ? ORDER BY fetched_at DESC, rowid DESC LIMIT 1", (pid,)).fetchone()
+                latest = None if snap is None else {**dict(zip(COUNTS, snap[:4])), "fetchedAt": snap[4], "source": snap[5]}
+                variants.append({"variant": variant, "publicationId": pid, "platform": platform, "latest": latest,
+                                 "viewsVsBest": None})
+        views = [v["latest"]["views"] for v in variants if v["latest"] and v["latest"]["views"] is not None]
+        best = max(views, default=0)
+        if len(variants) > 1 and len(views) > 1 and best > 0:
+            for v in variants:
+                if v["latest"] and v["latest"]["views"] is not None:
+                    v["viewsVsBest"] = v["latest"]["views"] / best
+        return {"variants": variants}
 
     return router
