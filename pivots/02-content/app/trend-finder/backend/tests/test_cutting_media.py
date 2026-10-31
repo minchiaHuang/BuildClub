@@ -125,6 +125,77 @@ def test_take_without_audio_and_silent_output(tmp_path):
 
 
 @need_ffmpeg
+def test_silent_take_joined_with_normal_take(tmp_path):
+    silent = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)], with_audio=False)
+    normal = make_clip(tmp_path / "b.mp4", [("tone", 440, 2.0)])
+    _, p, out = cut(tmp_path, [{"path": silent}, {"path": normal}], words_fn=lambda w, d: [])
+    assert p["duration"] == pytest.approx(3.5, abs=0.15)
+    assert_spec(p)
+    streams = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_name",
+                              "-of", "csv=p=0", str(out)], capture_output=True, text=True).stdout.split()
+    assert streams == ["aac"]
+    assert mean_volume(out, 0.2, 1.0) < -60 and mean_volume(out, 2.0, 1.0) > -35  # silence first, then the tone
+
+
+def make_wav(path, seconds, freq=220):
+    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", f"sine=f={freq}:d={seconds}:r=44100",
+                        str(path)], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    assert r.returncode == 0, r.stderr
+    return path
+
+
+@need_ffmpeg
+def test_music_is_mixed_low_and_loudness_holds(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", GAP_CLIP)
+    music = make_wav(tmp_path / "m.wav", 3)
+    _, p, out = cut(tmp_path, [{"path": clip}], music=music)
+    assert p["duration"] == pytest.approx(2.24, abs=0.15)
+    assert_spec(p)
+    assert cutting.measure_loudness(out)["I"] == pytest.approx(-13, abs=1.0)
+
+
+@need_ffmpeg
+def test_music_longer_than_video_is_trimmed(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", GAP_CLIP)
+    music = make_wav(tmp_path / "m.wav", 20)
+    _, p, _ = cut(tmp_path, [{"path": clip}], music=music)
+    assert p["duration"] == pytest.approx(2.24, abs=0.15)
+    assert_spec(p)
+
+
+@need_ffmpeg
+def test_all_silent_take_renders(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", [("quiet", None, 2.0)])
+    _, p, out = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [])
+    assert p["duration"] == pytest.approx(2.0, abs=0.15)
+    assert_spec(p)
+    assert mean_volume(out, 0.2, 1.5) < -60
+
+
+@need_ffmpeg
+def test_landscape_is_center_cropped(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)], size="640x360")
+    _, p, _ = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [])
+    assert_spec(p)
+    graph = cutting.build_join_graph([{"hasAudio": True, "duration": 1.5}])
+    assert "crop=1080:1920" in graph and "pad=" not in graph
+
+
+@need_ffmpeg
+def test_portrait_input_passes_through(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)], size="360x640")
+    _, p, _ = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [])
+    assert_spec(p)
+    assert p["duration"] == pytest.approx(1.5, abs=0.15)
+
+
+def test_render_pass_timeout_is_a_human_sentence(tmp_path, monkeypatch):
+    monkeypatch.setattr(cutting, "FFMPEG_TIMEOUT", 0.3)
+    with pytest.raises(cutting.CutError, match="took too long"):
+        cutting._render_pass(["sleep", "5"], 1.0, lambda f: None, tmp_path / "err.txt")
+
+
+@need_ffmpeg
 def test_music_is_mixed_and_looped(tmp_path):
     # 0.8 s of speech-like tone then 1.2 s of silence; music is only 0.5 s long, so sound in the tail
     # proves both that it is mixed and that it loops.
