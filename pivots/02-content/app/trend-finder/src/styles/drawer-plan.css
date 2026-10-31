@@ -239,3 +239,19 @@
 .take-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .take-add { justify-self: start; cursor: pointer; }
 .take-add.is-busy { opacity: 0.6; cursor: progress; }
+
+/* Make the video: the cut of an approved plan */
+.cut-panel { min-width: 0; }
+.cut-options { display: grid; gap: var(--space-sm); justify-items: start; margin-top: var(--space-sm); }
+.cut-speed { display: grid; gap: 4px; }
+.cut-music { display: grid; gap: var(--space-xs); justify-items: start; max-width: 100%; }
+.cut-music-file { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); max-width: 100%; }
+.cut-music-file .take-name { max-width: 220px; }
+.cut-license { display: flex; align-items: flex-start; gap: var(--space-xs); }
+.take-add.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.cut-progress { display: grid; gap: 4px; margin-top: var(--space-sm); }
+.cut-progress progress { width: 100%; max-width: 360px; }
+.cut-failed { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-sm); }
+.cut-output { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-sm); }
+.cut-output video { max-width: 100%; width: 270px; aspect-ratio: 9 / 16; background: var(--surface-2); border-radius: var(--radius-sm); }
+.cut-output-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }

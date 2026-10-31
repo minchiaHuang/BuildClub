@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { useManagerName } from '../lib/appContext'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
@@ -10,6 +10,7 @@ import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { lastSentBack } from '../lib/memory'
 import { StageSelect } from './StageSelect'
 import { ShotChecklist } from './ShotChecklist'
+import { CutPanel } from './CutPanel'
 
 interface Props {
   idea: SavedIdea
@@ -49,6 +50,18 @@ export function PlanScreen(p: Props) {
   const [addedAt, setAddedAt] = useState<number | null>(null)
   // "Edit" on an approved plan asks first, because it sends the plan back for approval.
   const [confirmEdit, setConfirmEdit] = useState(false)
+  // Shots with a chosen take, reported by the shot checklist for the video panel.
+  const [shotsDone, setShotsDone] = useState(0)
+  // Counts every report from the checklist (a take added, removed or re-chosen), for the video panel's stale check.
+  const [takesRevision, setTakesRevision] = useState(0)
+  useEffect(() => {
+    setShotsDone(0)
+    setTakesRevision(0)
+  }, [idea.id])
+  const onTakesProgress = useCallback((done: number) => {
+    setShotsDone(done)
+    setTakesRevision((r) => r + 1)
+  }, [])
 
   const shots = idea.shots ?? format.shotList
   // Approved plans are locked: the team films what the manager approved. Sent-back plans can be fixed and sent again.
@@ -305,7 +318,8 @@ export function PlanScreen(p: Props) {
             )}
           </section>
 
-          <ShotChecklist key={idea.id} ideaId={idea.id} status={idea.status} shots={shots} />
+          <ShotChecklist key={idea.id} ideaId={idea.id} status={idea.status} shots={shots} onProgress={onTakesProgress} />
+          <CutPanel key={idea.id} ideaId={idea.id} status={idea.status} shotCount={shots.length} shotsDone={shotsDone} takesRevision={takesRevision} />
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">
