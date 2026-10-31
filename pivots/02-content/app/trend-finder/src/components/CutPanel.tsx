@@ -67,7 +67,11 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone }: Props) {
     setError(null)
     setMusicBusy(true)
     try {
-      setCut(await action())
+      const res = await action()
+      // Merge only the music: the job state may have moved on since this request started.
+      setCut((prev) => (prev ? { ...prev, music: res.music, stale: res.stale } : res))
+      // Each upload needs a fresh license confirmation.
+      setLicensed(false)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -141,7 +145,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone }: Props) {
           </div>
 
           {cut?.status !== 'failed' && (
-            <button type="button" className="btn btn-primary" disabled={!ready || starting} onClick={() => void start()}>
+            <button type="button" className="btn btn-primary" disabled={!ready || starting || musicBusy} onClick={() => void start()}>
               Make the video
             </button>
           )}
@@ -161,7 +165,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone }: Props) {
             {cut.error}
           </p>
           {approved && (
-            <button type="button" className="btn btn-primary" disabled={!ready || starting} onClick={() => void start()}>
+            <button type="button" className="btn btn-primary" disabled={!ready || starting || musicBusy} onClick={() => void start()}>
               Try again
             </button>
           )}

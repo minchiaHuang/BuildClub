@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { useManagerName } from '../lib/appContext'
 import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
@@ -52,6 +52,7 @@ export function PlanScreen(p: Props) {
   const [confirmEdit, setConfirmEdit] = useState(false)
   // Shots with a chosen take, reported by the shot checklist for the video panel.
   const [shotsDone, setShotsDone] = useState(0)
+  useEffect(() => setShotsDone(0), [idea.id])
 
   const shots = idea.shots ?? format.shotList
   // Approved plans are locked: the team films what the manager approved. Sent-back plans can be fixed and sent again.
