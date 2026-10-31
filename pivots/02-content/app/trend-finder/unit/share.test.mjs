@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AlreadyReviewed, REJECT_TAGS, loadReview, reviewTokenFromPath, sendDecision } from '../src/lib/share.ts'
+import { AlreadyReviewed, LinkClosed, REJECT_TAGS, loadReview, reviewTokenFromPath, sendDecision } from '../src/lib/share.ts'
 
 const reply = (status, body) => async () => new Response(body === undefined ? null : JSON.stringify(body), { status })
 
@@ -32,10 +32,17 @@ test('loadReview gives null for a closed link and throws for any other failure',
 })
 
 test('sendDecision tells "already reviewed" (404) apart from other failures', async () => {
-  globalThis.fetch = reply(404, { error: "This idea isn't waiting for review." })
+  globalThis.fetch = reply(404, { error: "This idea isn't waiting for review.", code: 'not_waiting' })
   await assert.rejects(sendDecision('t', 'i1', true), AlreadyReviewed)
   globalThis.fetch = reply(500)
   await assert.rejects(sendDecision('t', 'i1', true), (e) => e instanceof Error && !(e instanceof AlreadyReviewed))
   globalThis.fetch = reply(200, {})
   await sendDecision('t', 'i1', false, 'too long', ['Other'])
+})
+
+test('sendDecision tells a closed link from an already reviewed idea by code, not by wording', async () => {
+  globalThis.fetch = reply(404, { error: 'Any wording at all', code: 'link_closed' })
+  await assert.rejects(sendDecision('t', 'i1', true), LinkClosed)
+  globalThis.fetch = reply(404, { error: 'This link has gone, link link', code: 'not_waiting' })
+  await assert.rejects(sendDecision('t', 'i1', true), AlreadyReviewed)
 })
