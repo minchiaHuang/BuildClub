@@ -123,6 +123,27 @@ def test_state_cleared_on_success(client, monkeypatch):
     assert r.status_code == 302 and state_cleared(r)
 
 
+def test_replayed_state_rejected(client, monkeypatch):
+    add_user()
+    enable(monkeypatch, {"sub": "g-1", "email": "daphne@agency.test", "email_verified": True})
+    state = start_state(client)
+    first = client.get("/api/auth/google/callback", params={"code": "c", "state": state}, follow_redirects=False)
+    assert first.headers["location"] == "/"
+    client.cookies.set("tf_google_state", state, path="/api/auth/google")  # an attacker still holding the cookie
+    again = client.get("/api/auth/google/callback", params={"code": "c", "state": state}, follow_redirects=False)
+    assert error_of(again) == "expired"
+
+
+def test_failed_attempt_also_uses_up_the_state(client, monkeypatch):
+    add_user()
+    enable(monkeypatch, {"sub": "g-2", "email": "stranger@elsewhere.test", "email_verified": True})
+    state = start_state(client)
+    client.get("/api/auth/google/callback", params={"code": "c", "state": state}, follow_redirects=False)
+    client.cookies.set("tf_google_state", state, path="/api/auth/google")
+    again = client.get("/api/auth/google/callback", params={"code": "c", "state": state}, follow_redirects=False)
+    assert error_of(again) == "expired"
+
+
 def test_state_older_than_ten_minutes_rejected(client, monkeypatch):
     add_user()
     enable(monkeypatch, {"sub": "g-1", "email": "daphne@agency.test", "email_verified": True})

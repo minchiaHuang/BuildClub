@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import secrets
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -55,6 +56,22 @@ def state_ok(state: str | None, cookie: str | None) -> bool:
         return False
     issued = payload.rpartition(".")[2]
     return issued.isdigit() and 0 <= time.time() - int(issued) <= STATE_SECONDS
+
+
+_used: dict[str, float] = {}  # state -> when it stops mattering; each state works once
+_used_lock = threading.Lock()
+
+
+def use_once(state: str) -> bool:
+    """True the first time this state is seen, False on any replay. Entries are dropped once they would expire anyway."""
+    now = time.time()
+    with _used_lock:
+        for old in [s for s, until in _used.items() if until < now]:
+            del _used[old]
+        if state in _used:
+            return False
+        _used[state] = now + STATE_SECONDS
+        return True
 
 
 def redirect_uri() -> str:
@@ -111,7 +128,7 @@ def make_router(db, cookie_secure) -> APIRouter:
             response.delete_cookie(STATE_COOKIE, path="/api/auth/google")
             return response
 
-        if not state_ok(state, request.cookies.get(STATE_COOKIE)):
+        if not state_ok(state, request.cookies.get(STATE_COOKIE)) or not use_once(state):
             return fail("expired")
         try:
             who = exchange_code(code)
