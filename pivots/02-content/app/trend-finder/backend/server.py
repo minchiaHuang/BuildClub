@@ -41,6 +41,7 @@ import x
 import youtube
 import analyze
 import auth
+import google_auth
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
                     Library, LoginRequest, Pulse, NeedsRequest, NeedsResult, SavedIdea, SearchResult)
@@ -124,8 +125,8 @@ def password_ok(header: str) -> bool:
 # page and the approver's /review/<token> page can load), health, the landing-page stats, signing
 # in, and the approver's own API. Everything else under /api needs one. Matching is exact, or on
 # the "/api/review/" prefix with its trailing slash, so "/api/reviewX" is not let through.
-PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login")
-PUBLIC_API_PREFIX = "/api/review/"
+PUBLIC_API = ("/api/health", "/api/stats", "/api/auth/login", "/api/auth/config")
+PUBLIC_API_PREFIX = ("/api/review/", "/api/auth/google/")
 
 
 DOC_PATHS = ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")
@@ -659,6 +660,7 @@ def db() -> sqlite3.Connection:
     migrate_medians(conn)
     for statement in auth.SCHEMA:
         conn.execute(statement)
+    auth.migrate(conn)
     return conn
 
 
@@ -790,6 +792,7 @@ def auth_me(request: Request):
 
 
 app.include_router(share.make_router(db, load, save))
+app.include_router(google_auth.make_router(db, session_cookie_secure))
 
 
 budget_lock = threading.Lock()
