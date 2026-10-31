@@ -78,6 +78,9 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
   fastest: (a, b) => viewsPerDay(b) - viewsPerDay(a),
 }
 
+// Stands in for the selected client while there are none (a real-mode account that hasn't added one yet).
+const NO_CLIENT: Client = { id: '', name: '', niche: '', audience: '', monthlyTarget: 0, examples: [], cannot: [] }
+
 export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
@@ -397,7 +400,7 @@ export default function App() {
   }, [view])
 
   // Inside a client, everything (saving, fit checks, plans) is for that client.
-  const client = clients.find((c) => c.id === workspace) ?? clients[0]
+  const client = clients.find((c) => c.id === workspace) ?? clients[0] ?? NO_CLIENT
 
   const setWorkspace = (w: Workspace) => {
     setWorkspaceRaw(w)
@@ -621,7 +624,7 @@ export default function App() {
 
   // Check once a day per client, when its search page opens. Each attempt runs once per session, even if it fails.
   useEffect(() => {
-    if (!live || workspace === 'all' || view !== 'search' || pulseLoading) return
+    if (!live || workspace === 'all' || client === NO_CLIENT || view !== 'search' || pulseLoading) return
     const topic = clientTopic(client)
     if (!topic) return // nothing to look up yet: the search would be refused
     const p = pulses[client.id]
@@ -882,7 +885,7 @@ export default function App() {
   }
 
 
-  const inClient = workspace !== 'all'
+  const inClient = workspace !== 'all' && client !== NO_CLIENT
 
   return (
     <AppContext.Provider value={appContext}>
