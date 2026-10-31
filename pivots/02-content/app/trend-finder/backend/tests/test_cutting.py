@@ -165,3 +165,51 @@ def test_missing_tools(monkeypatch, tmp_path):
     monkeypatch.setattr(analyze, "MODEL", tmp_path / "missing.bin")
     assert cutting.missing_tools() == ("whisper.cpp or its model wasn't found (looked for /opt/homebrew/bin/whisper-cli "
                                        "and ~/models/ggml-large-v3-turbo-q5_0.bin), so the cut can't be made.")
+
+
+# E3: takes without speech are kept whole. Spans are (start, end) of each take in the joined timeline.
+def test_wordless_middle_take_is_kept_whole():
+    words = [(0.0, 1.0, "hello"), (6.0, 7.0, "world")]  # take 1: 0-2, take 2 (silent): 2-5, take 3: 5-8
+    keeps = cutting.keep_intervals(words, [], 8.0, protected=[(2.0, 5.0)])
+    assert _covers(keeps, 2.0, 5.0)
+    assert not _covers(keeps, 1.2, 1.9)  # silence inside the speaking take is still trimmed
+
+
+def _covers(keeps, a, b):
+    return any(k0 <= a + 1e-9 and k1 >= b - 1e-9 for k0, k1 in keeps)
+
+
+def test_wordless_first_take_is_kept_whole():
+    words = [(3.0, 4.0, "hello")]
+    keeps = cutting.keep_intervals(words, [], 5.0, protected=[(0.0, 2.0)])
+    assert _covers(keeps, 0.0, 2.0)
+    assert not _covers(keeps, 2.2, 2.8)
+
+
+def test_wordless_last_take_is_kept_whole():
+    words = [(0.0, 1.0, "hello")]
+    keeps = cutting.keep_intervals(words, [], 5.0, protected=[(3.0, 5.0)])
+    assert _covers(keeps, 3.0, 5.0)
+    assert not _covers(keeps, 1.2, 2.8)
+
+
+def test_take_with_words_is_still_trimmed():
+    keeps = cutting.keep_intervals(W, SIL, 3.5, protected=[])
+    assert keeps == [pytest.approx((0.0, 1.0)), pytest.approx((2.78, 3.5))]
+
+
+def test_protected_boundary_does_not_cut_into_protected_take():
+    # speaking take 0-3 (word 0-1, long silence after), protected take 3-5, speaking take 5-8 (word 7-8)
+    words = [(0.0, 1.0, "a"), (7.0, 8.0, "b")]
+    keeps = cutting.keep_intervals(words, [], 8.0, protected=[(3.0, 5.0)])
+    assert keeps == [pytest.approx((0.0, 1.12)), pytest.approx((3.0, 5.0)), pytest.approx((6.88, 8.0))]
+
+
+def test_no_words_with_protected_keeps_everything():
+    assert cutting.keep_intervals([], [], 5.0, protected=[(0.0, 5.0)]) == [(0.0, 5.0)]
+
+
+def test_wordless_spans_picks_takes_without_words():
+    words = [(0.5, 1.0, "a"), (5.5, 6.0, "b")]
+    spans = cutting.wordless_spans([2.0, 3.0, 3.0], words)
+    assert spans == [(2.0, 5.0)]

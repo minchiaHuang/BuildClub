@@ -60,10 +60,22 @@ def _effective_ends(words: list[Word], silences: list[tuple[float, float]]) -> l
     return ends
 
 
+def wordless_spans(durations: list[float], words: list[Word]) -> list[tuple[float, float]]:
+    """(start, end) in the joined timeline of every take that has no transcribed word starting inside it."""
+    spans, offset = [], 0.0
+    for d in durations:
+        end = offset + d
+        if not any(offset <= w[0] < end for w in words):
+            spans.append((offset, end))
+        offset = end
+    return spans
+
+
 def keep_intervals(words: list[Word], silences: list[tuple[float, float]], total: float,
-                   *, keep: float = 0.12, min_gap: float = 0.4) -> list[tuple[float, float]]:
+                   *, keep: float = 0.12, min_gap: float = 0.4,
+                   protected: list[tuple[float, float]] = ()) -> list[tuple[float, float]]:
     """Sorted, disjoint intervals of [0, total] to keep: fillers and gaps longer than min_gap are cut,
-    leaving `keep` seconds of air beside each real word."""
+    leaving `keep` seconds of air beside each real word. Nothing inside a `protected` span is ever cut."""
     if not words:
         return [(0.0, total)]
     words = sorted(words, key=lambda w: w[0])
@@ -92,6 +104,17 @@ def keep_intervals(words: list[Word], silences: list[tuple[float, float]], total
             merged[-1] = (merged[-1][0], max(merged[-1][1], b))
         else:
             merged.append((a, b))
+    for pa, pb in sorted(protected):
+        cut_up = []
+        for a, b in merged:
+            if b <= pa or a >= pb:
+                cut_up.append((a, b))
+                continue
+            if a < pa:
+                cut_up.append((a, pa))
+            if b > pb:
+                cut_up.append((pb, b))
+        merged = cut_up
     keeps, cursor = [], 0.0
     for a, b in merged + [(total, total)]:
         if a - cursor >= MIN_FRAGMENT:
@@ -349,7 +372,7 @@ def render_cut(takes: list[dict], music: Path | None, speed: float, work: Path, 
     else:
         step(0.50, "No speech found, so nothing was cut.")
         silences = []
-    keeps = keep_intervals(words, silences, total)
+    keeps = keep_intervals(words, silences, total, protected=wordless_spans([i["duration"] for i in infos], words))
     if sum(b - a for a, b in keeps) < 1.0:
         raise CutError("Less than a second would be left after cutting, so nothing was made.")
 

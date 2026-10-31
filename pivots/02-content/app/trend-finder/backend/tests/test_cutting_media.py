@@ -242,3 +242,12 @@ def test_real_whisper_on_say_audio(tmp_path):
 def test_run_times_out_with_a_human_sentence():
     with pytest.raises(cutting.CutError, match="took too long"):
         cutting.run(["sleep", "5"], timeout=0.2)
+
+
+@need_ffmpeg
+def test_silent_broll_take_is_kept_whole(tmp_path):
+    talk = make_clip(tmp_path / "a.mp4", GAP_CLIP)  # 3.5 s, 2.24 s after trimming
+    broll = make_clip(tmp_path / "b.mp4", [("quiet", None, 2.0)])
+    _, p, _ = cut(tmp_path, [{"path": talk}, {"path": broll}])  # fake words only exist in the first take
+    assert p["duration"] == pytest.approx(2.24 + 2.0, abs=0.2)
+    assert_spec(p)
