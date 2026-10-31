@@ -239,6 +239,42 @@
 - `.page-head`（標題加說明的直排，`src/styles/components.css:4`，例 `src/components/ReviewScreen.tsx:116`）、`.eyebrow`（灰色小字，不用全大寫，`src/styles/components.css:7`）、`.block`（區塊，`src/styles/components.css:9-10`）、`.quote`（左邊細線的引言，`src/styles/components.css:11`）。
 - 工具類別：`.muted`、`.small`、`.lede`、`.hint`、`.tabular`、`.sr-only`（`src/styles/base.css:29-34`）。
 
+### 2.11 留言串（時間點留言）
+
+- **用途**：在參考影片的某個秒數留言，讓經理和客戶能指著畫面說哪裡要改。
+- **class / 元件**：`.timed-comments`（整個區塊，`src/styles/shared-review.css:16`，元件 `src/components/TimedComments.tsx:106`）、`.tc-list` 與 `.tc-item`（留言清單，每則一格「時間 + 內容」，`src/styles/shared-review.css:17-18`，`src/components/TimedComments.tsx:115-117`）、`.tc-body`（`src/styles/shared-review.css:19`）、`.tc-at`（時間膠囊，`--surface-2` 底、`--radius-pill`，`src/styles/shared-review.css:20`）、`.tc-at-link`（能跳到影片該秒的版本，hover 變 `--surface-3`，`src/styles/shared-review.css:21-22`，`src/components/TimedComments.tsx:119`）、`.tc-form` / `.tc-row` / `.tc-time` / `.tc-actions`（新增留言的表單，`src/styles/shared-review.css:23-27`，`src/components/TimedComments.tsx:133-155`）。使用處：計畫頁 `src/components/PlanScreen.tsx:8` 與審核連結頁 `src/components/SharedReviewPage.tsx:10`。
+- **什麼時候用**：只在有參考影片可以定位的畫面；兩個入口共用同一個元件，樣式不要各寫一份。
+- **不能**：把時間做成彩色標籤（顏色只留給狀態）；自己寫新的留言樣式；在 `.tc-*` 裡寫死間距，一律用 `--space-*`。
+
+### 2.12 審核連結區塊（board-link）
+
+- **用途**：在 shortlist 看板上產生並複製給審核人的連結。
+- **class**：`.board-link`（輸入框加按鈕的直排，`src/styles/shared-review.css:11`）、`.board-link-row`（按鈕橫排，可換行，`src/styles/shared-review.css:12`）、`.board-link input`（滿寬，`src/styles/shared-review.css:13`）。元件：`src/components/ShortlistBoard.tsx:228-235`。
+- **什麼時候用**：要讓使用者複製一段連結或代碼的地方。
+- **不能**：把連結做成可點的外部連結樣式（它是要複製的文字）；在這裡再包一層卡片。
+
+### 2.13 審核連結頁（shared-*）
+
+- **用途**：審核人打開 `/review/<token>` 看到的獨立頁面，等於經理審核欄搬到沒有側邊欄的一頁。
+- **class**：`.shared-review`（整頁，`--bg` 底，`src/styles/shared-review.css:2`，元件 `src/components/SharedReviewPage.tsx:43`）、`.shared-ref`（參考影片列；有縮圖時為 76px 加內容兩欄，`src/styles/shared-review.css:3-4`，`src/components/SharedReviewPage.tsx:153`）、`.shared-answered`（已回覆提示，`--early-soft` 底，`src/styles/shared-review.css:5`，`src/components/SharedReviewPage.tsx:85`）、`.shared-card`（沿用 `.review-card`，不可點，`src/styles/shared-review.css:6-9`，`src/components/SharedReviewPage.tsx:152`）、`.review-stack`（卡片間距 `--space-2xl`，`src/styles/shared-review.css:10`，`src/components/SharedReviewPage.tsx:95`）。
+- **什麼時候用**：只給免登入的審核連結頁；登入後的畫面用 `ReviewScreen`（`src/components/ReviewScreen.tsx:131`）。
+- **不能**：在這一頁放側邊欄或要登入才有的資料；另寫一套按鈕或 chip（沿用 `.btn`、`.cchip`）。
+
+### 2.14 頻道摘要（chan-*）
+
+- **用途**：輸入一個頻道帳號，看它最近影片的格式、數據和 Top 3。
+- **class**：`.channel`（整個畫面，格線，`src/styles/channel.css:2`）、`.chan-form`（輸入表單卡，最寬 760px，`src/styles/channel.css:3-8`，`src/components/ChannelScreen.tsx:209`）、`.chan-row` 與 `.chan-handle`（帳號欄加送出鈕，`src/styles/channel.css:9-10`，`src/components/ChannelScreen.tsx:224-225`）、`.chan-quota`（額度說明，`src/styles/channel.css:36`，`src/components/ChannelScreen.tsx:240`）、`.chan-progress` 與 `.step-mark`（進度步驟與進度條，`src/styles/channel.css:11-20`，`src/components/ChannelScreen.tsx:89`）、`.chan-result` / `.chan-section` / `.chan-summary`（結果，`src/styles/channel.css:21-22`，`src/components/ChannelScreen.tsx:121-134`）、`.chan-formats` 與 `.chan-format`（每種格式一張卡，含 `.chan-facts`、`.chan-top3`，`src/styles/channel.css:23-30`，`src/components/ChannelScreen.tsx:31-47`）、`.chan-videos` 與 `.chan-video`（影片列，`.chan-format-pill` 標格式，`src/styles/channel.css:31-35`，`src/components/ChannelScreen.tsx:62-69`）。
+- **什麼時候用**：只用在頻道摘要畫面；卡片固定 `--surface` 底加 `--radius`，與 2.2 的卡片一致。
+- **不能**：按鈕旁省略額度提示（這個動作會花抓取額度）；在 `.chan-*` 內寫死 gap 或 padding，已有對應 token 的一律用 `--space-*`。
+
+### 2.15 同步提示（sync-note）
+
+- **用途**：告訴使用者一般的同步狀況，例如「已合併另一個分頁的修改」，並提供「Retry」。這是中性的資訊提示，不是錯誤。
+- **class / 元件**：`.sync-note`（橫排、可換行、`--radius-sm`、`--text-sm`，`src/styles/layout.css:117`），元件在 `src/App.tsx:891`，裡面的重試用 `.link-btn`（`src/App.tsx:893`）。
+- **顏色**：用資訊／灰色系，`--surface-2` 底加 `--muted` 字，不用 `--no`（錯誤紅）。目前 `src/styles/layout.css:117` 仍寫 `--no-soft` / `--no`，由另一個修正改成中性色；改完後以此條為準。
+- **什麼時候用**：非錯誤的同步訊息。真的失敗（儲存失敗、連不上）用 2.9 的 `.error`。
+- **不能**：用錯誤色顯示一般提示。
+
 ## 3. 目前還沒收進 token 的檔案（只記錄，沒有改）
 
 Task 1 只處理 `login.css`、`drawer-plan.css`、`approvals.css`、`layout.css`、`components.css`（計畫 Task 1 的 Files 清單）。以下檔案仍有寫死的色碼，數量用 `grep -c "#[0-9a-fA-F]\{3,6\}"` 統計（2026-10-31）：
@@ -257,3 +293,7 @@ Task 1 只處理 `login.css`、`drawer-plan.css`、`approvals.css`、`layout.css
 2. 新樣式放進最接近的檔案：共用元件放 `src/styles/components.css`，只屬於某一畫面的放該畫面的樣式檔。
 3. 數值全部讀 token；真的缺的 token 先加進 `src/styles/tokens.css`，且同步補深色值。
 4. 把新元件的用途、使用時機、禁忌和 class 補進本文件。
+
+## 5. 間距 token 的剩餘寫死值（2026-10-31）
+
+`src/styles/channel.css` 與 `src/styles/shared-review.css` 的 gap、padding 已改用 `--space-*`。沒有同值 token 的保留原值：`.channel` 的 `gap: 22px`（`src/styles/channel.css:2`）、`.shared-review` 底部 `56px`（`src/styles/shared-review.css:2`），以及尺寸類（`.step-mark` 22px、`.bar` 高 6px、`.chan-video` 縮圖欄 96px、`minmax(260px/320px)`、`.tc-time` 96px、`outline: 2px`）；它們不是間距，也沒有對應 token。
