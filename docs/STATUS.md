@@ -17,6 +17,13 @@ Remake phase 1 (end-to-end review flow, design system, new backends) is merged o
   - The "via review link" label on comments.
   - Comment seeking in a real TikTok player.
 
+## Phase 2a stage board (2026-10-31, branch feat/remake-stage-board)
+- Plan: `docs/phase2-2a-plan.md`. Approved plans move Ready to film → Filming → Editing → Posted (board row "In production", stage select on cards and the plan page, "N posted this month").
+- The backend keeps a stage only on approved plans; the review link never shows it.
+- Also fixed (phase 1): `approvedAt`, `managerNote`, `shotComments` were dropped on every save; a new review-link decision now clears an old "approve with changes" note.
+- `bash bin/verify.sh` GREEN (backend 296, unit 57); `npm run build`, `npm run lint` exit 0.
+- End-to-end on a demo backend (8811) passed at 1440 and 390: stage survives reload, review link has no stage, Edit clears the stage and keeps approvedAt, no horizontal overflow on the board or plan page at 390.
+
 ## Next-day environment (port 8805, real mode, no demo data)
 - Account: tommycat997@gmail.com, password given in chat.
 - Start (from the worktree root, detached): `nohup bash bin/isolated-backend.sh 8805 > /tmp/env-8805.log 2>&1 &`
@@ -30,7 +37,8 @@ Remake phase 1 (end-to-end review flow, design system, new backends) is merged o
 - Closed-link and already-reviewed messages are in English ("This link has been closed", "That plan was already reviewed"), not Chinese as the plan quotes.
 - Console noise in tests: 403/429 from TikTok embeds and one unexplained 404; not investigated.
 - No separate horizontal-overflow check at 390 width.
+- The approver's review page (`/review/<token>`) overflows at 390 (scrollWidth 1200, measured once on 2026-10-31); cause not investigated, possibly the TikTok embed.
 
 ## Next steps
 1. User testing on the 8805 environment.
-2. Phase 2 inventory done (2026-10-31): see `docs/phase2-scope.md`. User approved scope 2a-2c (stage board, shot checklist + real-footage upload, ffmpeg rough cut), real footage only. Next: implementation plan for 2a. Still open: rough cut vs finished cut, Annie approving the cut, video storage location.
+2. Phase 2 inventory done (2026-10-31): see `docs/phase2-scope.md`. User approved scope 2a-2c (stage board, shot checklist + real-footage upload, ffmpeg rough cut), real footage only. 2a stage board done on `feat/remake-stage-board` (PR to the fork, base `feat/remake-e2e`), waiting for review. Next: 2b plan after 2a merges. Still open: rough cut vs finished cut, Annie approving the cut, video storage location.
