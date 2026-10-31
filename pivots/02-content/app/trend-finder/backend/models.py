@@ -1,9 +1,10 @@
 """API contract between this backend and the front end. Field names match src/types.ts
 (camelCase), so the front end can use the JSON as is. /docs shows these models."""
 
+import math
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 
 class SearchVideo(BaseModel):
@@ -111,15 +112,26 @@ class SavedIdea(BaseModel):
 class NewComment(BaseModel):
     """A note pinned to a second of a plan's reference video."""
     videoId: str
-    atSec: float = Field(ge=0)
+    atSec: float = Field(ge=0, le=86400, allow_inf_nan=False)  # within a day
     text: str = Field(min_length=1, max_length=500)
     author: str = Field(min_length=1, max_length=60)
+
+    @field_validator("atSec", mode="before")
+    @classmethod
+    def _finite(cls, v):
+        # Swap NaN/Infinity for an out-of-range number: the 422 echoes the input, and JSON can't carry them.
+        if isinstance(v, float) and not math.isfinite(v):
+            return -1.0
+        return v
 
 
 class Comment(NewComment):
     id: str
     ideaId: str
     createdAt: int
+    # Set by the server from the route used, never by the client. Older stored comments have none and
+    # count as "review", so a typed name is never shown as staff.
+    source: Literal["staff", "review"] = "review"
 
 
 class Pattern(BaseModel):
