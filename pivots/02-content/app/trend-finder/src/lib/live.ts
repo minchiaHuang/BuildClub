@@ -1,6 +1,6 @@
 import type { Baseline, Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
 import type { Answer } from './answer'
-import { UNKNOWN_DAYS, hasScore, meanScore, outlierScore } from './metrics'
+import { UNKNOWN_DAYS, hasScore, meanScore, outlierScore } from './metrics.ts'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
 interface LiveItem {
@@ -426,8 +426,12 @@ export class IdeasConflict extends Error {
   }
 }
 
-// Saves the whole list if `rev` is still current; returns the new revision.
-export async function saveIdeas(items: SavedIdea[], rev: string | null): Promise<string | null> {
+// Saves the whole list if `rev` is still current; returns the new revision and the list the API kept
+// (it may hold a newer answer from the approver than the one sent).
+export async function saveIdeas(
+  items: SavedIdea[],
+  rev: string | null,
+): Promise<{ rev: string | null; items: SavedIdea[] }> {
   const r = await fetch('/api/ideas', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...(rev ? { 'If-Match': rev } : {}) },
@@ -438,7 +442,8 @@ export async function saveIdeas(items: SavedIdea[], rev: string | null): Promise
     throw new IdeasConflict(body.ideas ?? [], r.headers.get('ETag'))
   }
   if (!r.ok) throw new SaveError('Could not save ideas.', r.status)
-  return r.headers.get('ETag')
+  const kept = (await r.json().catch(() => null)) as SavedIdea[] | null
+  return { rev: r.headers.get('ETag'), items: Array.isArray(kept) ? kept : items }
 }
 
 // The real videos and breakdowns that saved ideas point to. Without them, a saved idea opened
