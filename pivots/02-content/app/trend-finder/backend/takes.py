@@ -132,4 +132,33 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
             return error(404, "That take doesn't exist.")
         return FileResponse(path, media_type=MEDIA_TYPES[row[0]])
 
+    def editable_take(conn, idea_id: str, take_id: str):
+        """The take's (shot, ext), or the error to return: the plan must exist and be approved, the take be its own."""
+        found = find_idea(idea_id)
+        if found is None:
+            return error(404, "That plan doesn't exist.")
+        if found["status"] != "approved":
+            return error(409, "Only an approved plan can take footage.")
+        row = conn.execute("SELECT shot, ext FROM takes WHERE id = ? AND idea_id = ?", (take_id, idea_id)).fetchone()
+        return row or error(404, "That take doesn't exist.")
+
+    @router.post("/api/ideas/{idea_id}/takes/{take_id}/choose")
+    def choose(idea_id: str, take_id: str):
+        with takes_lock, db() as conn:
+            got = editable_take(conn, idea_id, take_id)
+            if isinstance(got, JSONResponse):
+                return got
+            conn.execute("UPDATE takes SET chosen = (id = ?) WHERE idea_id = ? AND shot = ?", (take_id, idea_id, got[0]))
+        return listed(idea_id)
+
+    @router.delete("/api/ideas/{idea_id}/takes/{take_id}")
+    def delete(idea_id: str, take_id: str):
+        with takes_lock, db() as conn:
+            got = editable_take(conn, idea_id, take_id)
+            if isinstance(got, JSONResponse):
+                return got
+            conn.execute("DELETE FROM takes WHERE id = ?", (take_id,))
+        (media_dir() / idea_id / f"{take_id}.{got[1]}").unlink(missing_ok=True)
+        return listed(idea_id)
+
     return router

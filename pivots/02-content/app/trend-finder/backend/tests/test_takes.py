@@ -151,3 +151,46 @@ def test_review_link_shows_no_takes(client, setup):
     token = client.post("/api/share", json={"clientId": "a"}).json()["token"]
     for path in (f"/api/review/{token}", f"/api/review/{token}/ideas/ia/takes"):
         assert t["id"] not in client.get(path).text
+
+
+def test_choose_moves_the_pick(client, setup):
+    up(client)
+    b = up(client).json()
+    got = client.post(f"/api/ideas/ia/takes/{b['id']}/choose").json()
+    assert [t["chosen"] for t in got] == [False, True]
+
+
+def test_choose_is_per_shot(client, setup):
+    a = up(client, shot=0).json()
+    b = up(client, shot=1).json()
+    c = up(client, shot=1).json()
+    got = {t["id"]: t["chosen"] for t in client.post(f"/api/ideas/ia/takes/{c['id']}/choose").json()}
+    assert got == {a["id"]: True, b["id"]: False, c["id"]: True}
+
+
+def test_delete_removes_file_and_unchooses(client, setup):
+    a = up(client).json()
+    up(client)
+    got = client.delete(f"/api/ideas/ia/takes/{a['id']}").json()
+    assert len(got) == 1 and got[0]["chosen"] is False
+    assert client.get(a["url"]).status_code == 404
+    assert len(media_files()) == 1
+
+
+def test_take_of_other_plan_404(client, setup):
+    other = up(client, idea="ib").json()
+    for r in (client.post(f"/api/ideas/ia/takes/{other['id']}/choose"),
+              client.delete(f"/api/ideas/ia/takes/{other['id']}")):
+        assert r.status_code == 404 and r.json()["error"] == "That take doesn't exist."
+    assert client.get("/api/ideas/ib/takes").json() == [other]
+
+
+def test_reopened_plan_keeps_takes_read_only(client, setup):
+    t = up(client).json()
+    store_ideas(idea("ia", "waiting"), idea("ib"))
+    assert client.get("/api/ideas/ia/takes").json() == [t]
+    assert client.get(t["url"]).status_code == 200
+    assert up(client).status_code == 409
+    for r in (client.post(f"/api/ideas/ia/takes/{t['id']}/choose"), client.delete(f"/api/ideas/ia/takes/{t['id']}")):
+        assert r.status_code == 409 and r.json()["error"] == "Only an approved plan can take footage."
+    assert client.get("/api/ideas/ia/takes").json() == [t]
