@@ -4,6 +4,7 @@ Passwords are never stored; only a per-user salt and a scrypt hash. Accounts are
 command line (server.py add-user), there is no self-service registration."""
 
 import hashlib
+import os
 import secrets
 import sqlite3
 import threading
@@ -20,7 +21,22 @@ SCHEMA = (
     "CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT, expires INTEGER)",
 )
 
+_migrated: set[tuple[str, int]] = set()  # (database file, inode) already migrated in this process
+
+
 def migrate(conn: sqlite3.Connection) -> None:
+    """Run _migrate once per database file, not on every connection."""
+    path = next((row[2] for row in conn.execute("PRAGMA database_list") if row[1] == "main"), "")
+    if not path:  # in-memory database: nothing to remember it by
+        _migrate(conn)
+        return
+    key = (path, os.stat(path).st_ino)
+    if key not in _migrated:
+        _migrate(conn)
+        _migrated.add(key)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
     """Databases made before Google sign-in have no google_sub column; add it and leave every row alone."""
     if not any(col[1] == "google_sub" for col in conn.execute("PRAGMA table_info(users)")):
         conn.execute("ALTER TABLE users ADD COLUMN google_sub TEXT")
