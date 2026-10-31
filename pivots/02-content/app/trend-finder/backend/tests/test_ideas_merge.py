@@ -54,3 +54,28 @@ def test_put_ideas_without_if_match_still_works(client):
     client.put("/api/ideas", json=[IDEA], headers={"If-Match": '"0"'})
     assert client.put("/api/ideas", json=[]).status_code == 200
     assert client.get("/api/ideas").headers["etag"] == '"2"'
+
+
+def test_merge_keeps_newer_reviewer_decision(client):
+    old = {"decision": "rejected", "reason": "no", "decidedAt": 2000}
+    client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 2000, "history": [old]}])
+    # A stale tab sends the idea as waiting and without the history it never saw.
+    saved = client.put("/api/ideas", json=[{**IDEA, "status": "waiting", "sentAt": 1000, "decidedAt": 1000}]).json()[0]
+    assert saved["status"] == "approved"
+    assert saved["decidedAt"] == 2000
+    assert saved["history"] == [old]
+
+
+def test_merge_allows_resend_after_decision_and_keeps_history(client):
+    old = {"decision": "rejected", "decidedAt": 2000}
+    client.put("/api/ideas", json=[{**IDEA, "status": "rejected", "decidedAt": 2000, "history": [old]}])
+    saved = client.put("/api/ideas", json=[{**IDEA, "status": "waiting", "sentAt": 3000}]).json()[0]
+    assert saved["status"] == "waiting"
+    assert saved["history"] == [old]
+
+
+def test_merge_history_never_shrinks(client):
+    h = [{"decision": "rejected", "decidedAt": 2000}, {"decision": "approved", "decidedAt": 4000}]
+    client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 4000, "sentAt": 3000, "history": h}])
+    saved = client.put("/api/ideas", json=[{**IDEA, "status": "approved", "decidedAt": 4000, "sentAt": 3000, "history": h[:1]}]).json()[0]
+    assert saved["history"] == h

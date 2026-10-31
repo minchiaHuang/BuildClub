@@ -1,18 +1,26 @@
 import { useState } from 'react'
 import { useApp } from '../lib/appContext'
 import { LandingAltitude } from './landing/LandingAltitude'
+import { login } from '../lib/auth'
 
 interface Props {
+  // `real` is true when the API has accounts: staff then sign in with email and password.
+  // Without accounts it stays the demo sign-in, where no password is checked.
+  real?: boolean
+  // Skip the landing page, e.g. after the session ended in the middle of work.
+  startAtLogin?: boolean
   onSignIn: () => void
 }
 
-// MOCK sign-in for the demo. No account or password is checked or stored; only the picked role is kept.
 // Staff covers the whole agency (team members and the manager who approves); clients get their own account.
 // Clients never see the agency's client list: their login is a separate second step (not built yet).
-export function LoginScreen({ onSignIn }: Props) {
+export function LoginScreen({ real = false, startAtLogin = false, onSignIn }: Props) {
   const { role: savedRole, setRole } = useApp()
-  const [mode, setMode] = useState<'landing' | 'login' | 'register' | 'client'>('landing')
+  const [mode, setMode] = useState<'landing' | 'login' | 'register' | 'client'>(startAtLogin ? 'login' : 'landing')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [account, setAccount] = useState<'staff' | 'client'>('staff')
   const [staffRole, setStaffRole] = useState<'member' | 'manager'>(savedRole === 'manager' ? 'manager' : 'member')
 
@@ -21,17 +29,27 @@ export function LoginScreen({ onSignIn }: Props) {
     setRole('member')
     onSignIn()
   }
-  if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onDemo={tryDemo} />
+  if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onDemo={real ? () => setMode('login') : tryDemo} />
 
   const register = mode === 'register'
   const isClient = account === 'client'
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isClient) {
       setMode('client')
-    } else {
-      setRole(staffRole)
+      return
+    }
+    setRole(staffRole)
+    if (!real) return onSignIn()
+    setError(null)
+    setBusy(true)
+    try {
+      await login(email.trim(), password)
       onSignIn()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't sign in. Try again.")
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -64,8 +82,12 @@ export function LoginScreen({ onSignIn }: Props) {
         ) : (
           <form className="la-login-card" onSubmit={submit}>
             <div className="la-login-head">
-              <h1>{register ? 'Start with the sample agency' : 'Log in to Remake'}</h1>
-              <p>Demo only. There is no password, and only the account type you pick is saved.</p>
+              <h1>{register && !real ? 'Start with the sample agency' : 'Log in to Remake'}</h1>
+              {real ? (
+                <p>Use the email and password your agency set up for you.</p>
+              ) : (
+                <p>Demo only. There is no password, and only the account type you pick is saved.</p>
+              )}
             </div>
             <label className="field">
               <span className="field-label">{isClient ? 'Email' : 'Work email'}</span>
@@ -78,6 +100,19 @@ export function LoginScreen({ onSignIn }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </label>
+            {real && !isClient && (
+              <label className="field">
+                <span className="field-label">Password</span>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </label>
+            )}
             <fieldset className="la-roles">
               <legend className="field-label">Log in as</legend>
               <label className="la-role">
@@ -104,15 +139,22 @@ export function LoginScreen({ onSignIn }: Props) {
                 </label>
               </fieldset>
             )}
-            <button type="submit" className="la-pill la-solid la-big">
-              {isClient ? 'Continue' : register ? 'Register and log in' : 'Log in'}
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="la-pill la-solid la-big" disabled={busy}>
+              {isClient ? 'Continue' : register && !real ? 'Register and log in' : 'Log in'}
             </button>
-            <p className="la-login-switch">
-              {register ? 'Already using Remake? ' : 'New here? '}
-              <button type="button" className="link-btn" onClick={() => setMode(register ? 'login' : 'register')}>
-                {register ? 'Log in' : 'Register free'}
-              </button>
-            </p>
+            {!real && (
+              <p className="la-login-switch">
+                {register ? 'Already using Remake? ' : 'New here? '}
+                <button type="button" className="link-btn" onClick={() => setMode(register ? 'login' : 'register')}>
+                  {register ? 'Log in' : 'Register free'}
+                </button>
+              </p>
+            )}
           </form>
         )}
       </section>

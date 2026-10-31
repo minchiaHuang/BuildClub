@@ -80,6 +80,14 @@ class Shot(BaseModel):
 Tag = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
 
 
+class Decision(BaseModel):
+    """One answer from the approver. Kept in SavedIdea.history so a resend still shows why it was rejected."""
+    decision: Literal["approved", "rejected"]
+    reason: Optional[str] = None
+    tags: Optional[list[Tag]] = Field(default=None, max_length=5)
+    decidedAt: int
+
+
 class SavedIdea(BaseModel):
     id: str
     videoId: str
@@ -96,6 +104,8 @@ class SavedIdea(BaseModel):
     # Daphne's production stage for an approved idea. No stage means "approved".
     stage: Optional[Literal["approved", "filming", "editing", "posted"]] = None
     postedAt: Optional[int] = None
+    # Every approver answer so far, oldest first. Only the review link appends to it.
+    history: Optional[list[Decision]] = None
 
 
 class Pattern(BaseModel):
@@ -288,6 +298,7 @@ class ReviewIdea(BaseModel):
     rejectReason: Optional[str] = None
     rejectTags: Optional[list[Tag]] = Field(default=None, max_length=5)
     decidedAt: Optional[int] = None
+    history: Optional[list[Decision]] = None
 
 
 class ReviewItem(BaseModel):

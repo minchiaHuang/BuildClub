@@ -1,4 +1,4 @@
-import type { Baseline, Format, Line, Platform, Shot, Video } from '../types'
+import type { Baseline, Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
 import type { Answer } from './answer'
 import { UNKNOWN_DAYS, hasScore, meanScore, outlierScore } from './metrics'
 
@@ -379,4 +379,86 @@ export function findPatterns(videos: Video[], query: string): Pattern[] {
     .filter((p) => p.accounts >= 2)
     .sort((a, b) => b.accounts - a.accounts || b.avgScore - a.avgScore)
     .slice(0, 6)
+}
+
+// Clients, saved ideas and the videos behind them are kept by the API, so they survive a new browser or computer.
+// null means nothing has been saved there yet.
+export async function loadList<T>(name: 'clients'): Promise<T[] | null> {
+  const r = await fetch(`/api/${name}`)
+  if (!r.ok) throw new Error(`Could not load ${name}.`)
+  return r.json()
+}
+
+// A save the API refused. status 401 means the session ended.
+export class SaveError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+export async function saveList<T>(name: 'clients', items: T[]): Promise<void> {
+  const r = await fetch(`/api/${name}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+  })
+  if (!r.ok) throw new SaveError(`Could not save ${name}.`, r.status)
+}
+
+// The ideas list carries a revision (the ETag header), so a tab holding an old copy can't overwrite a newer one.
+export async function loadIdeas(): Promise<{ items: SavedIdea[] | null; rev: string | null }> {
+  const r = await fetch('/api/ideas')
+  if (!r.ok) throw new SaveError('Could not load ideas.', r.status)
+  return { items: await r.json(), rev: r.headers.get('ETag') }
+}
+
+// Thrown by saveIdeas when the API holds a newer list than the revision sent: that list and its revision.
+// (The API answers such a stale save with 409 and the current list.)
+export class IdeasConflict extends Error {
+  items: SavedIdea[]
+  rev: string | null
+  constructor(items: SavedIdea[], rev: string | null) {
+    super('The ideas changed in another tab.')
+    this.items = items
+    this.rev = rev
+  }
+}
+
+// Saves the whole list if `rev` is still current; returns the new revision.
+export async function saveIdeas(items: SavedIdea[], rev: string | null): Promise<string | null> {
+  const r = await fetch('/api/ideas', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(rev ? { 'If-Match': rev } : {}) },
+    body: JSON.stringify(items),
+  })
+  if (r.status === 409 || r.status === 412) {
+    const body = await r.json().catch(() => ({}))
+    throw new IdeasConflict(body.ideas ?? [], r.headers.get('ETag'))
+  }
+  if (!r.ok) throw new SaveError('Could not save ideas.', r.status)
+  return r.headers.get('ETag')
+}
+
+// The real videos and breakdowns that saved ideas point to. Without them, a saved idea opened
+// in another browser has nothing to show.
+export interface Library {
+  videos: Video[]
+  formats: Format[]
+}
+
+export async function loadLibrary(): Promise<Library | null> {
+  const r = await fetch('/api/library')
+  if (!r.ok) throw new Error('Could not load saved videos.')
+  return r.json()
+}
+
+export async function saveLibrary(library: Library): Promise<void> {
+  const r = await fetch('/api/library', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(library),
+  })
+  if (!r.ok) throw new SaveError('Could not save saved videos.', r.status)
 }

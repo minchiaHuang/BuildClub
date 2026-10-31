@@ -47,6 +47,10 @@ def merge_ideas(stored: list, incoming: list) -> list:
         if decided and decided > max(idea.get("decidedAt") or 0, idea.get("sentAt") or 0):
             idea = {k: v for k, v in idea.items() if k not in DECISION_FIELDS}
             idea.update({k: theirs[k] for k in DECISION_FIELDS if k in theirs})
+        # The history only grows: keep the longer copy, so a stale tab cannot shorten it.
+        kept = (theirs or {}).get("history") or []
+        if len(kept) > len(idea.get("history") or []):
+            idea = {**idea, "history": kept}
         merged.append(idea)
     return merged
 
@@ -57,10 +61,12 @@ def decide_idea(ideas: list, client_id: str, idea_id: str, approved: bool, reaso
         if idea["id"] == idea_id and idea["clientId"] == client_id and idea["status"] == "waiting":
             decided = {k: v for k, v in idea.items() if k not in ("rejectReason", "rejectTags")}
             decided.update(status="approved" if approved else "rejected", decidedAt=now_ms)
+            entry = {"decision": decided["status"], "decidedAt": now_ms}
             if not approved and reason and reason.strip():
-                decided["rejectReason"] = reason.strip()
+                decided["rejectReason"] = entry["reason"] = reason.strip()
             if not approved and tags:
-                decided["rejectTags"] = list(tags)
+                decided["rejectTags"] = entry["tags"] = list(tags)
+            decided["history"] = list(idea.get("history") or []) + [entry]
             return ideas[:n] + [decided] + ideas[n + 1:], decided
     return None
 
