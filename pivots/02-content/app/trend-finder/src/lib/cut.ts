@@ -57,8 +57,9 @@ async function send<T>(r: Response, fallback: string): Promise<T> {
   throw new Error(body?.error ?? fallback)
 }
 
-export async function getCut(ideaId: string): Promise<CutState> {
-  return send(await fetch(base(ideaId)), "Couldn't load the cut.")
+export async function getCut(ideaId: string, shotCount?: number): Promise<CutState> {
+  const q = shotCount === undefined ? '' : `?shots=${shotCount}`
+  return send(await fetch(`${base(ideaId)}${q}`), "Couldn't load the cut.")
 }
 
 export async function putMusic(ideaId: string, file: File): Promise<CutState> {

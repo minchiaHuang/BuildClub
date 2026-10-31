@@ -77,6 +77,7 @@ test('getCut, startCut and deleteMusic hit the right routes', async () => {
     await getCut('a b')
     await startCut('a b', 3, 1.25)
     await deleteMusic('a b')
+    await getCut('a b', 2)
   } finally {
     f.restore()
   }
@@ -87,6 +88,7 @@ test('getCut, startCut and deleteMusic hit the right routes', async () => {
   assert.equal(f.calls[1].init.headers['content-type'], 'application/json')
   assert.equal(f.calls[2].url, '/api/ideas/a%20b/cut/music')
   assert.equal(f.calls[2].init.method, 'DELETE')
+  assert.equal(f.calls[3].url, '/api/ideas/a%20b/cut?shots=2')
 })
 
 test('API errors surface the server sentence, else the fallback', async () => {

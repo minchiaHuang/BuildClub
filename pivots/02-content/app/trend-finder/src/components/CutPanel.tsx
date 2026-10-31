@@ -35,7 +35,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
     setLoadError(null)
     void (async () => {
       try {
-        const state = await getCut(ideaId)
+        const state = await getCut(ideaId, shotCount)
         if (ac.signal.aborted) return
         setCut(state)
         if (!speedSynced.current && state.status !== 'none' && SPEEDS.includes(state.speed)) setSpeed(state.speed)
@@ -46,7 +46,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
       }
     })()
     return () => ac.abort()
-  }, [ideaId, loadKey])
+  }, [ideaId, loadKey, shotCount])
 
   // Re-read the state (for `stale`) when the takes change, unless a job is active and already being polled.
   const activeRef = useRef(false)

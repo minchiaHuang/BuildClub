@@ -183,7 +183,7 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
         folder = (root / idea_id).resolve()
         return folder / "cut" if folder.parent == root else None
 
-    def state_of(idea_id: str) -> dict:
+    def state_of(idea_id: str, shots: Optional[int] = None) -> dict:
         with db() as conn:
             row = conn.execute(f"SELECT {COLUMNS} FROM renders WHERE idea_id = ?", (idea_id,)).fetchone()
             music = music_row(conn, idea_id)
@@ -205,10 +205,8 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                 # is part of the fingerprint, but it is the one the video was made at, so it never differs.
                 current = signature([t[0] for t in chosen_ids(conn, idea_id, out_shots)], out_speed,
                                     music[0] if music else None)
-                # A different number of shots with a chosen take also means the cut no longer matches.
-                picked = conn.execute("SELECT COUNT(DISTINCT shot) FROM takes WHERE idea_id = ? AND chosen = 1",
-                                      (idea_id,)).fetchone()[0]
-                out["stale"] = current != out_sig or picked != out_shots
+                # The page sends the plan's current shot count; a plan that gained or lost a shot needs a new cut.
+                out["stale"] = current != out_sig or (shots is not None and shots != out_shots)
         return out
 
     def editable(idea_id: str):
@@ -225,10 +223,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
         return row is not None and row[0] in ACTIVE
 
     @router.get("/api/ideas/{idea_id}/cut")
-    def get_cut(idea_id: str):
+    def get_cut(idea_id: str, shots: Optional[int] = None):
         if find_idea(idea_id) is None:
             return error(404, "That plan doesn't exist.")
-        return state_of(idea_id)
+        return state_of(idea_id, shots)
 
     @router.get("/api/ideas/{idea_id}/cut/file")
     def get_file(idea_id: str, download: int = 0):
