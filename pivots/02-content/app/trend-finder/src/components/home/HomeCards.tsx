@@ -84,7 +84,7 @@ export function FilmNextCard(p: {
       label="Film next"
       title={
         <>
-          What should <em>{p.client.name}</em> film next?
+          What should {p.client.name} film next?
         </>
       }
     >
@@ -183,11 +183,7 @@ export function NeedsApprovalCard(p: {
       id="ch-needs"
       className="ch-needs"
       label="Needs your approval"
-      title={
-        p.waiting.length
-          ? `${plural(p.waiting.length, "plan")} waiting for your approval`
-          : "No plans waiting for your approval"
-      }
+      title="Waiting for approval"
       foot={
         p.waiting.length > 1 ? (
           <button className="btn btn-ghost btn-sm" onClick={p.onReview}>
@@ -198,8 +194,8 @@ export function NeedsApprovalCard(p: {
     >
       {p.waiting.length === 0 && (
         <Empty>
-          When someone sends a plan for approval, it shows up here so you can
-          approve it in one click.
+          Nothing waiting right now. When someone sends a plan for approval, it
+          shows up here so you can approve it in one click.
         </Empty>
       )}
       {shown.length > 0 && (
@@ -339,11 +335,7 @@ export function ReadyCard(p: {
       id="ch-ready"
       className="ch-ready"
       label="Next to film"
-      title={
-        p.approved.length
-          ? `${plural(p.approved.length, "approved plan")}, ready to film`
-          : "Nothing approved to film yet"
-      }
+      title="Approved, ready to film"
       foot={
         p.approved.length > shown.length ? (
           <button className="btn btn-ghost btn-sm" onClick={p.onOpenPlans}>
@@ -354,7 +346,8 @@ export function ReadyCard(p: {
     >
       {shown.length === 0 ? (
         <Empty>
-          Once you approve a plan it shows up here, the one due soonest first.
+          Nothing approved yet. Once you approve a plan it shows up here, the
+          one due soonest first.
         </Empty>
       ) : (
         <ol className="ch-rows ch-ready-list">
@@ -517,9 +510,9 @@ export function LaterSection(p: {
   return (
     <section className="ch-later-wrap" aria-labelledby="ch-later-title">
       <div className="ch-later-head">
-        <span className="field-label" id="ch-later-title">
+        <h2 className="ch-section-title" id="ch-later-title">
           After videos are posted
-        </span>
+        </h2>
         <p className="small muted">{p.intro}</p>
       </div>
       <div className="ch-later-grid">

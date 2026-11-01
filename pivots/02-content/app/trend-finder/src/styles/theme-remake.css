@@ -46,6 +46,8 @@
   --accent-hover: var(--blue-hover);
   --accent-fg: #ffffff;
   --accent-soft: var(--blue-soft);
+  /* Text on the light-blue (secondary) button: blue on light, a lighter blue on dark so it stays readable. */
+  --accent-soft-fg: var(--blue);
   --hot: var(--violet);
   --hot-soft: var(--violet-soft);
   --hot-fg: #ffffff;
@@ -81,6 +83,7 @@
     --blue: #4a5cff;
     --blue-hover: #3a4cf0;
     --blue-soft: #1a2160;
+    --accent-soft-fg: var(--label);
     --label: #8f9bff;
     --violet: #b98aff;
     --violet-soft: #2a1752;
@@ -128,8 +131,8 @@
 :root[data-ui="altitude"] .btn-sm { min-height: 34px; padding-inline: 14px; }
 :root[data-ui="altitude"] .btn-primary { background: var(--blue); color: #ffffff; box-shadow: none; }
 :root[data-ui="altitude"] .btn-primary:hover:not(:disabled) { background: var(--blue-hover); }
-:root[data-ui="altitude"] .btn-ghost { background: var(--surface); border-color: var(--line-strong); color: var(--fg); }
-:root[data-ui="altitude"] .btn-ghost:hover:not(:disabled) { background: var(--canvas-alt); }
+:root[data-ui="altitude"] .btn-ghost { background: var(--accent-soft); border-color: transparent; color: var(--accent-soft-fg); }
+:root[data-ui="altitude"] .btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 16%, var(--accent-soft)); }
 :root[data-ui="altitude"] .link-strong:hover { color: var(--label); }
 :root[data-ui="altitude"] :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 

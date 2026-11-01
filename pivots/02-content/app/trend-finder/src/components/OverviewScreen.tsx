@@ -100,10 +100,10 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
               id="ov-waiting"
               className="ov-waiting"
               label="Needs your approval"
-              title={totals.waiting ? `${plural(totals.waiting, 'plan')} waiting for your approval` : 'No plans waiting for your approval'}
+              title="Waiting for approval"
             >
               {waitingRows.length === 0 ? (
-                <Empty>When someone sends a plan for approval, the client shows up here.</Empty>
+                <Empty>Nothing waiting right now. When someone sends a plan for approval, the client shows up here.</Empty>
               ) : (
                 <ul className="ch-rows">
                   {waitingRows.map((r) => (

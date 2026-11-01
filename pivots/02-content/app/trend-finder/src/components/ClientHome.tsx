@@ -111,10 +111,12 @@ export function ClientHome(p: Props) {
     <section className="ch ch-wide">
       <header className="ch-head">
         <div className="ch-id">
-          <h1>{client.name}</h1>
-          <p className="muted">{client.niche}</p>
+          <h1>Dashboard</h1>
+          <p className="muted">
+            How {client.name} is tracking this month, and what needs you.
+          </p>
         </div>
-        <button className="btn btn-ghost" onClick={p.onFindIdeas}>
+        <button className="btn btn-primary" onClick={p.onFindIdeas}>
           Find ideas for {client.name}
         </button>
       </header>
