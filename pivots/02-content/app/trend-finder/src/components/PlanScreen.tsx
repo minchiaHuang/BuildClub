@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
-import { useManagerName } from '../lib/appContext'
-import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { capFirst, useManagerName } from '../lib/appContext'
+import { compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
 import { dueLabel, formatDay } from '../lib/dates'
 import { BestVideo } from './BestVideo'
 import type { PlayerControl } from './BestVideo'
@@ -43,6 +43,7 @@ export function PlanScreen(p: Props) {
   const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother } = p
   // The person who approves plans, from the agency settings.
   const APPROVER = useManagerName()
+  const Approver = capFirst(APPROVER) // for the start of a sentence
   // Last removed shot, so an accidental ✕ can be undone.
   const [removed, setRemoved] = useState<{ shot: Shot; index: number } | null>(null)
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle')
@@ -73,14 +74,13 @@ export function PlanScreen(p: Props) {
   const shotComment = (i: number) =>
     comments[i] && (
       <span className="shot-comment">
-        {APPROVER}: {comments[i]}
+        {Approver}: {comments[i]}
       </span>
     )
-  const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
-  const defaultNote = `Fits ${client.audience.toLowerCase()}. ${fit.text}`
-  const note = idea.noteToApprover ?? defaultNote
+  // No pre-filled note: stock audience text and a made-up fit line would be copied to the approver's page.
+  const note = idea.noteToApprover ?? ''
 
   const send = () => {
     onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined, rejectTags: undefined })
@@ -142,8 +142,8 @@ export function PlanScreen(p: Props) {
             <strong>{reopened ? `Sent back to ${APPROVER} for approval` : `Sent to ${APPROVER} for approval`}</strong>
             <span>
               {reopened
-                ? `Sent ${ago(idea.sentAt)}. Keep editing: ${APPROVER} sees your changes when reviewing it again.`
-                : `Sent ${ago(idea.sentAt)}. ${APPROVER}'s answer will show up in the Shortlist. Meanwhile, plan the next video for ${client.name}.`}
+                ? `Sent ${ago(idea.sentAt)}. Keep editing: ${Approver} sees your changes when reviewing it again.`
+                : `Sent ${ago(idea.sentAt)}. ${Approver}'s answer will show up in the Shortlist. Meanwhile, plan the next video for ${client.name}.`}
             </span>
           </div>
         </div>
@@ -155,7 +155,7 @@ export function PlanScreen(p: Props) {
             ✓
           </span>
           <div>
-            <strong>{idea.managerNote ? `${APPROVER} approved this with changes` : `${APPROVER} approved this`}</strong>
+            <strong>{idea.managerNote ? `${Approver} approved this with changes` : `${Approver} approved this`}</strong>
             <span>Film it by {formatDay(idea.dueDate)}, then copy the brief below for your editor.</span>
           </div>
         </div>
@@ -208,7 +208,7 @@ export function PlanScreen(p: Props) {
             <h3>Shots</h3>
             <p className="small muted">
               {reopened
-                ? `You're changing an approved plan. ${APPROVER} will review it again.`
+                ? `You're changing an approved plan. ${Approver} will review it again.`
                 : editable
                 ? `Based on the reference video. Edit them for ${client.name}: what you'll film and any text on screen.`
                 : idea.status === 'approved'
@@ -388,7 +388,7 @@ export function PlanScreen(p: Props) {
 
           {idea.status === 'rejected' && (
             <section className="block">
-              <h3>{APPROVER}'s feedback</h3>
+              <h3>{Approver}'s feedback</h3>
               {idea.rejectTags && idea.rejectTags.length > 0 && <p className="small">{idea.rejectTags.join(' · ')}</p>}
               <p className="quote">{idea.rejectReason || (idea.rejectTags?.length ? 'No written reason.' : 'No reason given.')}</p>
             </section>
@@ -408,7 +408,7 @@ export function PlanScreen(p: Props) {
       <div className="plan-bar">
         {idea.status === 'saved' && (
           <>
-            <span className="plan-bar-text">Ready? {APPROVER} will see the video, your shot list and your note.</span>
+            <span className="plan-bar-text">Ready? {Approver} will see the video, your shot list and your note.</span>
             <button className="btn btn-ghost" onClick={onBack}>
               Save for later
             </button>
@@ -489,7 +489,7 @@ export function PlanScreen(p: Props) {
 
         {idea.status === 'rejected' && (
           <>
-            <span className="plan-bar-text">{APPROVER} passed on this one. Edit the shots or note, then send it again.</span>
+            <span className="plan-bar-text">{Approver} passed on this one. Edit the shots or note, then send it again.</span>
             <button className="btn btn-ghost" onClick={onFindMore}>
               Find another idea
             </button>

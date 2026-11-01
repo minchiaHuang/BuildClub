@@ -27,7 +27,7 @@ function AgencySection() {
         </label>
         <label className="field">
           <span className="field-label">Manager's name</span>
-          <input id="manager-name" value={agency.managerName} onChange={(e) => setAgency({ managerName: e.target.value })} />
+          <input id="manager-name" placeholder="Who approves plans" value={agency.managerName} onChange={(e) => setAgency({ managerName: e.target.value })} />
         </label>
       </div>
     </fieldset>
@@ -53,7 +53,7 @@ export function OverviewScreen({ clients, ideas, onOpen, onAddClient }: Props) {
     <section className="overview">
       <header className="page-head-row">
         <div className="page-head">
-          <span className="eyebrow">{agency.agencyName} · All clients</span>
+          <span className="eyebrow">{agency.agencyName ? `${agency.agencyName} · All clients` : 'All clients'}</span>
           <h1>Where every client stands</h1>
           <p className="muted">This month's video targets, what's waiting for approval, and what's due next. Pick a client to find ideas.</p>
         </div>

@@ -108,7 +108,8 @@ export function reviewLine(r: CutReview | null, manager: string, day: (ms: numbe
   if (!r) return null
   if (r.status === 'waiting') return `Waiting for ${manager}'s approval · sent ${day(r.sentAt)}`
   const when = day(r.decidedAt ?? r.sentAt)
-  return r.status === 'approved' ? `${manager} approved this video · ${when}` : `${manager} sent this back · ${when}`
+  const who = manager.charAt(0).toUpperCase() + manager.slice(1) // "your approver" starts a sentence here
+  return r.status === 'approved' ? `${who} approved this video · ${when}` : `${who} sent this back · ${when}`
 }
 
 // Resolves after ms, or early when the signal aborts.

@@ -30,15 +30,15 @@ MAX_FRAMES = 12       # frames sent to the AI step, which is billed per image
 AI_MODEL = "claude-opus-5-5"
 AI_MAX_TOKENS = 16000  # caps one breakdown at about US$0.36 (2026-10-27 prices)
 
-# Every "needs" value in src/data/sample.ts: the list a breakdown chooses from unless the request brings its own.
+# Same list as GENERIC_NEEDS in src/data/needs.ts: what a breakdown chooses from unless the request brings its own.
 DEFAULT_NEEDS = [
-    "A kitchen",
-    "A blender",
-    "An overhead phone mount",
+    "Someone willing to be on camera",
+    "A tripod or a second person filming",
+    "Studio or ring lighting",
+    "Permission to film at a specific location",
+    "A finished product ready to show",
     "People willing to be filmed on the street",
     "A busy public spot",
-    "Permission to film in a supermarket",
-    "A confident presenter",
 ]
 
 PROMPT = """You are helping a social media manager understand why a short video went viral, so

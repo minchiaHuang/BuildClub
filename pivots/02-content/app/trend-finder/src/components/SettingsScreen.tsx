@@ -1,5 +1,6 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { formats } from '../data/sample'
+import { GENERIC_NEEDS } from '../data/needs'
 import { ClientMemory } from './ClientMemory'
 
 interface Props {
@@ -11,8 +12,6 @@ interface Props {
   formatById: Map<string, Format>
 }
 
-// Everything a format can need, so the agency can tick what this client can't do.
-const allNeeds = [...new Set(formats.flatMap((f) => f.needs))]
 const allAudiences = [...new Set(formats.flatMap((f) => f.audiences))]
 
 export function SettingsScreen({ client, onChange, ideas, videoById, formatById }: Props) {
@@ -57,7 +56,7 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
           <input
             id="client-topics"
             value={(client.topics ?? []).join(', ')}
-            placeholder="e.g. sydney nightclub, club night"
+            placeholder="e.g. sourdough, bakery tour"
             onChange={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trimStart()) })}
             onBlur={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
           />
@@ -91,7 +90,8 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
           <span className="small muted">Ticked items flag videos as hard to film for this client.</span>
         </legend>
         <div className="cannot-list">
-          {allNeeds.map((need) => (
+          {/* Anything already ticked stays listed, so a sample client's older items can still be unticked. */}
+          {[...new Set([...GENERIC_NEEDS, ...client.cannot])].map((need) => (
             <label key={need} className="check">
               <input type="checkbox" checked={client.cannot.includes(need)} onChange={() => toggleCannot(need)} />
               {need}
