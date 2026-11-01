@@ -1,0 +1,52 @@
+/* Plans board (ShortlistBoard): four columns you can drag plans between. Theme-remake tokens only.
+   Desktop: four columns side by side, scrolling sideways inside the board if they don't fit.
+   Phone: one column at a time, snapping, without making the page scroll sideways. */
+:root[data-ui="altitude"] .client.board { min-width: 0; }
+:root[data-ui="altitude"] .plans-board {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(272px, 1fr); gap: 16px; align-items: start;
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 8px;
+  max-width: 100%;
+  /* Its four columns never widen the page: they scroll inside the board. */
+  contain: inline-size;
+}
+@media (max-width: 760px) {
+  :root[data-ui="altitude"] .plans-board { grid-auto-columns: calc(100% - 32px); gap: 12px; scroll-snap-type: x mandatory; }
+}
+
+:root[data-ui="altitude"] .plans-col {
+  display: grid; gap: 12px; align-content: start; min-width: 0; scroll-snap-align: start;
+  background: var(--surface-2); border: 1px solid transparent; border-radius: var(--radius-lg); padding: 14px;
+  transition: border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+:root[data-ui="altitude"] .plans-col[data-drop="yes"] { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+:root[data-ui="altitude"] .plans-col[data-drop="over"] { border-color: var(--accent); background: var(--accent-soft); }
+:root[data-ui="altitude"] .plans-col[data-drop="no"] { opacity: 0.55; }
+
+:root[data-ui="altitude"] .plans-col-head { padding: 2px 4px; }
+:root[data-ui="altitude"] .plans-col-head h2 {
+  font-family: var(--font-serif); font-weight: 400; font-size: var(--text-md); letter-spacing: -0.01em; line-height: 1.3;
+}
+/* The count is plain text after the title, not a badge. */
+:root[data-ui="altitude"] .plans-count {
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+:root[data-ui="altitude"] .plans-card { cursor: grab; touch-action: manipulation; }
+:root[data-ui="altitude"] .plans-card.is-locked { cursor: default; }
+:root[data-ui="altitude"] .plans-card.is-placeholder { opacity: 0.4; }
+:root[data-ui="altitude"] .plans-card:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+/* The copy under the pointer while dragging: lifted, so it floats. */
+:root[data-ui="altitude"] .plans-card-lifted,
+:root[data-ui="altitude"] .plans-card-lifted:hover { cursor: grabbing; box-shadow: var(--shadow-float); border-color: var(--line-strong); }
+:root[data-ui="altitude"] .plans-board.is-dragging .plans-card:hover { box-shadow: none; }
+
+:root[data-ui="altitude"] .plans-card .board-card-actions { flex-wrap: wrap; justify-content: flex-start; }
+:root[data-ui="altitude"] .plans-card .board-card-actions .link-btn { margin-left: auto; }
+
+:root[data-ui="altitude"] .plans-notice {
+  grid-column: 1 / -1; margin: 0; padding: 6px 8px; border-radius: var(--radius-xs);
+  background: var(--surface-2); color: var(--fg);
+}
+:root[data-ui="altitude"] .plans-reason { grid-column: 1 / -1; display: grid; gap: 8px; cursor: default; }
+:root[data-ui="altitude"] .plans-reason textarea { width: 100%; }
+:root[data-ui="altitude"] .plans-reason-actions { display: flex; gap: 8px; flex-wrap: wrap; }

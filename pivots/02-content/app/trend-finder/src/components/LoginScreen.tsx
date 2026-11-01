@@ -4,73 +4,74 @@ import { LandingAltitude } from './landing/LandingAltitude'
 
 interface Props {
   onSignIn: () => void
+  // 'login' after a sign-out: straight to the log-in form, not the landing page.
+  startOn?: 'landing' | 'login'
 }
 
 // MOCK sign-in for the demo. No account or password is checked or stored; only the picked role is kept.
-// Staff covers the whole agency (team members and the manager who approves); clients get their own account.
+// Staff covers the whole agency and signs in as the manager (so plans can be approved in the demo); clients get their own account.
 // Clients never see the agency's client list: their login is a separate second step (not built yet).
-export function LoginScreen({ onSignIn }: Props) {
-  const { role: savedRole, setRole } = useApp()
-  const [mode, setMode] = useState<'landing' | 'login' | 'register' | 'client'>('landing')
-  const [email, setEmail] = useState('')
+// The demo email and password are pre-filled so testers can just press the button. Nothing checks them.
+const DEMO_EMAIL = 'demo@remake.app'
+const DEMO_PASSWORD = 'remake-demo'
+
+export function LoginScreen({ onSignIn, startOn = 'landing' }: Props) {
+  const { setRole } = useApp()
+  const [mode, setMode] = useState<'landing' | 'login' | 'client'>(startOn)
+  const [email, setEmail] = useState(DEMO_EMAIL)
+  const [password, setPassword] = useState(DEMO_PASSWORD)
   const [account, setAccount] = useState<'staff' | 'client'>('staff')
-  const [staffRole, setStaffRole] = useState<'member' | 'manager'>(savedRole === 'manager' ? 'manager' : 'member')
 
-  // "Try the demo" skips sign-up: enter the sample agency as a team member.
-  const tryDemo = () => {
-    setRole('member')
-    onSignIn()
-  }
-  if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onDemo={tryDemo} />
+  // "Log in" and "Try the demo" both open the same log-in screen, where people pick Staff or Client.
+  if (mode === 'landing') return <LandingAltitude onLogIn={() => setMode('login')} onDemo={() => setMode('login')} />
 
-  const register = mode === 'register'
   const isClient = account === 'client'
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (isClient) {
       setMode('client')
     } else {
-      setRole(staffRole)
+      setRole('manager')
       onSignIn()
     }
   }
 
   return (
-    <main className="landing landing-alt">
-      <nav className="la-nav" aria-label="Main">
-        <button type="button" className="la-logo la-logo-btn" onClick={() => setMode('landing')}>
-          <span className="la-mark" aria-hidden="true">↗</span> Remake
-        </button>
-        <div className="la-actions">
-          <button type="button" className="la-pill la-outline" onClick={() => setMode('landing')}>Back</button>
+    <main className="rk rk-auth">
+      <nav className="rk-nav" aria-label="Main">
+        <div className="rk-wrap rk-nav-in">
+          <button type="button" className="rk-logo rk-logo-btn" onClick={() => setMode('landing')}>
+            <span className="rk-mark" aria-hidden="true">↗</span> Remake
+          </button>
+          <div className="rk-nav-actions">
+            <button type="button" className="rk-btn rk-btn-ghost" onClick={() => setMode('landing')}>Back</button>
+          </div>
         </div>
       </nav>
 
-      <section className="alt-hero la-hero la-login">
-        <div className="alt-sky" aria-hidden="true">
-          <span className="alt-cloud c1" /><span className="alt-cloud c2" /><span className="alt-cloud c3" />
-        </div>
-        <div className="alt-ground" aria-hidden="true" />
+      <div className="rk-wrap rk-auth-wrap">
+        <header className="rk-panel rk-dots rk-auth-panel">
+          <h1>
+            {mode === 'client' ? <>Your plans, <em>soon</em>.</> : <>Welcome back to <em>Remake</em>.</>}
+          </h1>
+          <p className="rk-auth-lede">This is a demo. The log-in details are filled in for you. We only save the account type you pick.</p>
+        </header>
+
         {mode === 'client' ? (
-          <div className="la-login-card">
-            <div className="la-login-head">
-              <h1>Client login</h1>
-              <p>Client accounts are coming soon. Your agency will send you an invite to see your plans.</p>
-            </div>
-            <button type="button" className="la-pill la-outline la-big" onClick={() => setMode('login')}>
+          <div className="rk-auth-card">
+            <h2 className="rk-auth-title">Client login</h2>
+            <p className="rk-auth-text">Client logins are coming soon. Your agency will send you an invite to see your plans.</p>
+            <button type="button" className="rk-btn rk-btn-outline rk-btn-big rk-btn-block" onClick={() => setMode('login')}>
               Back to log in
             </button>
           </div>
         ) : (
-          <form className="la-login-card" onSubmit={submit}>
-            <div className="la-login-head">
-              <h1>{register ? 'Start with the sample agency' : 'Log in to Remake'}</h1>
-              <p>Demo only. There is no password, and only the account type you pick is saved.</p>
-            </div>
-            <label className="field">
-              <span className="field-label">{isClient ? 'Email' : 'Work email'}</span>
+          <form className="rk-auth-card" onSubmit={submit}>
+            <label className="rk-field">
+              <span className="rk-field-label">{isClient ? 'Email' : 'Work email'}</span>
               <input
                 id="login-email"
+                className="rk-input"
                 type="email"
                 autoComplete="email"
                 placeholder={isClient ? 'you@company.com' : 'you@agency.com'}
@@ -78,44 +79,40 @@ export function LoginScreen({ onSignIn }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </label>
-            <fieldset className="la-roles">
-              <legend className="field-label">Log in as</legend>
-              <label className="la-role">
-                <input type="radio" name="account" checked={!isClient} onChange={() => setAccount('staff')} />
-                <strong>Staff</strong>
-                <span>Find videos, plan them and approve them.</span>
-              </label>
-              <label className="la-role">
-                <input type="radio" name="account" checked={isClient} onChange={() => setAccount('client')} />
-                <strong>Client</strong>
-                <span>See your plans and how the month is going.</span>
-              </label>
+            <label className="rk-field">
+              <span className="rk-field-label">Password</span>
+              <input
+                id="login-password"
+                className="rk-input"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <span className="rk-field-hint">Demo log-in: {DEMO_EMAIL} / {DEMO_PASSWORD}, already filled in.</span>
+            </label>
+            <fieldset className="rk-fieldset">
+              <legend className="rk-field-label">Log in as</legend>
+              <div className="rk-choices">
+                <label className="rk-choice">
+                  <input type="radio" name="account" checked={!isClient} onChange={() => setAccount('staff')} />
+                  <strong>Staff</strong>
+                  <span>Find videos, plan them and approve them.</span>
+                </label>
+                <label className="rk-choice">
+                  <input type="radio" name="account" checked={isClient} onChange={() => setAccount('client')} />
+                  <strong>Client</strong>
+                  <span>See your plans and how the month is going.</span>
+                </label>
+              </div>
             </fieldset>
-            {!isClient && (
-              <fieldset className="la-seg">
-                <legend className="field-label">Your role</legend>
-                <label>
-                  <input type="radio" name="staff-role" checked={staffRole === 'member'} onChange={() => setStaffRole('member')} />
-                  <span>Team member</span>
-                </label>
-                <label>
-                  <input type="radio" name="staff-role" checked={staffRole === 'manager'} onChange={() => setStaffRole('manager')} />
-                  <span>Manager (approves)</span>
-                </label>
-              </fieldset>
-            )}
-            <button type="submit" className="la-pill la-solid la-big">
-              {isClient ? 'Continue' : register ? 'Register and log in' : 'Log in'}
+            <button type="submit" className="rk-btn rk-btn-primary rk-btn-big rk-btn-block">
+              {isClient ? 'Continue' : 'Log in'}
+              <span className="rk-arrow" aria-hidden="true">→</span>
             </button>
-            <p className="la-login-switch">
-              {register ? 'Already using Remake? ' : 'New here? '}
-              <button type="button" className="link-btn" onClick={() => setMode(register ? 'login' : 'register')}>
-                {register ? 'Log in' : 'Register free'}
-              </button>
-            </p>
           </form>
         )}
-      </section>
+      </div>
     </main>
   )
 }

@@ -5,6 +5,7 @@ import { useApp } from '../lib/appContext'
 
 export type View =
   | 'overview'
+  | 'home'
   | 'search'
   | 'results'
   | 'shortlist'
@@ -20,6 +21,8 @@ const paths: Record<string, string> = {
   plans: 'M8 4h11v16H8zM5 4v16M11 8h5M11 12h5M11 16h3',
   settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4',
   overview: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  home: 'M4 11 12 4l8 7M6 9.5V20h12V9.5M10 20v-5h4v5',
+  brief: 'M5 4h14v16H5zM9 9a3 3 0 1 0 6 0 3 3 0 0 0-6 0M8 17c.8-1.8 2.2-2.7 4-2.7s3.2.9 4 2.7',
   out: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
 }
 
@@ -47,7 +50,8 @@ interface Props {
   setWorkspace: (w: Workspace) => void
   view: View
   setView: (v: View) => void
-  counts: { shortlist: number }
+  // Plans that need action: waiting for approval plus sent back.
+  counts: { plans: number }
   onSignOut: () => void
   onAddClient: () => void
   open: boolean
@@ -96,7 +100,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
             <span className="avatar avatar-agency">▦</span>
             <span>
               <strong>All clients</strong>
-              <span className="small muted">Agency overview</span>
+              <span className="small muted">Every client at a glance</span>
             </span>
           </button>
           <div className="switcher-sep" />
@@ -111,7 +115,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
               <span className="avatar">{initials(c.name)}</span>
               <span>
                 <strong>{c.name}</strong>
-                <span className="small muted">{c.niche}</span>
+                <span className="small muted">Sells: {c.niche}</span>
               </span>
             </button>
           ))}
@@ -166,26 +170,35 @@ export function Sidebar(p: Props) {
           Remake
         </div>
 
-        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} onAddClient={p.onAddClient} />
+        {/* On phones the sidebar is a slide-out menu: close it after a pick so the new screen isn't hidden behind it. */}
+        <ClientSwitcher
+          clients={p.clients}
+          workspace={p.workspace}
+          setWorkspace={(w) => {
+            p.setWorkspace(w)
+            p.onClose()
+          }}
+          onAddClient={() => {
+            p.onAddClient()
+            p.onClose()
+          }}
+        />
 
         <nav className="side-nav">
           {inClient ? (
             <>
-              {item('search', 'search', 'Search', undefined, p.view === 'search' || p.view === 'results')}
-              {item(
-                'shortlist',
-                'saved',
-                'Shortlist',
-                p.counts.shortlist,
-                ['shortlist', 'review', 'plan'].includes(p.view),
-              )}
+              {item('home', 'home', 'Home')}
+              {item('search', 'search', 'Find ideas', undefined, p.view === 'search' || p.view === 'results')}
+              {/* Plans = the board of saved ideas + review (batch mode) + one plan */}
+              {item('shortlist', 'plans', 'Plans', p.counts.plans, ['shortlist', 'review', 'plan'].includes(p.view))}
               <div className="side-sep" />
-              {item('settings', 'settings', 'Client settings')}
+              {item('settings', 'brief', 'Brief')}
             </>
           ) : (
             <>
-              {item('overview', 'overview', 'Overview')}
-              <p className="side-hint">Pick a client above to search and save ideas.</p>
+              {/* All clients Home (the view is still called 'overview' inside the app) */}
+              {item('overview', 'home', 'Home')}
+              <p className="side-hint">Pick a client above to find ideas for them.</p>
             </>
           )}
         </nav>
@@ -193,7 +206,7 @@ export function Sidebar(p: Props) {
         <div className="side-foot">
           {p.live ? (
             <span className="live-pill" title="Search results are real TikTok videos">
-              Live TikTok data
+              Real TikTok videos
             </span>
           ) : (
             <span className="sample-pill" title="All accounts and numbers are made up for this demo">
@@ -206,7 +219,15 @@ export function Sidebar(p: Props) {
               <strong>{role === 'manager' ? `${userName} (manager)` : userName}</strong>
               <span className="small muted">{agency.agencyName}</span>
             </span>
-            <button className="icon-btn" onClick={p.onSignOut} aria-label="Sign out" title="Sign out">
+            <button
+              className="icon-btn"
+              onClick={() => {
+                p.onClose()
+                p.onSignOut()
+              }}
+              aria-label="Sign out"
+              title="Sign out"
+            >
               <Icon name="out" />
             </button>
           </div>

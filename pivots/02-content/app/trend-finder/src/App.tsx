@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AgencySettings, ClientEvent, Role, SavedIdea } from './types'
+import type { AgencySettings, ClientEvent, IdeaStatus, Role, SavedIdea } from './types'
 import { clients as sampleClients, formats, videos } from './data/sample'
 import { formatTrend, outlierScore, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
 import { defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
@@ -33,6 +33,7 @@ import { AppContext } from './lib/appContext'
 import type { AppContextValue } from './lib/appContext'
 import { ShortlistBoard } from './components/ShortlistBoard'
 import { AddClientScreen } from './components/AddClientScreen'
+import { ClientHome } from './components/ClientHome'
 
 const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[number]) => number> = {
   outlier: (a, b) => outlierScore(b) - outlierScore(a),
@@ -41,13 +42,34 @@ const sorters: Record<Sort, (a: (typeof videos)[number], b: (typeof videos)[numb
   fastest: (a, b) => viewsPerDay(b) - viewsPerDay(a),
 }
 
+const VIEW_KEY = 'remake.view.v1'
+
+// The tab to open on a refresh: the one saved for this browser tab, if it still makes sense.
+// Results, a plan and Review need state that isn't saved, so they fall back to Find ideas or Plans.
+function restoreView(workspace: Workspace): View {
+  let saved: string | null = null
+  try {
+    saved = sessionStorage.getItem(VIEW_KEY)
+  } catch {
+    // Storage blocked: use the default.
+  }
+  if (workspace === 'all') return 'overview'
+  if (saved === 'results') return 'search'
+  if (saved === 'plan' || saved === 'review') return 'shortlist'
+  if (saved === 'home' || saved === 'search' || saved === 'shortlist' || saved === 'settings') return saved
+  return 'search'
+}
+
 export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [agency, setAgencyRaw] = useStored<AgencySettings>('remake.agency.v1', defaultAgency)
-  const [role, setRole] = useStored<Role>('remake.role.v1', 'member')
+  const [role, setRole] = useStored<Role>('remake.role.v2', 'manager')
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
-  const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
+  // The last client worked on. Log-in reopens it; empty means a first-ever log-in. Visiting All clients keeps it.
+  const [lastClient, setLastClient] = useStored<string | null>('remake.last-client.v1', null)
+  // A refresh keeps the same tab (this browser tab only). Screens that need state that isn't saved fall back.
+  const [view, setViewRaw] = useState<View>(() => restoreView(workspace))
   // Every screen change goes through here, so it cross-fades (View Transitions) where supported.
   const viewRef = useRef(view)
   useEffect(() => {
@@ -65,8 +87,18 @@ export default function App() {
   const [planIdeaId, setPlanIdeaId] = useState<string | null>(null)
   // The screen a plan was opened from, so Back returns there.
   const [planFrom, setPlanFrom] = useState<View>('results')
-  // The last search that produced results, so the search page can offer a way back to it.
-  const [lastSearch, setLastSearch] = useState<string | null>(null)
+  // The stage a Home pipeline chip asked Plans to scroll to.
+  const [boardFocus, setBoardFocus] = useState<IdeaStatus | null>(null)
+  const clearBoardFocus = useCallback(() => setBoardFocus(null), [])
+  // The last search per client that produced results, so Find ideas can offer a way back to it.
+  const [lastSearches, setLastSearches] = useState<Record<string, string>>({})
+  // Where Review and Add client were opened from, so Back and Cancel return there.
+  const [reviewFrom, setReviewFrom] = useState<View>('shortlist')
+  const [addFrom, setAddFrom] = useState<View>('overview')
+  // After signing out, the log-in form opens straight away instead of the landing page.
+  const [signedOut, setSignedOut] = useState(false)
+  // Which client and search the results screen currently shows, so "Back to results" knows if it must search again.
+  const [shownSearch, setShownSearch] = useState<string | null>(null)
   const [ideas, setIdeas] = useSavedIdeas()
 
   // Live mode: real TikTok search through the local API (npm run api). Without it, the app uses sample data.
@@ -95,20 +127,45 @@ export default function App() {
     })
   }, [])
 
-  // Each screen starts at the top, like a new page.
+  // Each screen starts at the top, like a new page. The tab is remembered for a refresh.
   useEffect(() => {
     window.scrollTo(0, 0)
+    try {
+      sessionStorage.setItem(VIEW_KEY, view)
+    } catch {
+      // Storage blocked: a refresh just opens the default tab.
+    }
   }, [view])
 
   // Inside a client, everything (saving, fit checks, plans) is for that client.
   const client = clients.find((c) => c.id === workspace) ?? clients[0]
 
-  const setWorkspace = (w: Workspace) => {
-    setWorkspaceRaw(w)
+  const lastSearch = workspace === 'all' ? null : (lastSearches[workspace] ?? null)
+
+  // Opens a client's workspace. Picking a client starts on Find ideas; Home is one click away.
+  const enterClient = (id: string, to: View = 'search') => {
+    setWorkspaceRaw(id)
+    setLastClient(id)
     setOpenVideoId(null)
-    // Picking a client from the switcher always starts on Search.
-    setView(w === 'all' ? 'overview' : 'search')
+    // The search box shows this client's own last search, not the previous client's.
+    setQuery((q) => ({ ...q, keyword: lastSearches[id] ?? '' }))
+    setView(to)
   }
+
+  const setWorkspace = (w: Workspace) => {
+    if (w !== 'all') return enterClient(w)
+    setWorkspaceRaw('all')
+    setOpenVideoId(null)
+    setView('overview')
+  }
+
+  // A remembered client that no longer exists: go to All clients instead of showing a different client.
+  const clientMissing = workspace !== 'all' && !clients.some((c) => c.id === workspace)
+  useEffect(() => {
+    if (!clientMissing) return
+    setWorkspaceRaw('all')
+    setViewRaw('overview')
+  }, [clientMissing, setWorkspaceRaw])
 
   const updateClient = (patch: Partial<Client>) =>
     setClients((prev) => prev.map((c) => (c.id === client.id ? { ...c, ...patch } : c)))
@@ -153,7 +210,8 @@ export default function App() {
       setQuery((qq) => ({ ...qq, keyword: text, days: parsed.days ?? qq.days, maxLength: parsed.maxLength ?? qq.maxLength }))
       setPatternFilter(null)
       setFormatFilter(null)
-      setLastSearch(text)
+      setLastSearches((prev) => ({ ...prev, [client.id]: text }))
+      setShownSearch(`${client.id}|${text}`)
       setView('results')
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : 'Search failed.')
@@ -186,7 +244,8 @@ export default function App() {
       maxLength: next.maxLength ?? q.maxLength,
     }))
     setFormatFilter(null)
-    setLastSearch(text)
+    setLastSearches((prev) => ({ ...prev, [client.id]: text }))
+    setShownSearch(`${client.id}|${text}`)
     setView('results')
   }
 
@@ -213,9 +272,9 @@ export default function App() {
     [setPulses],
   )
 
-  // Check once a day per client, when its search page opens. Each attempt runs once per session, even if it fails.
+  // Check once a day per client, when its Home or search page opens. Each attempt runs once per session, even if it fails.
   useEffect(() => {
-    if (!live || workspace === 'all' || view !== 'search' || pulseLoading) return
+    if (!live || workspace === 'all' || (view !== 'search' && view !== 'home') || pulseLoading) return
     const topic = clientTopic(client)
     const p = pulses[client.id]
     const stale = !p || p.topic !== topic || Date.now() - p.fetchedAt > 24 * 3_600_000
@@ -374,15 +433,56 @@ export default function App() {
   )
   const backLabel: Record<View, string> = {
     overview: 'overview',
-    search: 'search',
+    home: 'home',
+    search: 'find ideas',
     results: 'search results',
-    review: `${agency.managerName}'s review`,
-    plan: 'search results',
-    settings: 'settings',
-    shortlist: 'shortlist',
+    review: 'review',
+    plan: 'plan',
+    settings: 'brief',
+    shortlist: 'plans',
     'add-client': 'add client',
   }
-  const counts = { shortlist: mine.length }
+  // Sidebar badge: what needs action (waiting for approval + sent back), not the whole shortlist.
+  const counts = { plans: mine.filter((i) => i.status === 'waiting' || i.status === 'rejected').length }
+  const openPlans = (stage?: IdeaStatus) => {
+    setBoardFocus(stage ?? null)
+    setView('shortlist')
+  }
+
+  const openReview = (from: View) => {
+    setReviewFrom(from)
+    setView('review')
+  }
+  // Review's Back: to where it was opened from. From All clients, that means leaving the client.
+  const reviewBack = () => (reviewFrom === 'overview' ? setWorkspace('all') : setView(reviewFrom))
+  const reviewBackLabel = reviewFrom === 'overview' ? 'All clients' : reviewFrom === 'home' ? 'Home' : 'Plans'
+  // The next client (in list order, after this one) with plans waiting, for clearing approvals across clients.
+  const nextWaiting = (() => {
+    const at = clients.findIndex((c) => c.id === client.id)
+    const order = [...clients.slice(at + 1), ...clients.slice(0, Math.max(at, 0))]
+    const next = order
+      .map((c) => ({ c, n: shownIdeas.filter((i) => i.clientId === c.id && i.status === 'waiting').length }))
+      .find((x) => x.n > 0)
+    return next ? { id: next.c.id, name: next.c.name, waiting: next.n } : null
+  })()
+
+  const openAddClient = () => {
+    setAddFrom(view)
+    setView('add-client')
+  }
+
+  // Find ideas' "Back to results": rerun this client's last search if the results on screen are another one.
+  const backToResults = () => {
+    if (!lastSearch) return
+    if (shownSearch === `${client.id}|${lastSearch}`) setView('results')
+    else runSearch(lastSearch)
+  }
+
+  // A plan view without its plan (e.g. after switching sample/live data) would be blank: show Plans instead.
+  const planMissing = view === 'plan' && !(planIdea && planVideo && planFormat && planClient)
+  useEffect(() => {
+    if (planMissing) setViewRaw('shortlist')
+  }, [planMissing])
 
   // Client accounts aren't live yet (see ClientPortal), so a saved client login goes back to the login screen.
   if (!signedIn || role === 'client')
@@ -390,9 +490,13 @@ export default function App() {
       <AppContext.Provider value={appContext}>
         {/* stream A: after login, staff land on the all-clients overview */}
         <LoginScreen
+          startOn={signedOut ? 'login' : 'landing'}
           onSignIn={() => {
             setSignedIn(true)
-            setWorkspace('all')
+            setSignedOut(false)
+            // Returning: reopen the last client on Find ideas. First log-in, or that client is gone: All clients Home.
+            if (lastClient && clients.some((c) => c.id === lastClient)) enterClient(lastClient)
+            else setWorkspace('all')
           }}
         />
       </AppContext.Provider>
@@ -411,8 +515,11 @@ export default function App() {
         view={view}
         setView={setView}
         counts={counts}
-        onSignOut={() => setSignedIn(false)}
-        onAddClient={() => setView('add-client')}
+        onSignOut={() => {
+          setSignedIn(false)
+          setSignedOut(true)
+        }}
+        onAddClient={openAddClient}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         live={live}
@@ -430,8 +537,8 @@ export default function App() {
           {view === 'add-client' && (
             <AddClientScreen
               takenIds={clients.map((c) => c.id)} // stream A: keeps new client ids unique
-              onCreated={(id) => setWorkspace(id)}
-              onCancel={() => setView(inClient ? 'search' : 'overview')}
+              onCreated={(id) => enterClient(id)}
+              onCancel={() => setView(addFrom)}
             />
           )}
 
@@ -439,12 +546,39 @@ export default function App() {
             <OverviewScreen
               clients={clients}
               ideas={shownIdeas}
+              videoById={videoById}
+              formatById={formatById}
               onOpen={(id, v) => {
-                setWorkspaceRaw(id)
-                // stream B: saved ideas and approvals now live on the shortlist board.
-                setView(v === 'search' ? 'search' : 'shortlist')
+                // The client name opens Find ideas, the row button its Home, "N waiting" its Review.
+                if (v === 'review') {
+                  setReviewFrom('overview')
+                  enterClient(id, 'review')
+                } else enterClient(id, v)
               }}
-              onAddClient={() => setView('add-client')} // stream A: "Add client" on the overview
+              onAddClient={openAddClient}
+            />
+          )}
+
+          {inClient && view === 'home' && (
+            <ClientHome
+              client={client}
+              ideas={shownIdeas}
+              allIdeas={ideas}
+              videoById={videoById}
+              formatById={formatById}
+              live={live}
+              pulse={pulses[client.id]}
+              pulseLoading={pulseLoading === client.id}
+              pulseError={pulseError}
+              onRefreshPulse={() => void refreshPulse(client, true)}
+              onFindIdeas={() => setView('search')}
+              onShortlist={planFromVideo}
+              onOpenPlan={openPlan}
+              onOpenPlans={openPlans}
+              // Single approver: the signed-in user is the manager, so Home approves with the same handler as Review.
+              onApprove={(id) => decide(id, { kind: 'approved' })}
+              onReview={() => openReview('home')}
+              onEditBrief={() => setView('settings')}
             />
           )}
 
@@ -466,10 +600,10 @@ export default function App() {
                 error: pulseError,
               }}
               onRefreshPulse={() => void refreshPulse(client, true)}
-              planned={shownIdeas.filter((i) => i.clientId === client.id && (i.status === 'waiting' || i.status === 'approved')).length}
+              planned={shownIdeas.filter((i) => i.clientId === client.id && i.status === 'approved').length}
               target={client.monthlyTarget}
               lastSearch={lastSearch}
-              onBackToResults={() => setView('results')}
+              onBackToResults={backToResults}
             />
           )}
 
@@ -510,6 +644,7 @@ export default function App() {
                     matches={results}
                     clientName={client.name}
                     onPlan={planFromVideo}
+                    savedIds={savedForClient}
                   />
                 ) : null
               }
@@ -534,9 +669,12 @@ export default function App() {
               videoById={videoById}
               formatById={formatById}
               onChangeIdeas={setIdeas}
+              onDecide={decide}
               onOpenPlan={openPlan}
               onFindMore={() => setView('search')}
-              onReview={() => setView('review')}
+              onReview={() => openReview('shortlist')}
+              focus={boardFocus}
+              onFocusDone={clearBoardFocus}
             />
           )}
 
@@ -547,7 +685,11 @@ export default function App() {
               formatById={formatById}
               videoById={videoById}
               onDecide={decide}
-              onBack={() => setView('shortlist')}
+              onBack={reviewBack}
+              backLabel={reviewBackLabel}
+              onOpenPlans={() => setView('shortlist')}
+              nextClient={nextWaiting}
+              onNextClient={() => nextWaiting && enterClient(nextWaiting.id, 'review')}
             />
           )}
 
@@ -568,6 +710,7 @@ export default function App() {
               onFindMore={planAnother}
               onPlanAnother={planAnother}
               onGoApprovals={() => setView('shortlist')} // stream B: the board replaces Approvals
+              onDecide={(d) => decide(planIdea.id, d)}
             />
           )}
         </main>

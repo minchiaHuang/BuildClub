@@ -6,13 +6,10 @@ import {
   compact,
   outlierScore,
   platformName,
-  scoreLine,
   shareSaveRate,
-  tierName,
-  tierOf,
-  times,
   viewsPerDay,
 } from '../lib/metrics'
+import { beatUsual, timesNumber } from './find/words'
 import { useCountUp } from '../lib/motion'
 import { Thumb } from './Thumb'
 import { useManagerName } from '../lib/appContext'
@@ -90,7 +87,6 @@ export function BreakdownPanel({ video, format, formatAccounts, client, status, 
   const shownScore = useCountUp(score)
   const shownViews = useCountUp(video.views)
   const fit = clientFit(format, client)
-  const tier = tierOf(score)
   // The numbers are the point of this panel, so they get their own row of cards.
   const stats = [
     { label: 'Views', value: compact(shownViews), note: `${compact(video.followers)} followers` },
@@ -100,12 +96,12 @@ export function BreakdownPanel({ video, format, formatAccounts, client, status, 
       unit: 'per 100 views',
       note: video.saves === null ? 'Instagram hides saves' : `${compact(video.shares)} shares · ${compact(video.saves)} saves`,
     },
-    { label: 'Growth', value: compact(viewsPerDay(video)), unit: 'views a day', note: `Posted ${ago(video.daysAgo)}` },
+    { label: 'Views a day', value: compact(viewsPerDay(video)), unit: 'on average', note: `Posted ${ago(video.daysAgo)}` },
     {
-      label: 'Format used by',
+      label: 'Accounts posting this idea',
       value: String(formatAccounts),
       unit: formatAccounts === 1 ? 'account' : 'accounts',
-      note: formatAccounts >= 3 ? 'A pattern, not luck' : 'Too few to be sure',
+      note: formatAccounts >= 3 ? 'Enough accounts to show it is catching on, not luck' : 'Too few accounts to be sure it works',
     },
   ]
 
@@ -143,14 +139,13 @@ export function BreakdownPanel({ video, format, formatAccounts, client, status, 
             <Thumb video={video} large />
           </div>
 
-          <section className="stats" aria-label="Video analytics">
-            <div className={`stat-card stat-score stat-${tier}`}>
-              <span className="stat-label">Score</span>
+          <section className="stats" aria-label="Video numbers">
+            <div className="stat-card stat-score">
+              <span className="stat-label">{video.medianViews === null ? 'Views compared with followers' : "Views compared with the account's usual"}</span>
               <div className="stat-score-row">
-                <span className="stat-big">{times(shownScore)}</span>
-                <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
+                <span className="stat-big">{timesNumber(shownScore)} times</span>
               </div>
-              <span className="stat-note">{scoreLine(video)}</span>
+              <span className="stat-note">{beatUsual(video)}</span>
               <span className="stat-compare">
                 {compact(video.medianViews ?? video.followers)} → <strong>{compact(shownViews)}</strong>
               </span>
@@ -185,13 +180,13 @@ export function BreakdownPanel({ video, format, formatAccounts, client, status, 
           </section>
 
           <section className="block">
-            <h3>
-              {video.live ? 'What we know' : 'Why it worked'}{' '}
-              <span className="ai-tag">{video.live ? 'From TikTok data' : 'Sample · written by hand'}</span>
-            </h3>
+            <h3>{video.live ? 'What we know' : 'Why it worked'}</h3>
+            <p className="small muted">
+              {video.live ? 'From TikTok.' : 'A sample, written by hand for the demo.'}
+            </p>
             <dl className="why">
               <div>
-                <dt>Hook</dt>
+                <dt>How it starts</dt>
                 <dd>{format.why.hook}</dd>
               </div>
               <div>
@@ -203,7 +198,7 @@ export function BreakdownPanel({ video, format, formatAccounts, client, status, 
                 <dd>{format.why.length}</dd>
               </div>
               <div>
-                <dt>Format</dt>
+                <dt>How it's made</dt>
                 <dd>{format.why.format}</dd>
               </div>
               <div>
@@ -218,13 +213,13 @@ export function BreakdownPanel({ video, format, formatAccounts, client, status, 
         <footer className="drawer-foot">
           {!status && (
             <button className="btn btn-primary" onClick={onSave}>
-              Add to shortlist for {client.name}
+              Save for {client.name}
             </button>
           )}
           {status === 'saved' && (
             <>
               <button className="btn btn-ghost" aria-pressed="true" onClick={onSave}>
-                ✓ Shortlisted
+                ✓ Saved
               </button>
               <button className="btn btn-primary" onClick={onPlan}>
                 Open plan

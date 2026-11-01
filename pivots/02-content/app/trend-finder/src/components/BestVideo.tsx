@@ -27,11 +27,11 @@ export function BestVideo({ video, onOpen }: { video: Video; onOpen?: () => void
       <span className="best-play" aria-hidden="true">
         ▶
       </span>
-      <span className="best-video-note">Sample video: no playback</span>
+      <span className="best-video-note">Sample video, can’t play</span>
     </>
   )
   return onOpen ? (
-    <button className="best-video best-video-sample" onClick={onOpen} aria-label={`Open breakdown: ${video.hook}`}>
+    <button className="best-video best-video-sample" onClick={onOpen} aria-label={`See why it worked: ${video.hook}`}>
       {inner}
     </button>
   ) : (

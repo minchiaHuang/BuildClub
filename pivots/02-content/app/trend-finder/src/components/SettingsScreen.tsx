@@ -24,9 +24,9 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
   return (
     <section className="settings">
       <header className="page-head">
-        <span className="eyebrow">{client.name} · Client settings</span>
+        <span className="eyebrow">{client.name} · Brief</span>
         <h1>About this client</h1>
-        <p className="muted">Used for the search suggestions, the "Can they film this?" check and the monthly target. Changes save as you type.</p>
+        <p className="muted">Remake uses this to suggest searches, check what they can film, and track the monthly target. Changes save as you type.</p>
       </header>
 
       <div className="settings-grid">
@@ -61,7 +61,7 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
             onChange={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trimStart()) })}
             onBlur={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
           />
-          <span className="small muted">The first topic is checked on TikTok once a day for the "Trending now" chips.</span>
+          <span className="small muted">We check the first topic on TikTok once a day to fill "Trending now".</span>
         </label>
         <label className="field field-wide">
           <span className="field-label">Starter searches (comma-separated)</span>
@@ -85,22 +85,25 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
         </label>
       </div>
 
-      <fieldset className="cannot">
-        <legend>
-          <h3>What this client can't do</h3>
-          <span className="small muted">Ticked items flag videos as hard to film for this client.</span>
-        </legend>
-        <div className="cannot-list">
-          {allNeeds.map((need) => (
-            <label key={need} className="check">
-              <input type="checkbox" checked={client.cannot.includes(need)} onChange={() => toggleCannot(need)} />
-              {need}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {/* The can't-film rules and the decisions behind them, side by side */}
+      <div className="brief-pair">
+        <fieldset className="cannot">
+          <legend>
+            <h3>What this client can't do</h3>
+            <span className="small muted">Videos that need a ticked item get marked as hard to film.</span>
+          </legend>
+          <div className="cannot-list">
+            {allNeeds.map((need) => (
+              <label key={need} className="check">
+                <input type="checkbox" checked={client.cannot.includes(need)} onChange={() => toggleCannot(need)} />
+                {need}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-      <ClientMemory client={client} ideas={ideas} videoById={videoById} formatById={formatById} />
+        <ClientMemory client={client} ideas={ideas} videoById={videoById} formatById={formatById} />
+      </div>
     </section>
   )
 }

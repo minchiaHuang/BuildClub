@@ -1,7 +1,8 @@
 import type { Format, Video } from '../types'
 import type { MediaSource } from '../lib/parseQuery'
 import type { FormatTrend } from '../lib/metrics'
-import { outlierScore, plural, platformName, stageText, times } from '../lib/metrics'
+import { outlierScore, plural, platformName } from '../lib/metrics'
+import { beatUsualAverage, spreadSentence, spreadVerdict } from './find/words'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -11,19 +12,13 @@ interface Props {
   matches: Video[]
   clientName: string
   onPlan: (videoId: string) => void
+  // Videos already on this client's shortlist (or sent): the button then opens the plan instead.
+  savedIds: Set<string>
 }
 
-const verdicts = {
-  early: { label: 'Worth copying now', tone: 'early' },
-  rising: { label: 'Worth copying soon', tone: 'rising' },
-  everywhere: { label: 'Probably too late', tone: 'everywhere' },
-  'one-off': { label: 'Not proven yet', tone: 'one-off' },
-} as const
-
-export function LikeThisCard({ source, format, trend, matches, clientName, onPlan }: Props) {
+export function LikeThisCard({ source, format, trend, matches, clientName, onPlan, savedIds }: Props) {
   const best = [...matches].sort((a, b) => outlierScore(b) - outlierScore(a))[0]
   const avg = matches.reduce((s, v) => s + outlierScore(v), 0) / Math.max(matches.length, 1)
-  const verdict = trend ? verdicts[trend.stage] : null
 
   return (
     <div className="like">
@@ -39,25 +34,20 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
       </div>
 
       <div className="like-body">
-        <div className="answer-head">
-          <span className="eyebrow">Find more like this</span>
-          <span className="ai-tag">Match · mock</span>
-        </div>
+        <span className="eyebrow">Find more like this</span>
         <h2>This looks like: {format.name}</h2>
+        <span className="small muted">A sample match from the demo videos.</span>
 
-        {verdict && trend && (
-          <div className={`verdict verdict-${verdict.tone}`}>
-            <strong>{verdict.label}</strong>
-            <span>
-              {stageText(trend)}. {plural(matches.length, 'similar video')} found, averaging {times(avg)} their
-              account's usual views.
-            </span>
-          </div>
+        {trend && (
+          <p className="like-verdict">
+            <strong>{spreadVerdict(trend)}</strong> {spreadSentence(trend)}. We found {plural(matches.length, 'similar video')}, with{' '}
+            {beatUsualAverage(avg, false)} on average.
+          </p>
         )}
 
         <dl className="why why-compact">
           <div>
-            <dt>Hook</dt>
+            <dt>How it starts</dt>
             <dd>{format.why.hook}</dd>
           </div>
           <div>
@@ -65,7 +55,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
             <dd>{format.why.first3s}</dd>
           </div>
           <div>
-            <dt>Format</dt>
+            <dt>How it's made</dt>
             <dd>{format.why.format}</dd>
           </div>
         </dl>
@@ -73,9 +63,9 @@ export function LikeThisCard({ source, format, trend, matches, clientName, onPla
         {best && (
           <div className="like-actions">
             <button className="btn btn-primary" onClick={() => onPlan(best.id)}>
-              Add to shortlist for {clientName}
+              {savedIds.has(best.id) ? 'Open plan' : `Save for ${clientName}`}
             </button>
-            <span className="small muted">Uses the best match below as the reference.</span>
+            <span className="small muted">Uses the closest match below as the original.</span>
           </div>
         )}
       </div>

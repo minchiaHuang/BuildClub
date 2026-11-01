@@ -141,7 +141,10 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
           </button>
         )
       })}
-      <span className="platforms-note">{onNames.join(' + ')}</span>
+      <span className="platforms-note">
+        {onNames.join(' and ')}
+        {showSoon && <span className="platforms-soon"> · Instagram, YouTube, Reddit and X are coming later</span>}
+      </span>
     </div>
   )
 }

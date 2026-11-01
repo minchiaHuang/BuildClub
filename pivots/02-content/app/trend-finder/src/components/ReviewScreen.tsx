@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Client, Format, SavedIdea, Video } from '../types'
-import { compact, outlierScore, times } from '../lib/metrics'
+import { compact } from '../lib/metrics'
 import { Thumb } from './Thumb'
 import { useApp, useManagerName } from '../lib/appContext'
 import type { Decision } from '../lib/memory'
+import { beatUsual } from './find/words'
 
 interface Props {
   client: Client
@@ -12,7 +13,13 @@ interface Props {
   videoById: Map<string, Video>
   formatById: Map<string, Format>
   onDecide: (ideaId: string, d: Decision) => void
+  // Back returns to where Review was opened from: Plans, Home or All clients.
   onBack: () => void
+  backLabel: string
+  onOpenPlans: () => void
+  // The next client with plans waiting, so approvals can be cleared across clients in one go.
+  nextClient: { name: string; waiting: number } | null
+  onNextClient: () => void
 }
 
 // A decision that is animating out. onDecide is called once the card has slid away and its space has closed.
@@ -35,7 +42,7 @@ const tokenMs = (name: string) => parseFloat(getComputedStyle(document.documentE
 // What the manager sees: each waiting plan with its reference, shots, the team's note and due date, and three choices:
 // approve, approve with changes, or send back. A narrow column so it reads like a phone view.
 // Team members see the same plans read-only. Demo only: the role is picked at login, nothing is checked.
-export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack }: Props) {
+export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, onBack, backLabel, onOpenPlans, nextClient, onNextClient }: Props) {
   const manager = useManagerName()
   const isManager = useApp().role === 'manager'
   const [leaving, setLeaving] = useState<Leaving | null>(null)
@@ -105,16 +112,14 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
   return (
     <section className="review">
       <button className="link-btn review-back" onClick={onBack}>
-        ← Back to shortlist
+        ← Back to {backLabel}
       </button>
-      <p className="review-banner">
-        {isManager
-          ? `Preview of ${manager}'s view. In the real product this opens on ${manager}'s phone.`
-          : `You're signed in as a team member. Only ${manager} can approve or send back plans.`}
-      </p>
+      {!isManager && (
+        <p className="review-banner">You're signed in as a team member. Only {manager} can approve or send back plans.</p>
+      )}
 
       <header className="page-head review-head">
-        <span className="eyebrow">{client.name} · For {manager}</span>
+        <span className="eyebrow">{client.name} · Review</span>
         <h1 ref={headRef} tabIndex={-1}>
           {!waiting.length ? 'Nothing to review' : isManager ? `${waiting.length} to review` : `${waiting.length} waiting for ${manager}`}
         </h1>
@@ -123,8 +128,22 @@ export function ReviewScreen({ client, ideas, videoById, formatById, onDecide, o
 
       {waiting.length === 0 && (
         <div className="empty">
-          <h2>All decided</h2>
-          <p>New plans sent for approval will show up here.</p>
+          <h2>All done</h2>
+          <p>
+            {nextClient
+              ? `${nextClient.name} has ${nextClient.waiting} ${nextClient.waiting === 1 ? 'plan' : 'plans'} waiting too.`
+              : 'Nothing else is waiting for approval for any client.'}
+          </p>
+          <div className="form-actions">
+            {nextClient && (
+              <button className="btn btn-primary" onClick={onNextClient}>
+                Next: {nextClient.name} ({nextClient.waiting} waiting)
+              </button>
+            )}
+            <button className={`btn ${nextClient ? 'btn-ghost' : 'btn-primary'}`} onClick={onOpenPlans}>
+              Back to Plans
+            </button>
+          </div>
         </div>
       )}
 
@@ -290,7 +309,7 @@ function ReviewCard(p: CardProps) {
             <div>
               <strong>{f.name}</strong>
               <span className="small muted">
-                Reference: "{v.hook}" · {compact(v.views)} views · {times(outlierScore(v))} usual
+                Based on "{v.hook}" · {compact(v.views)} views. {beatUsual(v)}.
               </span>
             </div>
           </div>
@@ -300,7 +319,7 @@ function ReviewCard(p: CardProps) {
               Due {due(idea.dueDate)}
               {idea.approvedAt && ' · Changed after approval'}
             </span>
-            {!p.isManager && <span className="status status-waiting">Waiting for {p.manager}</span>}
+            {!p.isManager && <span className="small muted">Waiting for {p.manager}</span>}
           </div>
 
           {idea.noteToApprover && (

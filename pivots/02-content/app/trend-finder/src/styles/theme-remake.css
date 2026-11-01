@@ -1,0 +1,303 @@
+/* Remake design system ("Classic + Night Shift") applied to the whole app. Loaded last so it wins over
+   tokens.css and theme-altitude.css. Source of truth: docs/landing-page-design.md and the Remake design
+   system artifact (https://claude.ai/artifact/H6o4ryyVUujTq136n3PMet). The landing and login screens use the
+   same tokens under .rk (landing-remake.css).
+   Rules for any new UI: use only these tokens. Blue = the one main action. Violet = icons and the active nav
+   item. Mustard = the winner ("Best to copy", breakout) as a solid fill with navy text, never text on white.
+   Status colours always come with a word. Newsreader for headings, Inter for reading, Geist Mono for labels
+   and counts. Pills for buttons and badges, 12px cards, no shadow unless it floats. Nothing loops. */
+:root[data-ui="altitude"] {
+  /* Design-system tokens */
+  --canvas: #ffffff;
+  --canvas-alt: #f5f5f7;
+  --ink: #1a1a22;
+  --ink-muted: #5d5f6e;
+  --navy: #060a47;
+  --navy-deep: #070b24;
+  --navy-dot: #2a3170;
+  --on-navy: #f4f5ff;
+  --on-navy-muted: #a9b0e0;
+  --sky: #7ab8ff;
+  --blue: #1a33f2;
+  --blue-hover: #1426c4;
+  --blue-soft: #e9ecff;
+  --label: #1a33f2;
+  --violet: #7b1fe0;
+  --violet-soft: #f2e9ff;
+  --mustard: #f2b705;
+  --on-mustard: #060a47;
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --shadow-card: 0 1px 2px rgb(10 12 40 / 0.04), 0 8px 24px rgb(10 12 40 / 0.06);
+  --shadow-float: 0 2px 6px rgb(10 12 40 / 0.05), 0 32px 64px rgb(10 12 40 / 0.16);
+
+  /* App tokens mapped onto the design system */
+  --bg: var(--canvas);
+  --surface: #ffffff;
+  --surface-2: var(--canvas-alt);
+  --surface-3: #e8e8ee;
+  --fg: var(--ink);
+  --muted: var(--ink-muted);
+  --line: #e8e8ee;
+  --line-strong: #c9cad6;
+  --frost: rgb(255 255 255 / 0.86);
+  --scrim: rgb(7 11 36 / 0.4);
+  --accent: var(--blue);
+  --accent-hover: var(--blue-hover);
+  --accent-fg: #ffffff;
+  --accent-soft: var(--blue-soft);
+  --hot: var(--violet);
+  --hot-soft: var(--violet-soft);
+  --hot-fg: #ffffff;
+  --early: #1a7a44;
+  --early-soft: #e5f4ea;
+  --rising: #8a5a06;
+  --rising-soft: #fbf3e1;
+  --late: var(--ink-muted);
+  --late-soft: var(--canvas-alt);
+  --no: #b42318;
+  --no-soft: #fdeceb;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-serif);
+  --tracking-tight: -0.02em;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --shadow-sm: none;
+  --shadow-md: var(--shadow-card);
+  --shadow-lg: var(--shadow-float);
+  --shadow: none;
+  --focus-ring: 0 0 0 3px var(--blue-soft);
+  --sky-tint: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-ui="altitude"] {
+    --canvas: #0b0d1c;
+    --canvas-alt: #14172b;
+    --ink: #eceef6;
+    --ink-muted: #a3a7c0;
+    --navy: #10145a;
+    --blue: #4a5cff;
+    --blue-hover: #3a4cf0;
+    --blue-soft: #1a2160;
+    --label: #8f9bff;
+    --violet: #b98aff;
+    --violet-soft: #2a1752;
+    --surface: #14172b;
+    --surface-3: #262a48;
+    --line: #262a48;
+    --line-strong: #454a78;
+    --frost: rgb(11 13 28 / 0.88);
+    --scrim: rgb(0 0 0 / 0.6);
+    --accent-fg: #ffffff;
+    --hot-fg: #0b0d1c;
+    --early: #6fd39a;
+    --early-soft: #10301f;
+    --rising: #f0b44a;
+    --rising-soft: #33260a;
+    --no: #ff8a7a;
+    --no-soft: #3a1512;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
+  }
+}
+
+/* Canvas: plain, no sky tint */
+:root[data-ui="altitude"] body,
+:root[data-ui="altitude"] .shell-main { background: var(--bg); }
+
+/* Type: Newsreader headings (regular weight), Inter for reading, Geist Mono for labels and counts */
+:root[data-ui="altitude"] h1,
+:root[data-ui="altitude"] h2,
+:root[data-ui="altitude"] h3 { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.02em; }
+:root[data-ui="altitude"] .shell-main :is(h1, h2) em { font-style: italic; color: var(--label); }
+:root[data-ui="altitude"] .side-brand { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.02em; }
+:root[data-ui="altitude"] :is(.stat-num, .target-num, .stat-big, .best-hook) { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.02em; }
+:root[data-ui="altitude"] :is(.answer-head strong, .like-body h2, .board-col-head h2, .review-ref strong) { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+:root[data-ui="altitude"] :is(.eyebrow, .field-label, .stat-label, .chip-group-title, .switcher-label, .switcher-head, .alt-eyebrow) {
+  font-family: var(--font-mono); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+:root[data-ui="altitude"] .page-head .eyebrow { color: var(--label); font-size: 12px; }
+:root[data-ui="altitude"] :is(th, .side-count, .thumb-len, .stage-pill, .tier) { font-variant-numeric: tabular-nums; }
+:root[data-ui="altitude"] thead th { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+:root[data-ui="altitude"] .side-count { font-family: var(--font-mono); font-weight: 400; }
+
+/* Buttons: pills. Primary = blue (one per view); secondary = outlined; never black */
+:root[data-ui="altitude"] .btn { border-radius: var(--radius-pill); font-weight: 500; padding-inline: 20px; min-height: 40px; }
+:root[data-ui="altitude"] .btn-sm { min-height: 34px; padding-inline: 14px; }
+:root[data-ui="altitude"] .btn-primary { background: var(--blue); color: #ffffff; box-shadow: none; }
+:root[data-ui="altitude"] .btn-primary:hover:not(:disabled) { background: var(--blue-hover); }
+:root[data-ui="altitude"] .btn-ghost { background: var(--surface); border-color: var(--line-strong); color: var(--fg); }
+:root[data-ui="altitude"] .btn-ghost:hover:not(:disabled) { background: var(--canvas-alt); }
+:root[data-ui="altitude"] .link-strong:hover { color: var(--label); }
+:root[data-ui="altitude"] :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Inputs: 8px corners, blue focus */
+:root[data-ui="altitude"] :is(input, select, textarea) { border-radius: var(--radius-sm); }
+:root[data-ui="altitude"] :is(input, select, textarea):focus { border-color: var(--blue); box-shadow: var(--focus-ring); }
+
+/* Cards: hairline border, 12px corners, no shadow unless they float */
+:root[data-ui="altitude"] :is(.board-card, .stat, .review-card, .search-box, .best, .cchip) { border-color: var(--line); box-shadow: none; }
+:root[data-ui="altitude"] :is(.board-card, .stat, .review-card, .search-box) { border-style: solid; border-width: 1px; border-radius: var(--radius); }
+:root[data-ui="altitude"] .board-card:hover { box-shadow: var(--shadow-card); }
+:root[data-ui="altitude"] .best { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+:root[data-ui="altitude"] .drawer { border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
+:root[data-ui="altitude"] .drawer-head { background: var(--surface); }
+
+/* Sidebar: white, hairline edge; active item = soft fill with a violet icon */
+:root[data-ui="altitude"] .sidebar { background: var(--surface); border-right-color: var(--line); }
+:root[data-ui="altitude"] .brand-mark { border-radius: 7px; background: var(--navy); color: var(--on-navy); font-size: 13px; }
+:root[data-ui="altitude"] .side-link { border-radius: var(--radius-pill); }
+:root[data-ui="altitude"] .side-on, :root[data-ui="altitude"] .side-on:hover:not(:disabled) { background: var(--canvas-alt); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-ui="altitude"] .side-on svg { color: var(--violet); }
+:root[data-ui="altitude"] .side-on .side-count { background: var(--navy); color: var(--on-navy); }
+:root[data-ui="altitude"] .switcher-btn { box-shadow: none; }
+:root[data-ui="altitude"] .switcher-item.on strong { color: var(--fg); }
+:root[data-ui="altitude"] .avatar { background: var(--blue-soft); color: var(--label); }
+:root[data-ui="altitude"] .avatar-agency { background: var(--navy); color: var(--on-navy); }
+:root[data-ui="altitude"] .avatar-user, :root[data-ui="altitude"] .avatar-add { background: var(--canvas-alt); color: var(--fg); }
+
+/* Badges: status colours with a word; mustard only for the winner */
+:root[data-ui="altitude"] .tier-breakout { background: var(--mustard); color: var(--on-mustard); }
+:root[data-ui="altitude"] .tier-strong { background: var(--blue-soft); color: var(--label); }
+:root[data-ui="altitude"] .score-breakout { color: var(--fg); }
+:root[data-ui="altitude"] .score-strong { color: var(--label); }
+:root[data-ui="altitude"] .cchip-trending { border-color: var(--line); background: var(--surface); }
+:root[data-ui="altitude"] .cchip-trending:hover, :root[data-ui="altitude"] .cchip-trending:focus-visible { border-color: var(--line-strong); background: var(--canvas-alt); }
+:root[data-ui="altitude"] .cchip-trending .cchip-trend, :root[data-ui="altitude"] .cchip-trending .cchip-hint { color: var(--violet); }
+:root[data-ui="altitude"] .cchip-trending.cchip-hot::after { background: var(--mustard); color: var(--on-mustard); }
+:root[data-ui="altitude"] .q-chip-topic { background: var(--blue-soft); color: var(--label); }
+
+/* Video covers: navy stand-ins until real thumbnails load (no rainbow gradients) */
+:root[data-ui="altitude"] .thumb:not(.thumb-img) {
+  background-color: var(--navy);
+  background-image: radial-gradient(circle at 1px 1px, var(--navy-dot) 1px, transparent 1.5px);
+  background-size: 12px 12px;
+  color: var(--on-navy);
+}
+:root[data-ui="altitude"] .thumb-len { font-family: var(--font-mono); font-weight: 400; background: rgb(7 11 36 / 0.6); }
+:root[data-ui="altitude"] .reading-link { background: var(--navy); color: var(--on-navy); }
+
+/* Search hero: navy panel with dots, serif headline (AltitudeHero.tsx) */
+:root[data-ui="altitude"] .alt-hero {
+  min-height: 0; margin: -8px 0 8px; padding: 56px 24px 48px; border-radius: 40px;
+  background-color: var(--navy); color: var(--on-navy);
+  background-image: radial-gradient(circle at 1px 1px, var(--navy-dot) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+:root[data-ui="altitude"] .alt-hero::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 80% 75% at 50% 45%, transparent 50%, var(--navy) 100%);
+}
+:root[data-ui="altitude"] .alt-hero-inner { gap: 16px; max-width: 820px; }
+:root[data-ui="altitude"] .alt-hero .alt-eyebrow { color: var(--sky); }
+:root[data-ui="altitude"] .alt-hero h1 { color: var(--on-navy); font-size: clamp(34px, 4.6vw, 56px); line-height: 1.05; text-wrap: balance; }
+:root[data-ui="altitude"] .alt-hero h1 em { color: var(--sky); }
+:root[data-ui="altitude"] .alt-hero .alt-lede { color: var(--on-navy-muted); max-width: 520px; }
+:root[data-ui="altitude"] .alt-search { margin-top: 12px; }
+:root[data-ui="altitude"] .alt-search .search-box { box-shadow: var(--shadow-float); border-color: transparent; }
+@media (max-width: 760px) {
+  :root[data-ui="altitude"] .alt-hero { padding: 40px 16px 24px; border-radius: 24px; }
+}
+
+/* Dark hero panel (mn-panel) and the animated search bar: navy, serif, blue button */
+:root[data-ui="altitude"] .mn-panel {
+  background-color: var(--navy); color: var(--on-navy); border-radius: 40px;
+  background-image: radial-gradient(circle at 1px 1px, var(--navy-dot) 1px, transparent 1.5px); background-size: 24px 24px;
+}
+:root[data-ui="altitude"] .mn-headline { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.02em; background: none; color: var(--on-navy); -webkit-background-clip: border-box; background-clip: border-box; }
+:root[data-ui="altitude"] .mn-sub { color: var(--on-navy-muted); }
+:root[data-ui="altitude"] .tsearch-altitude { background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-float); color: var(--fg); }
+:root[data-ui="altitude"] .tsearch-altitude .tsearch-go { background: var(--blue); color: #ffffff; }
+
+/* Nothing loops (design system: motion) */
+:root[data-ui="altitude"] :is(.mn-pill-body, .tsearch-caret) { animation: none; }
+
+/* Former "hot" orange, mapped to its meaning: urgency = rising, breakout = mustard (winner), recording = blue */
+:root[data-ui="altitude"] .due-soon { color: var(--rising); }
+:root[data-ui="altitude"] .cchip-hot::before { background: var(--mustard); }
+:root[data-ui="altitude"] .stat-score.stat-breakout::before { background: var(--mustard); }
+:root[data-ui="altitude"] .stat-breakout .stat-big { color: var(--fg); }
+:root[data-ui="altitude"] .mic-on, :root[data-ui="altitude"] .mic-on:hover { background: var(--blue); color: #ffffff; }
+/* The search field's frame shows focus; the input inside it stays borderless */
+:root[data-ui="altitude"] .search-input input, :root[data-ui="altitude"] .search-input input:focus { border: 0; box-shadow: none; outline: none; }
+/* Big numbers: serif like the headings; colour stays ink (the tier badge carries the meaning) */
+:root[data-ui="altitude"] :is(.cmp-num, .stat-value, .plan-ref-score, .tile-compare) { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+:root[data-ui="altitude"] :is(.score-strong, .score-breakout, .score-normal) { color: var(--fg); }
+
+/* ---------- Find ideas: search page (before searching) and results page (after) ----------
+   No tags, pills or badges on these screens: plain sentences and labelled numbers instead.
+   Section headings use the mono field-label style. Blue stays on the one main button. */
+:root[data-ui="altitude"] .find-page { max-width: 1080px; margin: 0 auto; gap: 32px; }
+:root[data-ui="altitude"] .find-page .alt-hero-inner { max-width: 820px; }
+:root[data-ui="altitude"] .platforms-soon { color: var(--muted); }
+:root[data-ui="altitude"] .alt-hero .platforms-note { color: var(--muted); }
+:root[data-ui="altitude"] .find-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; margin-top: -8px; }
+:root[data-ui="altitude"] .find-status .progress-line { margin: 0; }
+:root[data-ui="altitude"] .find-hint { font-size: var(--text-sm); margin: 0; }
+
+/* Where to start: hairline cards, each a short list of searches with one sentence of why */
+:root[data-ui="altitude"] .find-start { display: grid; gap: 16px; }
+:root[data-ui="altitude"] .find-start-head { display: grid; gap: 4px; }
+:root[data-ui="altitude"] .find-start-head h2 { font-size: clamp(24px, 2.6vw, 30px); line-height: 1.15; margin: 0; }
+:root[data-ui="altitude"] .find-start-sub { margin: 0; color: var(--muted); }
+:root[data-ui="altitude"] .find-start-pulse { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; font-size: var(--text-sm); color: var(--muted); }
+:root[data-ui="altitude"] .find-start-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px; align-items: start; }
+:root[data-ui="altitude"] .find-start-card {
+  display: grid; gap: 4px; align-content: start; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px 6px;
+}
+:root[data-ui="altitude"] .find-start-card .field-label { margin: 0 0 4px; }
+:root[data-ui="altitude"] .find-start-list { list-style: none; margin: 0; padding: 0; }
+:root[data-ui="altitude"] .find-start-list > li + li { border-top: 1px solid var(--line); }
+:root[data-ui="altitude"] .find-start-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  padding: 12px 0; border: 0; background: none; color: var(--fg); text-align: left; cursor: pointer; font: inherit;
+}
+:root[data-ui="altitude"] .find-start-text { display: grid; gap: 2px; min-width: 0; }
+:root[data-ui="altitude"] .find-start-label { font-weight: 500; overflow-wrap: anywhere; transition: color var(--dur-fast) var(--ease); }
+:root[data-ui="altitude"] .find-start-why { font-size: var(--text-sm); line-height: 1.45; color: var(--muted); }
+:root[data-ui="altitude"] .find-start-arrow { flex: none; color: var(--muted); transition: transform var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+:root[data-ui="altitude"] .find-start-item:hover .find-start-label,
+:root[data-ui="altitude"] .find-start-item:focus-visible .find-start-label { color: var(--label); }
+:root[data-ui="altitude"] .find-start-item:hover .find-start-arrow,
+:root[data-ui="altitude"] .find-start-item:focus-visible .find-start-arrow { transform: translateX(3px); color: var(--label); }
+:root[data-ui="altitude"] .find-start-skeleton { height: 44px; margin: 8px 0; border-radius: var(--radius-sm); background: var(--canvas-alt); }
+:root[data-ui="altitude"] .find-start-list > li.find-start-skeleton + li { border-top: 0; }
+
+/* Results: plain words instead of coloured chips and score badges */
+:root[data-ui="altitude"] .results .q-chip { background: var(--surface); border-color: var(--line); color: var(--fg); }
+:root[data-ui="altitude"] .summary { margin: 0; }
+:root[data-ui="altitude"] .best-head { display: grid; gap: 4px; margin: 4px 0 -12px; }
+:root[data-ui="altitude"] .best-head .best-title { margin: 0; }
+:root[data-ui="altitude"] .best-why { margin: 0; color: var(--muted); max-width: 60ch; }
+:root[data-ui="altitude"] .best-trend { display: block; margin: 0; font-size: var(--text-sm); line-height: 1.45; color: var(--muted); }
+:root[data-ui="altitude"] .cmp-say { grid-column: 1 / -1; margin-top: 8px; font-size: 15px; line-height: 1.4; color: var(--fg); }
+:root[data-ui="altitude"] .grid-title { display: grid; gap: 4px; min-width: 0; }
+:root[data-ui="altitude"] :is(.grid-title, .section-title) .section-sub { margin: 0; font-size: var(--text-sm); color: var(--muted); max-width: 64ch; }
+:root[data-ui="altitude"] .trend-card { box-shadow: none; }
+:root[data-ui="altitude"] .trend-card .field-label { margin: 0; }
+:root[data-ui="altitude"] .trend-text { line-height: 1.45; }
+:root[data-ui="altitude"] .trend-count { margin-top: 4px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; color: var(--muted); font-variant-numeric: tabular-nums; }
+:root[data-ui="altitude"] .like-verdict { margin: 0; line-height: 1.5; color: var(--muted); }
+:root[data-ui="altitude"] .like-verdict strong { color: var(--fg); font-weight: 600; }
+
+/* Result tiles: views as a labelled number, one sentence comparing them with usual, the plan's status in words */
+:root[data-ui="altitude"] .tile-views { display: flex; align-items: baseline; gap: 6px; font-size: var(--text-sm); color: var(--muted); }
+:root[data-ui="altitude"] .tile-views .tile-compare { font-size: 24px; line-height: 1; color: var(--fg); }
+:root[data-ui="altitude"] .tile-cap { line-height: 1.4; }
+:root[data-ui="altitude"] .tile-plan { margin-top: 2px; font-size: var(--text-xs); font-weight: 500; color: var(--fg); }
+
+/* Breakdown drawer: the "Can they film it?" note is a plain hairline block, not a coloured one */
+:root[data-ui="altitude"] .drawer .fit { background: var(--surface); border: 1px solid var(--line); }
+:root[data-ui="altitude"] .drawer .stat-score::before { background: var(--line-strong); }
+:root[data-ui="altitude"] .drawer h3 + .small { margin: -4px 0 0; }
+
+@media (max-width: 760px) {
+  :root[data-ui="altitude"] .find-start-card { padding: 14px 16px 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ui="altitude"] :is(.find-start-label, .find-start-arrow) { transition: none; }
+  :root[data-ui="altitude"] .find-start-item:hover .find-start-arrow { transform: none; }
+}

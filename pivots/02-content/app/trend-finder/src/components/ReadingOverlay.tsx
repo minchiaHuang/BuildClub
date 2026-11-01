@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { MediaSource } from '../lib/parseQuery'
 
-const steps = ['Getting the video', 'Reading key frames and captions', 'Matching the format against trending videos']
+const steps = ['Getting the video', 'Looking at the shots and captions', 'Finding other videos that copy the same idea']
 
 // MOCK: a short "working" moment for the demo. Nothing is fetched or analysed.
 export function ReadingOverlay({ source, onDone }: { source: MediaSource; onDone: () => void }) {

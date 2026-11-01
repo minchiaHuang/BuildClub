@@ -1,0 +1,143 @@
+/* Both Homes: one client's Home (ClientHome.tsx) and All clients Home (OverviewScreen.tsx), cards in
+   components/home/HomeCards.tsx. Also the Brief layout. Remake design system tokens only (theme-remake.css):
+   hairline 12px cards, Newsreader headings and big numbers, Geist Mono labels and counts, blue only for the one
+   main action, no status pills. Bars are navy on canvas-alt. Placeholder cards are dashed and muted.
+   Layout: a 12-column grid (6 on tablet, 1 on phone), up to 1200px wide via .ch-wide on the screen's root. */
+:root[data-ui="altitude"] .ch { display: grid; gap: 24px; container-type: inline-size; }
+:root[data-ui="altitude"] .ch-wide { width: 100%; max-width: 1200px; margin-inline: auto; }
+
+/* Header: who, and the way to Find ideas */
+:root[data-ui="altitude"] .ch-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px 32px;
+}
+:root[data-ui="altitude"] .ch-id { display: grid; gap: 4px; min-width: 0; }
+:root[data-ui="altitude"] .ch-id .eyebrow { color: var(--label); font-size: 12px; }
+:root[data-ui="altitude"] .ch-id h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.05; overflow-wrap: anywhere; }
+
+/* Grid */
+:root[data-ui="altitude"] .ch-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+:root[data-ui="altitude"] .ch-hero { grid-column: span 7; }
+:root[data-ui="altitude"] .ch-needs { grid-column: span 5; }
+:root[data-ui="altitude"] :is(.ch-month, .ch-ready, .ov-waiting) { grid-column: span 6; }
+:root[data-ui="altitude"] :is(.ch-decisions, .ch-kinds) { grid-column: span 6; }
+
+/* Card */
+:root[data-ui="altitude"] .ch-card {
+  display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 20px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  animation: ch-in var(--dur) var(--ease) both;
+}
+:root[data-ui="altitude"] .ch-card > .eyebrow { color: var(--label); font-size: 12px; }
+:root[data-ui="altitude"] .ch-card h2 { font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .ch-card-body { display: grid; gap: 12px; align-content: start; min-width: 0; }
+:root[data-ui="altitude"] .ch-card-foot { margin-top: auto; padding-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+:root[data-ui="altitude"] .ch-empty { margin: 0; max-width: 48ch; }
+:root[data-ui="altitude"] :is(.ch-line, .ch-note) { margin: 0; }
+:root[data-ui="altitude"] .ch-note .link-btn { font-size: inherit; }
+@keyframes ch-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* Numbers and bars */
+:root[data-ui="altitude"] .ch-big { font-family: var(--font-serif); font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+:root[data-ui="altitude"] .ch-month-num { margin: 0; display: flex; align-items: baseline; gap: 8px; }
+:root[data-ui="altitude"] .ch-count { font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; color: var(--fg); }
+:root[data-ui="altitude"] .ch-bar { display: block; height: 6px; border-radius: var(--radius-pill); background: var(--canvas-alt); overflow: hidden; }
+:root[data-ui="altitude"] .ch-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--navy); transition: width var(--dur) var(--ease); }
+
+/* ① Film next */
+:root[data-ui="altitude"] .ch-hero h2 { font-size: clamp(26px, 3vw, 34px); text-wrap: balance; }
+:root[data-ui="altitude"] .ch-pick { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 20px; align-items: start; }
+:root[data-ui="altitude"] .ch-pick-thumb .thumb { border-radius: var(--radius); }
+:root[data-ui="altitude"] .ch-pick-body { display: grid; gap: 8px; min-width: 0; }
+:root[data-ui="altitude"] .ch-pick-body h3 { font-size: 22px; line-height: 1.2; }
+:root[data-ui="altitude"] .ch-proof { margin: 0; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fg); }
+:root[data-ui="altitude"] .ch-ref { margin: 0; overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .ch-reason { margin: 0; color: var(--muted); max-width: 60ch; }
+:root[data-ui="altitude"] .ch-pick-actions { padding-top: 4px; }
+:root[data-ui="altitude"] .ch-hero-empty { display: grid; gap: 12px; justify-items: start; }
+:root[data-ui="altitude"] .ch-alts { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+:root[data-ui="altitude"] .ch-alts li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+:root[data-ui="altitude"] .ch-alt-text { display: grid; gap: 2px; min-width: 0; }
+:root[data-ui="altitude"] .ch-alt-text .small { overflow-wrap: anywhere; }
+
+/* Shared rows inside cards */
+:root[data-ui="altitude"] .ch-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+:root[data-ui="altitude"] .ch-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+:root[data-ui="altitude"] .ch-row-stack { display: grid; gap: 4px; }
+:root[data-ui="altitude"] .ch-row-text { display: grid; gap: 2px; min-width: 0; }
+:root[data-ui="altitude"] .ch-row-text .small { overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .ch-rows .link-strong { overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .ch-sub { display: grid; gap: 8px; }
+:root[data-ui="altitude"] .ch-split { padding-top: 12px; border-top: 1px solid var(--line); }
+:root[data-ui="altitude"] .ch-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+/* Where the ideas are */
+:root[data-ui="altitude"] .ch-steps-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+:root[data-ui="altitude"] .ch-steps-row {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: start;
+  padding: 8px; margin: 0 -8px; width: calc(100% + 16px); background: none; border: 0; border-radius: var(--radius-sm);
+  color: var(--fg); text-align: left; font: inherit;
+}
+:root[data-ui="altitude"] button.ch-steps-row { cursor: pointer; transition: background-color var(--dur-fast) var(--ease); }
+:root[data-ui="altitude"] button.ch-steps-row:hover { background: var(--canvas-alt); }
+:root[data-ui="altitude"] .ch-steps-row .ch-count { font-size: 18px; line-height: 1.3; text-align: right; }
+:root[data-ui="altitude"] .ch-steps-text { display: grid; gap: 6px; padding-top: 2px; }
+:root[data-ui="altitude"] .ch-steps-list .is-zero :is(.ch-count, .ch-steps-text) { color: var(--muted); }
+
+/* What gets approved most */
+:root[data-ui="altitude"] .ch-kinds-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+:root[data-ui="altitude"] .ch-kinds-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
+:root[data-ui="altitude"] .ch-kinds-text { display: grid; gap: 4px; min-width: 0; }
+:root[data-ui="altitude"] .ch-kinds-text strong { overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .ch-kinds-num { display: grid; justify-items: end; gap: 0; }
+
+/* All clients table: next to film */
+:root[data-ui="altitude"] .ov-next { display: grid; gap: 2px; }
+
+/* Placeholders: analytics that need data we don't have yet */
+:root[data-ui="altitude"] .ch-later-wrap { display: grid; gap: 12px; }
+:root[data-ui="altitude"] .ch-later-head { display: grid; gap: 4px; }
+:root[data-ui="altitude"] .ch-later-head p { margin: 0; max-width: 70ch; }
+:root[data-ui="altitude"] .ch-later-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+:root[data-ui="altitude"] .ch-later {
+  display: grid; gap: 8px; align-content: start; padding: 20px; min-width: 0;
+  background: var(--canvas-alt); border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--muted);
+}
+:root[data-ui="altitude"] .ch-later h3 { font-size: 18px; line-height: 1.25; color: var(--muted); }
+:root[data-ui="altitude"] .ch-later p { margin: 0; }
+:root[data-ui="altitude"] .ch-later-ask { font-weight: 500; color: var(--fg); }
+
+/* Tablet: 6 columns */
+@container (max-width: 960px) {
+  :root[data-ui="altitude"] .ch-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  :root[data-ui="altitude"] :is(.ch-hero, .ch-needs, .ch-decisions, .ch-kinds) { grid-column: span 6; }
+  :root[data-ui="altitude"] :is(.ch-month, .ch-ready, .ov-waiting) { grid-column: span 3; }
+  :root[data-ui="altitude"] .ch-later-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* Phone: one column, most urgent first */
+@container (max-width: 600px) {
+  :root[data-ui="altitude"] .ch-grid { grid-template-columns: minmax(0, 1fr); }
+  :root[data-ui="altitude"] .ch-grid > * { grid-column: auto; }
+  :root[data-ui="altitude"] .ch-needs { order: -1; }
+  :root[data-ui="altitude"] .ch-head .btn { width: 100%; }
+  :root[data-ui="altitude"] .ch-card { padding: 16px; }
+  :root[data-ui="altitude"] .ch-pick { grid-template-columns: 96px minmax(0, 1fr); gap: 14px; }
+  :root[data-ui="altitude"] .ch-pick-actions .btn { width: 100%; }
+  :root[data-ui="altitude"] .ch-alts li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  :root[data-ui="altitude"] .ch-alts li .link-btn { justify-self: start; }
+  :root[data-ui="altitude"] .ch-big { font-size: 36px; }
+  :root[data-ui="altitude"] .ch-later { padding: 16px; }
+}
+
+/* Brief: can't film and client memory side by side */
+:root[data-ui="altitude"] .brief-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+:root[data-ui="altitude"] .brief-pair .client-memory { max-width: none; }
+@media (max-width: 1100px) {
+  :root[data-ui="altitude"] .brief-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ui="altitude"] :is(.ch-card, .ch-steps-row, .ch-bar > span) { animation: none; transition: none; }
+}

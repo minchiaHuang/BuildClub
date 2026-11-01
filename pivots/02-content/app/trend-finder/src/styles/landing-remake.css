@@ -26,6 +26,11 @@
   --on-mustard: #060a47;
   --no: #b42318;
   --no-soft: #fdeceb;
+  --violet-soft: #f2e9ff;
+  --early: #1a7a44;
+  --early-soft: #e5f4ea;
+  --rising: #8a5a06;
+  --rising-soft: #fbf3e1;
   --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -114,6 +119,8 @@ body:has(.rk) { background: #ffffff; }
 
 /* 1 · Hero */
 .rk-hero { padding-top: 24px; }
+/* Hero panel is 20% wider than the page content (1136 → 1363px) so the demo window sits inside it */
+.rk-hero > .rk-wrap { max-width: calc(1363px + 64px); }
 .rk-hero-panel { display: grid; justify-items: center; text-align: center; gap: 18px; padding: 72px 40px 200px; }
 .rk-announce { display: inline-flex; align-items: center; gap: 10px; padding: 4px 14px 4px 4px; border-radius: 999px; border: 1px solid rgb(169 176 224 / 0.3); font-size: 13px; color: var(--on-navy-muted); }
 .rk-hero h1 { font-size: clamp(42px, 6vw, 76px); line-height: 1.02; max-width: 900px; }
@@ -122,37 +129,41 @@ body:has(.rk) { background: #ffffff; }
 .rk-note { font-size: 13px; color: var(--on-navy-muted); }
 
 /* 1b · Mini demo: the product window overlapping the hero panel */
-.rk-demo { position: relative; z-index: 2; max-width: 760px; margin: -150px auto 0; background: var(--canvas); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-float); overflow: hidden; }
-.rk-demo-bar { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 14px; background: var(--canvas-alt); border-bottom: 1px solid var(--line); }
+.rk-demo { position: relative; z-index: 2; max-width: 1136px; margin: -150px auto 0; background: var(--canvas); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow-float); overflow: hidden; }
+.rk-demo-bar { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 20px; background: var(--canvas-alt); border-bottom: 1px solid var(--line); }
 .rk-demo-dots { display: flex; gap: 6px; }
-.rk-demo-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); }
-.rk-demo-url { font: 400 12px var(--font-mono); color: var(--ink-muted); margin: 0 auto; transform: translateX(-24px); }
-.rk-demo-body { padding: 18px; display: grid; gap: 12px; }
-.rk-demo-top { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
-.rk-demo-search { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-strong); color: var(--ink-muted); font-size: 15px; }
+.rk-demo-dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--line-strong); }
+.rk-demo-url { font: 400 14px var(--font-mono); color: var(--ink-muted); margin: 0 auto; transform: translateX(-24px); }
+.rk-demo-body { padding: 28px; display: grid; gap: 18px; }
+.rk-demo-top { display: grid; grid-template-columns: 1fr auto; gap: 14px; }
+.rk-demo-search { display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 20px; border-radius: 12px; border: 1px solid var(--line-strong); color: var(--ink-muted); font-size: 19px; }
 .rk-demo-search span { color: var(--ink); font-weight: 500; }
-.rk-demo-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 999px; background: var(--canvas-alt); }
-.rk-demo-switch button { font: 500 13px/1 var(--font-sans); color: var(--ink-muted); border: 0; background: transparent; border-radius: 999px; padding: 0 14px; min-height: 36px; cursor: pointer; white-space: nowrap; transition: background-color 150ms var(--ease), color 150ms var(--ease); }
-.rk-demo-switch button.is-on { background: var(--navy); color: var(--on-navy); }
-.rk-demo-about { font: 400 12px/16px var(--font-mono); letter-spacing: 0.02em; color: var(--ink-muted); }
-.rk-demo-picks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.rk-demo-picks li { animation: rk-in 300ms var(--ease) both; animation-delay: calc(var(--i) * 60ms); min-width: 0; }
+.rk-demo-about { font: 400 14px/20px var(--font-mono); letter-spacing: 0.02em; color: var(--ink-muted); }
+.rk-demo-picks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rk-demo-picks > li { animation: rk-in 300ms var(--ease) backwards; animation-delay: calc(var(--i) * 60ms); min-width: 0; }
 .rk-pick {
-  width: 100%; height: 100%; display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; text-align: left;
-  font: inherit; color: inherit; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer;
+  width: 100%; height: 100%; display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: start; text-align: left;
+  font: inherit; color: inherit; background: var(--canvas); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer;
   transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease), transform 150ms var(--ease);
 }
-.rk-pick:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); transform: translateY(-1px); }
-.rk-pick-text { display: grid; gap: 3px; min-width: 0; }
-.rk-pick-title { font-weight: 600; font-size: 14px; line-height: 1.3; }
-.rk-pick-why { font-size: 12.5px; color: var(--ink-muted); line-height: 1.4; }
-.rk-pick .rk-badge { margin-top: 6px; }
+.rk-pick:hover, .rk-pick:focus-visible { border-color: var(--line-strong); box-shadow: var(--shadow-card); transform: translateY(-2px); }
+/* Keep the card's own corners when the shared focus ring applies */
+.rk .rk-pick:focus-visible { border-radius: 14px; }
+/* Hover or keyboard focus: the thumbnail grows a little and its play button fills in */
+.rk-pick .rk-pick-thumb { transition: transform 200ms var(--ease), opacity 150ms var(--ease); }
+.rk-pick:hover .rk-pick-thumb, .rk-pick:focus-visible .rk-pick-thumb { transform: scale(1.05); }
+.rk-pick .rk-pick-thumb .rk-ph-tag { transition: background-color 150ms var(--ease), color 150ms var(--ease), transform 200ms var(--ease); }
+.rk-pick:hover .rk-pick-thumb .rk-ph-tag, .rk-pick:focus-visible .rk-pick-thumb .rk-ph-tag { background: var(--canvas); color: var(--navy); transform: scale(1.1); }
+.rk-pick-text { display: grid; gap: 6px; min-width: 0; }
+.rk-pick-title { font-weight: 600; font-size: 18px; line-height: 1.3; }
+.rk-pick-why { font-size: 15px; color: var(--ink-muted); line-height: 1.45; }
+.rk-pick .rk-badge { margin-top: 8px; padding: 4px 12px; font-size: 14px; line-height: 20px; }
 .rk-pick.is-blocked .rk-pick-title, .rk-pick.is-blocked .rk-pick-why { opacity: 0.6; }
 .rk-pick.is-blocked .rk-pick-thumb { opacity: 0.45; }
 @keyframes rk-in { from { opacity: 0.4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.rk-pick-thumb.rk-ph { border-radius: 8px; padding: 0; place-content: center; }
+.rk-pick-thumb.rk-ph { border-radius: 10px; padding: 0; place-content: center; }
 .rk-pick-thumb .rk-ph-label { display: none; }
-.rk-pick-thumb .rk-ph-tag { font-size: 0; gap: 0; padding: 5px; }
+.rk-pick-thumb .rk-ph-tag { font-size: 0; gap: 0; padding: 9px; }
 
 /* 2 · Proof */
 .rk-proof-wrap { padding-top: 56px; }
@@ -170,7 +181,7 @@ body:has(.rk) { background: #ffffff; }
 .rk-ph-label { font-size: 13.5px; font-weight: 500; line-height: 1.35; }
 
 /* Tour video */
-.rk-tour { padding-top: 56px; }
+.rk-tour { padding-top: 56px; scroll-margin-top: 64px; /* clears the sticky nav when "Watch the 60-second tour" jumps here */ }
 /* Light, so the page doesn't show two navy blocks in a row under the hero */
 .rk-tour .rk-wrap { max-width: 1040px; }
 .rk-tour-video.rk-ph-video { border-radius: 20px; place-content: center; justify-items: center; text-align: center; background: var(--canvas-alt); color: var(--ink-muted); border-color: var(--line-strong); }
@@ -191,7 +202,6 @@ body:has(.rk) { background: #ffffff; }
 .rk-cell-icon { width: 20px; height: 20px; color: var(--violet); }
 :root .rk-cell h3 { font-size: 19px; }
 .rk-cell p { font-size: 14px; line-height: 22px; color: var(--ink-muted); }
-.rk-cell-index { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); text-align: right; font: 400 11px/16px var(--font-mono); letter-spacing: 0.06em; color: var(--ink-muted); }
 
 /* 5 · Comparison (night band, no dots) */
 .rk-night .rk-wrap > h2 { color: var(--on-navy); }
@@ -244,6 +254,163 @@ body:has(.rk) { background: #ffffff; }
 .rk-footer .rk-logo { color: var(--ink); }
 .rk-footer nav { display: flex; gap: 24px; flex-wrap: wrap; margin-left: auto; }
 .rk-footer nav a:hover { color: var(--ink); }
+.rk-soon { display: inline-flex; align-items: center; gap: 6px; cursor: default; }
+.rk-soon-tag { font: 500 10.5px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; background: var(--canvas-alt); color: var(--ink-muted); }
+
+/* Pick preview (PickPreview in LandingAltitude.tsx): dialog over the landing page, navy video side, white details */
+.rk-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: rgb(6 10 71 / 0.55); animation: rk-fade 200ms var(--ease) both; }
+.rk-modal-card {
+  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  width: min(920px, 100%); height: min(680px, calc(100dvh - 48px));
+  background: var(--canvas); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-float);
+  animation: rk-rise 200ms var(--ease) both;
+}
+:root .rk .rk-modal-card:focus { outline: none; } /* the dialog itself takes focus on open; its buttons keep their rings */
+.rk-modal-media { display: grid; place-items: center; padding: 32px; background-color: var(--navy); min-height: 0; position: relative; isolation: isolate; }
+.rk-modal-video.rk-ph { height: 100%; width: auto; max-height: 616px; min-height: 0; aspect-ratio: 9 / 16; place-content: center; justify-items: center; text-align: center; border-color: var(--navy-dot); background-color: var(--navy-deep); }
+.rk-modal-video .rk-ph-tag { padding: 10px 16px; font-size: 12px; }
+.rk-modal-media.is-blocked .rk-modal-video { opacity: 0.55; }
+.rk-modal-body { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.rk-modal-scroll { display: grid; gap: 12px; align-content: start; padding: 32px 32px 20px; overflow-y: auto; overscroll-behavior: contain; }
+:root .rk .rk-modal-title { font-size: 32px; line-height: 1.1; letter-spacing: -0.02em; text-wrap: balance; }
+.rk-modal-meta { font: 400 13px/18px var(--font-mono); color: var(--ink-muted); }
+:root .rk .rk-modal-h { margin-top: 12px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); }
+.rk-modal-text { font-size: 16px; line-height: 1.55; }
+.rk-shots { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.rk-shots li { display: grid; grid-template-columns: 48px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.4; }
+.rk-shot-time { font: 400 13px/20px var(--font-mono); color: var(--label); }
+.rk-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 16px 32px 24px; border-top: 1px solid var(--line); background: var(--canvas); }
+@keyframes rk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rk-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 720px) {
+  .rk-modal { padding: 12px; align-items: end; }
+  .rk-modal-card { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: auto; max-height: calc(100dvh - 24px); border-radius: 20px; }
+  .rk-modal-media { padding: 20px; }
+  .rk-modal-video.rk-ph { height: auto; width: min(40vw, 170px); max-height: none; }
+  .rk-modal-scroll { padding: 22px 18px 16px; }
+  :root .rk .rk-modal-title { font-size: 26px; }
+  .rk-modal-actions { padding: 12px 18px 16px; }
+  .rk-modal-actions .rk-btn { flex: 1 1 auto; }
+}
+
+/* Log in and sign-up (LoginScreen.tsx): navy panel with dots, white card overlapping its bottom edge */
+.rk-logo-btn { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0; font-family: inherit; }
+.rk-btn-outline { background: var(--canvas); color: var(--ink); border-color: var(--line-strong); }
+.rk-btn-outline:hover { background: var(--canvas-alt); }
+.rk-btn-block { width: 100%; }
+.rk-auth-wrap { padding-top: 24px; padding-bottom: 96px; }
+.rk-auth-panel { display: grid; justify-items: center; text-align: center; gap: 16px; padding: 64px 32px 168px; }
+:root .rk-auth-panel h1 { font-size: clamp(36px, 5vw, 56px); line-height: 1.05; max-width: 720px; }
+.rk-auth-lede { font-size: 15px; color: var(--on-navy-muted); max-width: 440px; }
+.rk-auth-card { position: relative; z-index: 2; display: grid; gap: 22px; max-width: 460px; margin: -128px auto 0; padding: 32px; background: var(--canvas); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-float); }
+:root .rk-auth-title { font-size: 28px; line-height: 1.15; }
+.rk-auth-text { color: var(--ink-muted); }
+.rk-field { display: grid; gap: 8px; }
+.rk-field-label { font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); padding: 0; }
+.rk-field-hint { font: 400 12.5px/18px var(--font-mono); color: var(--ink-muted); }
+.rk-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+.rk-fieldset > legend { margin-bottom: 8px; }
+.rk-input { width: 100%; box-sizing: border-box; height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--canvas); color: var(--ink); font: 400 15px var(--font-sans); transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+.rk-input::placeholder { color: var(--ink-muted); opacity: 0.75; }
+.rk-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+.rk-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rk-choice { position: relative; display: grid; gap: 4px; align-content: start; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line-strong); cursor: pointer; transition: border-color 150ms var(--ease), background-color 150ms var(--ease); }
+.rk-choice:hover { border-color: var(--ink-muted); }
+.rk-choice input, .rk-seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.rk-choice strong { font-size: 15px; font-weight: 600; }
+.rk-choice span { font-size: 13px; line-height: 1.4; color: var(--ink-muted); }
+.rk-choice:has(input:checked) { border-color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px var(--blue); }
+.rk-choice:has(input:checked)::after { content: '✓'; position: absolute; top: 12px; right: 12px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--blue); color: #ffffff; font-size: 10px; font-weight: 700; }
+.rk-choice:has(input:focus-visible), .rk-seg label:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
+.rk-seg { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 999px; background: var(--canvas-alt); }
+.rk-seg label { display: grid; place-items: center; min-height: 40px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-muted); cursor: pointer; text-align: center; transition: background-color 150ms var(--ease), color 150ms var(--ease); }
+.rk-seg label:has(input:checked) { background: var(--navy); color: var(--on-navy); }
+.rk-auth-switch { text-align: center; font-size: 14px; color: var(--ink-muted); }
+.rk-link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--label); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (max-width: 720px) {
+  .rk-auth-wrap { padding-top: 12px; padding-bottom: 64px; }
+  .rk-auth-panel { padding: 44px 20px 132px; }
+  .rk-auth-card { margin-top: -104px; padding: 22px 18px; }
+}
+@media (max-width: 420px) {
+  .rk-choices { grid-template-columns: 1fr; }
+}
+
+/* How it works illustrations (StepArt in LandingAltitude.tsx). Base styles are the finished picture;
+   .rk-armed (added by JS, never under reduced motion) holds each .rk-a at its first keyframe until
+   the card gets .rk-run. --d = card stagger, --t = the element's offset inside its card. Nothing loops. */
+.rk-art { container-type: inline-size; aspect-ratio: 4 / 3; display: grid; place-items: center; margin-bottom: 8px; border-radius: 12px; background: var(--canvas-alt); border: 1px solid var(--line); overflow: hidden; }
+.rk-art-stage { font-size: min(5.6cqw, 15px); width: 17em; height: 12.6em; display: grid; align-content: center; gap: 0.55em; color: var(--ink); line-height: 1.25; }
+.rk-art-stage b { font-weight: 600; }
+.rk-art-mono { font: 500 0.62em/1.3 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); white-space: nowrap; }
+.rk-art-card { background: var(--canvas); border: 1px solid var(--line); border-radius: 0.8em; padding: 0.6em 0.8em 0.35em; }
+.rk-art-head { display: flex; align-items: center; gap: 0.5em; padding-bottom: 0.45em; font-size: 0.8em; }
+.rk-art-head .rk-art-mono { font-size: 0.78em; }
+.rk-art-avatar { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 999px; background: var(--violet-soft); color: var(--violet); font: 600 0.8em/1 var(--font-mono); }
+.rk-art-row, .rk-art-shot { display: grid; grid-template-columns: 5em minmax(0, 1fr) 1.15em; align-items: center; gap: 0.4em; padding-block: 0.42em; border-top: 1px solid var(--line); }
+.rk-art-shot { grid-template-columns: 3.6em minmax(0, 1fr); padding-block: 0.32em; }
+.rk-art-val { font-size: 0.74em; white-space: nowrap; overflow: hidden; }
+.rk-art-tick { display: grid; place-items: center; width: 1.15em; height: 1.15em; border-radius: 999px; background: var(--violet-soft); color: var(--violet); }
+.rk-art-tick svg { width: 0.8em; height: 0.8em; }
+.rk-art-search { display: flex; align-items: center; gap: 0.5em; height: 2.4em; padding-inline: 0.85em; border-radius: 999px; background: var(--canvas); border: 1px solid var(--line-strong); }
+.rk-art-search svg { width: 1.05em; height: 1.05em; color: var(--violet); flex: none; }
+.rk-art-typed { font: 500 0.85em/1 var(--font-mono); }
+.rk-art-search + .rk-art-mono { padding-left: 0.2em; }
+.rk-art-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
+.rk-art-tile { display: grid; gap: 0.3em; padding: 0.35em; border-radius: 0.6em; background: var(--canvas); border: 1px solid var(--line); }
+.rk-art-thumb { display: grid; place-items: center; aspect-ratio: 1; border-radius: 0.4em; background: var(--violet-soft); color: var(--violet); }
+.rk-art-thumb svg { width: 1.1em; height: 1.1em; }
+.rk-art-mult { font: 500 0.7em/1 var(--font-mono); color: var(--ink); }
+.rk-art-tile .rk-art-mult { padding: 0.1em 0.15em 0.15em; }
+.rk-art-list { display: grid; gap: 0.45em; padding-top: 0.6em; }
+.rk-art-pick { position: relative; border-radius: 0.6em; background: var(--canvas); border: 1px solid var(--line); }
+.rk-art-pick:first-child { border-color: var(--line-strong); }
+.rk-art-pick-in { display: grid; grid-template-columns: 2.1em minmax(0, 1fr) auto; align-items: center; gap: 0.55em; padding: 0.35em 0.6em 0.35em 0.35em; }
+.rk-art-pick-lose .rk-art-pick-in { opacity: 0.5; }
+.rk-art-pick-t { font-size: 0.74em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk-art-pick .rk-art-thumb svg { width: 0.8em; height: 0.8em; }
+.rk-art-pill { display: inline-block; padding: 0.4em 0.65em; border-radius: 999px; font: 500 0.58em/1 var(--font-mono); letter-spacing: 0.03em; white-space: nowrap; }
+.rk-art-best { position: absolute; top: 0; right: 0.5em; translate: 0 -55%; background: var(--mustard); color: var(--on-mustard); font-weight: 600; }
+.rk-art-wait { background: var(--rising-soft); color: var(--rising); }
+.rk-art-ok { background: var(--early-soft); color: var(--early); }
+.rk-art-board { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6em; }
+.rk-art-col { display: grid; align-content: start; gap: 0.45em; min-height: 9.4em; padding: 0.5em 0.45em; border-radius: 0.7em; background: var(--canvas); border: 1px solid var(--line); }
+.rk-art-mini { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); align-items: center; justify-items: start; gap: 0.25em 0.35em; padding: 0.35em; border-radius: 0.55em; background: var(--canvas); border: 1px solid var(--line-strong); }
+.rk-art-mini b { font-size: 0.72em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rk-art-mini .rk-art-thumb { grid-row: span 2; width: 100%; }
+.rk-art-mini .rk-art-thumb svg { width: 0.8em; height: 0.8em; }
+.rk-art-pills { display: grid; }
+.rk-art-pills > * { grid-area: 1 / 1; justify-self: start; }
+.rk-art-pills .rk-a-out { opacity: 0; }
+
+/* Motion: short ease-out moves, held at the first keyframe until the card runs */
+/* --slow stretches every duration and offset (user asked for a slower, smoother play); --glide is a soft ease-out. */
+.rk-armed { --slow: 2; --glide: cubic-bezier(0.22, 1, 0.36, 1); }
+.rk-armed .rk-a { animation-duration: calc(220ms * var(--slow)); animation-timing-function: var(--glide); animation-fill-mode: both; animation-play-state: paused; animation-delay: calc((var(--d, 0ms) + var(--t, 0ms)) * var(--slow)); }
+.rk-armed .rk-run .rk-a { animation-play-state: running; }
+.rk-armed .rk-a-fade { animation-name: rk-art-fade; }
+.rk-armed .rk-a-rise { animation-name: rk-art-rise; }
+.rk-armed .rk-a-drop { animation-name: rk-art-drop; }
+.rk-armed .rk-a-pop { animation-name: rk-art-pop; }
+.rk-armed .rk-a-wipe { animation-name: rk-art-wipe; animation-duration: calc(250ms * var(--slow)); }
+.rk-armed .rk-a-type { animation-name: rk-art-type; animation-duration: calc(480ms * var(--slow)); animation-timing-function: steps(4, end); }
+.rk-armed .rk-a-dim { animation-name: rk-art-dim; }
+.rk-armed .rk-a-out { animation-name: rk-art-out; animation-duration: calc(150ms * var(--slow)); }
+.rk-armed .rk-a-move { animation-name: rk-art-move; animation-duration: calc(250ms * var(--slow)); }
+.rk-armed .rk-a-up { animation-name: rk-art-up; }
+.rk-armed .rk-reset .rk-a { animation-name: none; }
+.rk-armed .rk-art-stage { opacity: 0; transition: opacity 500ms var(--glide); }
+.rk-armed .rk-run .rk-art-stage { opacity: 1; transition-duration: 700ms; transition-delay: calc(var(--d, 0ms) * var(--slow)); }
+@keyframes rk-art-fade { from { opacity: 0; } }
+@keyframes rk-art-rise { from { opacity: 0; transform: translateY(0.4em); } }
+@keyframes rk-art-drop { from { opacity: 0; transform: translateY(-0.6em); } }
+@keyframes rk-art-pop { from { opacity: 0; transform: scale(0.85); } }
+@keyframes rk-art-wipe { from { clip-path: inset(0 100% 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+@keyframes rk-art-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes rk-art-dim { from { opacity: 1; } }
+@keyframes rk-art-out { from { opacity: 1; } }
+@keyframes rk-art-move { from { transform: translateX(calc(-100% - 1.6em)); opacity: 0.35; } }
+@keyframes rk-art-up { from { transform: translateY(calc(100% + 0.45em)); opacity: 0; } }
 
 /* Responsive */
 @media (max-width: 1080px) {
@@ -287,5 +454,31 @@ body:has(.rk) { background: #ffffff; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rk *, .rk *::before, .rk *::after { animation: none !important; transition: none !important; }
-  .rk-pick:hover { transform: none; }
+  .rk-pick:hover, .rk-pick:focus-visible, .rk-pick:hover .rk-pick-thumb, .rk-pick:focus-visible .rk-pick-thumb { transform: none; }
 }
+
+/* Demo: platform logos above the search bar (visual only; the sample search is the same on each) */
+.rk-demo-platforms { display: flex; flex-wrap: wrap; gap: 8px; }
+.rk-demo-platforms button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--canvas); color: var(--ink-muted); font: 500 15px/1 var(--font-sans); cursor: pointer; transition: border-color 150ms var(--ease), background-color 150ms var(--ease), color 150ms var(--ease); }
+.rk-demo-platforms button:hover { border-color: var(--line-strong); color: var(--ink); }
+.rk-demo-platforms button.is-on { border-color: var(--navy); background: var(--navy); color: var(--on-navy); }
+.rk-demo-platforms .logo-round { flex: none; }
+
+/* Demo: hover card. On hover or keyboard focus the pick's video fades in just above its own card, with a "Playing"
+   tag and a progress bar that fills once; it fades out on leave. pointer-events: none, so the pick stays hovered and
+   clickable; click still opens the dialog. */
+.rk-demo { overflow: visible; }
+.rk-demo-bar { border-radius: 20px 20px 0 0; }
+.rk-demo-picks > li { position: relative; }
+.rk-hovercard { --glide: cubic-bezier(0.22, 1, 0.36, 1); position: absolute; z-index: 20; left: 50%; bottom: calc(100% + 12px); width: 200px; padding: 6px; background: var(--canvas); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-float); opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, 6px); transition: opacity 400ms var(--glide), transform 400ms var(--glide), visibility 0s linear 400ms; }
+.rk-demo-picks > li:hover .rk-hovercard, .rk-demo-picks > li:has(.rk-pick:focus-visible) .rk-hovercard { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity 500ms var(--glide) 120ms, transform 500ms var(--glide) 120ms, visibility 0s linear 120ms; }
+.rk-hovercard-video { position: relative; aspect-ratio: 9 / 16; display: grid; align-content: space-between; justify-items: start; padding: 12px; border-radius: 12px; overflow: hidden; background-color: var(--navy); background-image: radial-gradient(circle at 1px 1px, var(--navy-dot) 1px, transparent 1.5px); background-size: 16px 16px; }
+.rk-hovercard-playing { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font: 500 10.5px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; background: rgb(244 245 255 / 0.12); color: var(--on-navy); }
+.rk-hovercard-progress { justify-self: stretch; height: 3px; border-radius: 999px; background: rgb(244 245 255 / 0.2); overflow: hidden; }
+.rk-hovercard-progress i { display: block; height: 100%; width: 100%; background: var(--on-navy); transform-origin: left; transform: scaleX(0); }
+.rk-demo-picks > li:hover .rk-hovercard-progress i, .rk-demo-picks > li:has(.rk-pick:focus-visible) .rk-hovercard-progress i { animation: rk-progress 15s linear 400ms forwards; }
+@keyframes rk-progress { to { transform: scaleX(1); } }
+.rk-pick-meta { font: 400 12.5px/18px var(--font-mono); color: var(--ink-muted); }
+/* Touch screens and narrow layouts: no hover, tap opens the dialog */
+@media (hover: none), (max-width: 960px) { .rk-hovercard { display: none; } }
+@media (prefers-reduced-motion: reduce) { .rk-hovercard { transition: opacity 200ms linear; transform: translate(-50%, 0); } .rk-hovercard-progress i { animation: none !important; transform: scaleX(0.3); } }
