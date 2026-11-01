@@ -34,8 +34,10 @@ interface Props {
   search?: ReactNode;
   onSearch?: (text: string) => void;
   onFindIdeas: () => void;
-  // Adds the video to the shortlist, or opens its plan when it's already there.
-  onShortlist: (videoId: string) => void;
+  // Film next: save a video to Plans, undo that, or open its plan to write the shots.
+  onSave: (videoId: string) => void;
+  onUndoSave: (videoId: string) => void;
+  onPlanShots: (videoId: string) => void;
   onOpenPlan: (ideaId: string) => void;
   onOpenPlans: (stage?: IdeaStatus) => void;
   onApprove: (ideaId: string) => void;
@@ -126,7 +128,9 @@ export function ClientHome(p: Props) {
           client={client}
           picks={picks}
           plannedKinds={picks.length ? plannedKinds : 0}
-          onShortlist={p.onShortlist}
+          onSave={p.onSave}
+          onUndo={p.onUndoSave}
+          onPlanShots={p.onPlanShots}
           onOpenPlans={() => p.onOpenPlans()}
           empty={empty}
         />
@@ -148,7 +152,6 @@ export function ClientHome(p: Props) {
           onOpenPlan={p.onOpenPlan}
           onOpenPlans={() => p.onOpenPlans("approved")}
         />
-
       </div>
 
       <LaterSection

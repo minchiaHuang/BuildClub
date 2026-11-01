@@ -21,8 +21,6 @@ import type {
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from "../types";
 import type { Decision } from "../lib/memory";
 import { useApp } from "../lib/appContext";
-import { plural } from "../lib/metrics";
-import { inTwoWeeks } from "../state";
 import { PlanCard, PlanCardBody } from "./plans/PlanCard";
 import { PlanColumn } from "./plans/PlanColumn";
 import {
@@ -62,22 +60,19 @@ const instructions =
   "To move a plan, press space or enter. Use the left and right arrow keys to choose a column, " +
   "then press space or enter to drop it there, or escape to cancel.";
 
-// One client's plans as a Kanban board (the Plans tab): Not sent yet → Waiting for you to approve →
+// One client's plans as a Kanban board (the Plans tab): Still planning → Waiting for approval →
 // Approved, ready to film. Drag a plan to send, approve or take it back. Plans sent back (from Review or the plan page)
-// return to Not sent yet with your reason, ready to fix and send again. Approved plans are locked.
+// return to Still planning with your reason, ready to fix and send again. Any card can move to any column, both ways.
 export function ShortlistBoard(p: Props) {
-  const [dueDate, setDueDate] = useState(inTwoWeeks);
-  const [note, setNote] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   // A plan dropped on Waiting without shots: it stays put and says why.
-  const [needsShots, setNeedsShots] = useState<string | null>(null);
   // What the last move did, for screen readers.
   const [said, setSaid] = useState("");
   const focusAfter = useRef<string | null>(null);
   const canDecide = useApp().role === "manager";
 
   const mine = p.ideas.filter((i) => i.clientId === p.client.id);
-  // Sent-back plans sit in Not sent yet, showing your reason, until they're fixed and sent again.
+  // Sent-back plans sit in Still planning, showing your reason, until they're fixed and sent again.
   const shownIn = (i: SavedIdea): IdeaStatus =>
     i.status === "rejected" ? "saved" : i.status;
   const by = (s: IdeaStatus) => mine.filter((i) => shownIn(i) === s);
@@ -93,9 +88,6 @@ export function ShortlistBoard(p: Props) {
     approved: by("approved").sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
     rejected: by("rejected"),
   };
-  const saved = lists.saved;
-  const ready = saved.filter((i) => shotsOf(i).length > 0);
-  const needShots = saved.filter((i) => shotsOf(i).length === 0);
   const dragging = mine.find((i) => i.id === dragId);
   const dragTargets = dragging ? targetsFrom(dragging.status, canDecide) : null;
 
@@ -139,24 +131,14 @@ export function ShortlistBoard(p: Props) {
       prev.map((i) => (ids.has(i.id) ? { ...i, ...patch(i) } : i)),
     );
 
-  // Copy each idea's reference shot list. Live videos have none, so they stay empty and editable in the plan.
-  const generate = () =>
-    update(new Set(needShots.map((i) => i.id)), (i) => {
-      const f = p.formatById.get(p.videoById.get(i.videoId)?.formatId ?? "");
-      return { shots: (f?.shotList ?? []).map((s) => ({ ...s })) };
-    });
-
-  // Send for approval, with the due date and note from the first column.
+  // Send for approval (dragging a card into Waiting for approval).
   const send = (ids: Set<string>) => {
     const sentAt = Date.now();
-    update(ids, (i) => ({
+    update(ids, () => ({
       status: "waiting",
       sentAt,
-      dueDate,
-      noteToApprover: note.trim() || i.noteToApprover,
       rejectReason: undefined,
     }));
-    setNote("");
   };
 
   const remove = (id: string) =>
@@ -166,26 +148,30 @@ export function ShortlistBoard(p: Props) {
   const move = (idea: SavedIdea, to: IdeaStatus) => {
     if (!targetsFrom(idea.status, canDecide).includes(to)) return;
     const name = nameOf(idea);
-    setNeedsShots(null);
-    if (to === "waiting" && !shotsOf(idea, formatOf(idea)).length) {
-      setNeedsShots(idea.id);
-      setSaid(
-        `${name} stays in ${columnTitle[idea.status]}. Add shots before sending.`,
-      );
-      return;
-    }
+    // Cards move freely, with or without shots. A card leaving Still planning with no shots keeps an
+    // empty list, so it still reads "No shots yet" instead of borrowing the original video's shots.
+    const shots = shotsOf(idea, formatOf(idea));
+    if (idea.status === "saved" && !idea.shots)
+      update(new Set([idea.id]), () => ({ shots: [] }));
+    // Moving back out of Approved undoes the approval.
+    const unapprove = { approvedAt: undefined, managerNote: undefined, shotComments: undefined };
     if (to === "waiting" && idea.status === "saved") send(new Set([idea.id]));
     else if (to === "waiting")
       update(new Set([idea.id]), () => ({
         status: "waiting",
         sentAt: Date.now(),
         rejectReason: undefined,
+        ...unapprove,
       }));
     else if (to === "approved") p.onDecide(idea.id, { kind: "approved" });
     else
+      // Back to Still planning keeps the shots written so far, so it can be sent again.
       update(new Set([idea.id]), () => ({
         status: "saved",
         sentAt: undefined,
+        rejectReason: undefined,
+        shots,
+        ...unapprove,
       }));
     focusAfter.current = idea.id;
     setSaid(`Moved ${name} to ${columnTitle[to]}.`);
@@ -206,7 +192,6 @@ export function ShortlistBoard(p: Props) {
 
   const onDragStart = ({ active }: DragStartEvent) => {
     setDragId(String(active.id));
-    setNeedsShots(null);
   };
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setDragId(null);
@@ -227,7 +212,6 @@ export function ShortlistBoard(p: Props) {
           format={p.formatById.get(v.formatId)}
           column={column}
           targets={targetsFrom(idea.status, canDecide)}
-          needsShots={needsShots === idea.id}
           onOpenPlan={() => p.onOpenPlan(idea.id)}
           onRemove={() => remove(idea.id)}
         />
@@ -244,53 +228,6 @@ export function ShortlistBoard(p: Props) {
   };
 
   const extra: Partial<Record<IdeaStatus, React.ReactNode>> = {
-    saved: saved.length > 0 && (
-      <div className="board-batch">
-        <div className="board-batch-row">
-          <span className="small muted">
-            {needShots.length
-              ? `${plural(needShots.length, "video")} without a shot list.`
-              : "Every video has a shot list."}
-          </span>
-          <button
-            className="btn btn-ghost btn-sm"
-            disabled={!needShots.length}
-            onClick={generate}
-          >
-            Add suggested shots
-          </button>
-        </div>
-        <label className="field">
-          <span className="field-label">Due date</span>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value || inTwoWeeks())}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">Why these fit {p.client.name}</span>
-          <textarea
-            rows={2}
-            value={note}
-            placeholder="A short note to read when you approve"
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-        <button
-          className="btn btn-primary"
-          disabled={!ready.length}
-          onClick={() => send(new Set(ready.map((i) => i.id)))}
-        >
-          {ready.length
-            ? `Send ${ready.length} for approval`
-            : "Send for approval"}
-        </button>
-        {ready.length > 0 && needShots.length > 0 && (
-          <span className="small muted">Videos without shots stay here.</span>
-        )}
-      </div>
-    ),
     waiting: lists.waiting.length > 0 && (
       <button
         className="btn btn-primary btn-sm board-review"

@@ -5,8 +5,8 @@ import type { Format, IdeaStatus, SavedIdea, Video } from '../../types'
 export const COLUMNS: IdeaStatus[] = ['saved', 'waiting', 'approved']
 
 export const columnTitle: Record<IdeaStatus, string> = {
-  saved: 'Not sent yet',
-  waiting: 'Waiting for you to approve',
+  saved: 'Still planning',
+  waiting: 'Waiting for approval',
   approved: 'Approved, ready to film',
   rejected: 'Sent back to fix',
 }
@@ -14,17 +14,15 @@ export const columnTitle: Record<IdeaStatus, string> = {
 // The plan's name on the board: the format name, or how a live video starts.
 export const planName = (v: Video, f?: Format) => (v.live ? v.hook : (f?.name ?? v.hook))
 
-export const LOCKED_TEXT = 'Approved plans are locked so you film what was approved.'
 
 // Shots the team has written. A saved idea needs its own; one already sent uses the reference's, like the plan does.
 export const shotsOf = (idea: SavedIdea, f?: Format) => idea.shots ?? (idea.status === 'saved' ? [] : (f?.shotList ?? []))
 
-// Where a plan can be moved from its column. Approved is locked. Only the manager approves or sends back.
+// Where a plan can be moved: any other column, both ways. Only the manager can drop into Approved.
+// A sent-back plan sits in Still planning, so it moves like one.
 export function targetsFrom(from: IdeaStatus, canDecide: boolean): IdeaStatus[] {
-  if (from === 'saved') return ['waiting']
-  if (from === 'waiting') return canDecide ? ['saved', 'approved'] : ['saved']
-  if (from === 'rejected') return ['waiting']
-  return []
+  const at = from === 'rejected' ? 'saved' : from
+  return COLUMNS.filter((c) => c !== at && (c !== 'approved' || canDecide))
 }
 
 // "Nov 13" from "2026-11-13".

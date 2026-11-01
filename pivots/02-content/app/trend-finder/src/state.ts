@@ -41,7 +41,7 @@ export function useStored<T>(key: string, initial: T) {
   return [value, setValue] as const
 }
 
-export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v4', sampleIdeas)
+export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v6', sampleIdeas)
 
 // 'all' is the agency view across every client.
 export type Workspace = 'all' | string

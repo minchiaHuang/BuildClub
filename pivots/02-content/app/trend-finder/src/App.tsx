@@ -26,7 +26,6 @@ import type { Client, Format, Video } from './types'
 import { checkLive, findPatterns, searchLive } from './lib/live'
 import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
-import { PatternStrip } from './components/PatternStrip'
 import { LiveLoading } from './components/LiveLoading'
 import { withScreenTransition } from './lib/motion'
 import { AppContext } from './lib/appContext'
@@ -478,6 +477,12 @@ export default function App() {
     else runSearch(lastSearch)
   }
 
+  // Sidebar "Find ideas": come back to this client's last results if they're still on screen, not an empty search page.
+  const navTo = (v: View) => {
+    if (v === 'search' && lastSearch && shownSearch === `${client.id}|${lastSearch}`) return setView('results')
+    setView(v)
+  }
+
   // A plan view without its plan (e.g. after switching sample/live data) would be blank: show Plans instead.
   const planMissing = view === 'plan' && !(planIdea && planVideo && planFormat && planClient)
   useEffect(() => {
@@ -513,7 +518,7 @@ export default function App() {
         workspace={workspace}
         setWorkspace={setWorkspace}
         view={view}
-        setView={setView}
+        setView={navTo}
         counts={counts}
         onSignOut={() => {
           setSignedIn(false)
@@ -572,7 +577,9 @@ export default function App() {
               pulseError={pulseError}
               onRefreshPulse={() => void refreshPulse(client, true)}
               onFindIdeas={() => setView('search')}
-              onShortlist={planFromVideo}
+              onSave={(videoId) => void saveIdea(videoId)}
+              onUndoSave={toggleSave}
+              onPlanShots={planFromVideo}
               onOpenPlan={openPlan}
               onOpenPlans={openPlans}
               // Single approver: the signed-in user is the manager, so Home approves with the same handler as Review.
@@ -630,11 +637,6 @@ export default function App() {
               }}
               onRefreshPulse={() => void refreshPulse(client, true)}
               live={live}
-              patterns={
-                live ? (
-                  <PatternStrip patterns={patterns} active={patternFilter} onPick={setPatternFilter} />
-                ) : null
-              }
               likeThis={
                 interp.source && likeFormat ? (
                   <LikeThisCard

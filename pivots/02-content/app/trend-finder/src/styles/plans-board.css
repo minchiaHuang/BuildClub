@@ -50,3 +50,18 @@
 :root[data-ui="altitude"] .plans-reason { grid-column: 1 / -1; display: grid; gap: 8px; cursor: default; }
 :root[data-ui="altitude"] .plans-reason textarea { width: 100%; }
 :root[data-ui="altitude"] .plans-reason-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Plans tab: a whiteboard-style dotted canvas behind the board, like Miro. Only on this tab;
+   the sidebar keeps its own solid background. Dots use the theme's line colour, so dark mode works too. */
+:root[data-ui="altitude"] .shell-main:has(.client.board) {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--line-strong) 1px, transparent 1.2px);
+  background-size: 20px 20px;
+  background-attachment: fixed;
+}
+/* Columns sit on the canvas like cards on a board. */
+:root[data-ui="altitude"] .shell-main:has(.client.board) .plans-col {
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  border-color: var(--line);
+  backdrop-filter: blur(2px);
+}

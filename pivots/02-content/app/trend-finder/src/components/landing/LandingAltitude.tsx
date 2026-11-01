@@ -1,4 +1,5 @@
 import { PlatformLogo, type LogoPlatform } from '../PlatformToggles'
+import { Logo } from '../Logo'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react'
 
 // Public landing page, built to the conversion flow in docs/landing-page-flow.md (sections 0–10)
@@ -539,7 +540,7 @@ export function LandingAltitude({ onLogIn, onDemo }: { onLogIn: () => void; onDe
       <nav className="rk-nav" aria-label="Main">
         <div className="rk-wrap rk-nav-in">
           <a className="rk-logo" href="#top">
-            <span className="rk-mark" aria-hidden="true">↗</span> Remake
+            <Logo height={24} />
           </a>
           <div className="rk-links">
             <a href="#how">How it works</a>
@@ -715,7 +716,7 @@ export function LandingAltitude({ onLogIn, onDemo }: { onLogIn: () => void; onDe
       {/* 10 · Footer */}
       <footer className="rk-footer">
         <div className="rk-wrap rk-footer-in">
-          <span className="rk-logo"><span className="rk-mark" aria-hidden="true">↗</span> Remake</span>
+          <span className="rk-logo"><Logo height={22} /></span>
           <nav aria-label="Footer">
             <a href="#how">How it works</a>
             <a href="#faq">FAQ</a>

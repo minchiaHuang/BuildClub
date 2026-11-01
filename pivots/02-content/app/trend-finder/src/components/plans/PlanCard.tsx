@@ -1,11 +1,9 @@
-import { useId } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import type { Format, IdeaStatus, SavedIdea, Video } from "../../types";
 import { compact, plural } from "../../lib/metrics";
 import { beatUsual } from "../find/words";
 import { Thumb } from "../Thumb";
 import {
-  LOCKED_TEXT,
   dueLabel,
   planName,
   shotsOf,
@@ -56,11 +54,9 @@ interface Props {
   idea: SavedIdea;
   video: Video;
   format?: Format;
-  // The column it shows in (a sent-back plan shows under "Not sent yet").
+  // The column it shows in (a sent-back plan shows under "Still planning").
   column: IdeaStatus;
   targets: IdeaStatus[];
-  // Dropped on Waiting without shots: say so on the card.
-  needsShots: boolean;
   onOpenPlan: () => void;
   onRemove: () => void;
 }
@@ -70,16 +66,14 @@ const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 const keep = { onMouseDown: stop, onTouchStart: stop, onKeyDown: stop };
 
 export function PlanCard(p: Props) {
-  const locked = p.idea.status === "approved";
   const data: DragData = { status: p.idea.status, targets: p.targets };
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } =
     useDraggable({
       id: p.idea.id,
       data,
-      disabled: locked || p.targets.length === 0,
+      disabled: p.targets.length === 0,
     });
   const name = planName(p.video, p.format);
-  const lockId = useId();
 
   const setRef = (el: HTMLDivElement | null) => {
     setNodeRef(el);
@@ -90,30 +84,14 @@ export function PlanCard(p: Props) {
     <div
       ref={setRef}
       data-plan={p.idea.id}
-      className={`board-card plans-card${isDragging ? " is-placeholder" : ""}${locked ? " is-locked" : ""}`}
+      className={`board-card plans-card${isDragging ? " is-placeholder" : ""}`}
       {...attributes}
       {...listeners}
       role="group"
-      aria-roledescription={locked ? undefined : "movable plan"}
+      aria-roledescription="movable plan"
       aria-label={name}
-      aria-describedby={locked ? lockId : attributes["aria-describedby"]}
-      title={locked ? LOCKED_TEXT : undefined}
     >
       <PlanCardBody idea={p.idea} video={p.video} format={p.format} />
-      {locked && (
-        <span id={lockId} className="sr-only">
-          {LOCKED_TEXT}
-        </span>
-      )}
-
-      {p.needsShots && (
-        <p className="plans-notice small" role="alert">
-          Add shots before sending:{" "}
-          <button className="link-btn" {...keep} onClick={p.onOpenPlan}>
-            open plan
-          </button>
-        </p>
-      )}
 
       <div className="board-card-actions" {...keep}>
         <button className="btn btn-ghost btn-sm" onClick={p.onOpenPlan}>

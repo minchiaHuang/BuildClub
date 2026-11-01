@@ -6,7 +6,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { compact, outlierScore, platformName, plural, tierOf } from '../lib/metrics'
+import { compact, outlierScore, platformName, tierOf } from '../lib/metrics'
 import { beatUsual, daysAgoWords, spreadSentence } from './find/words'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
@@ -36,7 +36,6 @@ interface Props {
   likeThis: React.ReactNode
   // Live mode: real TikTok results, with a sounds-and-hashtags strip instead of hand-written formats.
   live: boolean
-  patterns: React.ReactNode
   results: Video[]
   trends: FormatTrend[]
   sort: Sort
@@ -66,6 +65,8 @@ export function ResultsScreen(p: Props) {
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
   const [helpOpen, setHelpOpen] = useState(false)
+  // Only show "Saved. You'll find it in Plans." right after the Save button is pressed here, not for ideas saved earlier.
+  const [justSaved, setJustSaved] = useState<string | null>(null)
   useResultsShortcuts({
     onToggleSave: p.onToggleSave,
     onPlan: p.onPlan,
@@ -85,10 +86,11 @@ export function ResultsScreen(p: Props) {
   const best = proven[0] ?? open[0] ?? ranked[0]
   const bestTrend = best && trendOf(best)
   const bestStatus = best ? p.ideaStatus.get(best.id) : undefined
-  const platformNames = (['tiktok', 'instagram'] as Platform[])
+  const platformNames = (['tiktok', 'instagram', 'youtube'] as Platform[])
     .filter((pl) => shown.some((v) => v.platform === pl))
     .map((pl) => platformName[pl])
-    .join(' and ')
+    .join(', ')
+    .replace(/, ([^,]*)$/, ' and $1')
   const shortlisted = [...p.ideaStatus.values()].filter((s) => s === 'saved').length
   const i = p.interp
   const queryLabel = i.source ? '' : i.text.trim()
@@ -239,7 +241,7 @@ export function ResultsScreen(p: Props) {
                 <BestCompare key={best.id} video={best} />
                 <div className="best-actions">
                   {bestStatus === 'saved' ? (
-                    <button className="btn btn-primary" aria-pressed="true" onClick={() => p.onToggleSave(best.id)}>
+                    <button className="btn btn-primary" aria-pressed="true" onClick={() => { setJustSaved(null); p.onToggleSave(best.id) }}>
                       ✓ Saved for {p.clientName}
                     </button>
                   ) : bestStatus ? (
@@ -247,7 +249,7 @@ export function ResultsScreen(p: Props) {
                       Open plan · {bestStatus === 'waiting' ? `Waiting for ${manager}` : bestStatus === 'approved' ? 'Approved' : 'Sent back'}
                     </button>
                   ) : (
-                    <button className="btn btn-primary" onClick={() => p.onToggleSave(best.id)}>
+                    <button className="btn btn-primary" onClick={() => { setJustSaved(best.id); p.onToggleSave(best.id) }}>
                       Save for {p.clientName}
                     </button>
                   )}
@@ -255,47 +257,19 @@ export function ResultsScreen(p: Props) {
                     See why it worked
                   </button>
                 </div>
+                {bestStatus === 'saved' && justSaved === best.id && (
+                  <p className="saved-where small" role="status">
+                    <span>
+                      Saved. You'll find it in <strong>Plans</strong>.
+                    </span>
+                    <button className="link-btn" onClick={p.onGoShortlist}>
+                      Go to Plans →
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
           )}
-
-          {p.patterns ??
-            (p.trends.length > 1 && (
-              <div className="trends" role="group" aria-labelledby="ideas-title">
-                <div className="section-head">
-                  <div className="section-title">
-                    <h2 id="ideas-title">Video ideas several accounts are copying</h2>
-                    <p className="section-sub">
-                      Each card is one kind of video that keeps coming up in these results. Tap one to see only those videos.
-                    </p>
-                  </div>
-                  {p.formatFilter && (
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => p.setFormatFilter(null)}>
-                      Show all videos
-                    </button>
-                  )}
-                </div>
-                <div className="trend-row">
-                  {p.trends.map((t) => {
-                    const active = p.formatFilter === t.format.id
-                    const count = p.results.filter((v) => v.formatId === t.format.id).length
-                    return (
-                      <button
-                        key={t.format.id}
-                        type="button"
-                        className={`trend-card ${active ? 'trend-active' : ''}`}
-                        aria-pressed={active}
-                        onClick={() => p.setFormatFilter(active ? null : t.format.id)}
-                      >
-                        <strong className="pattern-label">{t.format.name}</strong>
-                        <span className="trend-text">{spreadSentence(t)}.</span>
-                        <span className="trend-count">{plural(count, 'video')} in these results</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
 
           <div className="grid-head">
             <div className="grid-title">
@@ -332,7 +306,7 @@ export function ResultsScreen(p: Props) {
       {shortlisted > 0 && (
         <div className="shortlist-tray" role="status">
           <span>
-            <strong>{shortlisted}</strong> saved for {p.clientName}, shots not planned yet
+            <strong>{shortlisted}</strong> saved for {p.clientName}. Find {shortlisted === 1 ? 'it' : 'them'} in Plans, under "Still planning"
           </span>
           <button className="btn btn-primary btn-sm" onClick={p.onGoShortlist}>
             Plan the shots

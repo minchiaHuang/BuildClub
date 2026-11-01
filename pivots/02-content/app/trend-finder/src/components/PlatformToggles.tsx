@@ -6,7 +6,7 @@ const tiktokPath =
 const xPath =
   'M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.41l-5.8-7.58-6.64 7.58H.47l8.6-9.83L0 1.15h7.59l5.25 6.93zM17.61 20.64h2.04L6.49 3.24H4.3z'
 
-export type LogoPlatform = Platform | 'youtube' | 'reddit' | 'x'
+export type LogoPlatform = Platform | 'reddit' | 'x'
 
 const logoName: Record<LogoPlatform, string> = {
   instagram: 'Instagram',
@@ -89,9 +89,9 @@ interface Props {
   live?: boolean
 }
 
-// TikTok only for now. Instagram is parked (shows as coming soon) until we pick a platform per client.
+// TikTok, Instagram and YouTube can be searched (sample data; live search is TikTok only). Reddit and X come later.
 const order: LogoPlatform[] = ['tiktok', 'instagram', 'youtube', 'reddit', 'x']
-const searchable = (p: LogoPlatform): p is Platform => p === 'tiktok'
+const searchable = (p: LogoPlatform): p is Platform => p === 'tiktok' || p === 'instagram' || p === 'youtube'
 
 // Round, icon-only platform buttons. On = ring and a small tick; "Soon" = faded. At least one stays on.
 export function PlatformToggles({ selected, onChange, showSoon = false, live = false }: Props) {
@@ -100,7 +100,7 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
   return (
     <div className="platforms" role="group" aria-label="Platforms">
       {order.map((p) => {
-        // Instagram, YouTube, Reddit and X aren't built yet.
+        // Reddit and X aren't built yet.
         const soon = !searchable(p)
         if (soon && !showSoon) return null
         if (soon) {
@@ -142,8 +142,8 @@ export function PlatformToggles({ selected, onChange, showSoon = false, live = f
         )
       })}
       <span className="platforms-note">
-        {onNames.join(' and ')}
-        {showSoon && <span className="platforms-soon"> · Instagram, YouTube, Reddit and X are coming later</span>}
+        {onNames.length > 1 ? `${onNames.slice(0, -1).join(', ')} and ${onNames[onNames.length - 1]}` : onNames[0]}
+        {showSoon && <span className="platforms-soon"> · Reddit and X are coming later</span>}
       </span>
     </div>
   )

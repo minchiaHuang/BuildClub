@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Client, IdeaStatus, SavedIdea, Video } from "../../types";
 import type {
@@ -7,7 +8,7 @@ import type {
   PlanName,
   StepRow,
 } from "../../lib/clientHome";
-import { dueText, duration, monthLeft } from "../../lib/clientHome";
+import { dueText, duration, monthLeft, possessive } from "../../lib/clientHome";
 import { plural } from "../../lib/metrics";
 import { Thumb } from "../Thumb";
 
@@ -61,11 +62,49 @@ export function FilmNextCard(p: {
   picks: FilmPick[];
   // How many kinds of video were left out because they already have a plan.
   plannedKinds: number;
-  onShortlist: (videoId: string) => void;
+  // Saves the video to the client's Plans (Still planning). Undo takes it off again.
+  onSave: (videoId: string) => void;
+  onUndo: (videoId: string) => void;
+  // Opens the saved idea's plan so the shots can be written.
+  onPlanShots: (videoId: string) => void;
   onOpenPlans: () => void;
   empty: { text: string; fix: string; onFix: () => void; busy?: boolean };
 }) {
-  const [top, ...rest] = p.picks;
+  // The idea just saved: the card confirms it, and the next suggestion shows underneath.
+  const [saved, setSaved] = useState<{ videoId: string; name: string } | null>(
+    null,
+  );
+  const [top, ...rest] = p.picks.filter((pk) => pk.video.id !== saved?.videoId);
+  const save = (pick: FilmPick) => {
+    p.onSave(pick.video.id);
+    setSaved({ videoId: pick.video.id, name: pick.name });
+  };
+  const confirm = saved && (
+    <div className="ch-saved" role="status">
+      <p className="small">
+        <strong>
+          Saved "{saved.name}" to {possessive(p.client.name)} Plans.
+        </strong>
+      </p>
+      <span className="ch-saved-actions">
+        <button
+          className="link-btn"
+          onClick={() => p.onPlanShots(saved.videoId)}
+        >
+          Plan the shots →
+        </button>
+        <button
+          className="link-btn"
+          onClick={() => {
+            p.onUndo(saved.videoId);
+            setSaved(null);
+          }}
+        >
+          Undo
+        </button>
+      </span>
+    </div>
+  );
   const skipped =
     p.plannedKinds > 0 ? (
       <p className="small muted ch-note">
@@ -82,12 +121,9 @@ export function FilmNextCard(p: {
       id="ch-hero"
       className="ch-hero"
       label="Film next"
-      title={
-        <>
-          What should {p.client.name} film next?
-        </>
-      }
+      title={<>What should {p.client.name} film next?</>}
     >
+      {confirm}
       {!top ? (
         <div className="ch-hero-empty">
           <Empty>{p.empty.text}</Empty>
@@ -110,10 +146,7 @@ export function FilmNextCard(p: {
               <p className="ch-proof">{top.proof}</p>
               <p className="small muted ch-ref">{top.video.handle}</p>
               <div className="ch-pick-actions">
-                <button
-                  className="btn btn-primary"
-                  onClick={() => p.onShortlist(top.video.id)}
-                >
+                <button className="btn btn-primary" onClick={() => save(top)}>
                   Save this idea
                 </button>
               </div>
@@ -133,7 +166,7 @@ export function FilmNextCard(p: {
                     </span>
                     <button
                       className="link-btn"
-                      onClick={() => p.onShortlist(pick.video.id)}
+                      onClick={() => save(pick)}
                       aria-label={`Save this idea: ${pick.name}`}
                     >
                       Save this idea
@@ -216,9 +249,7 @@ export function NeedsApprovalCard(p: {
               </button>
             </li>
           ))}
-          {more > 0 && (
-            <li className="small muted">and {more} more</li>
-          )}
+          {more > 0 && <li className="small muted">and {more} more</li>}
         </ul>
       )}
       {p.sentBack.length > 0 && (
@@ -498,7 +529,9 @@ export function LaterCard(p: { title: string; what: string; needs: string }) {
       <h3>{p.title}</h3>
       <p className="small">{p.what}</p>
       <p className="small muted">{p.needs}</p>
-      <p className="small ch-later-ask">Needs a decision before we build this.</p>
+      <p className="small ch-later-ask">
+        Needs a decision before we build this.
+      </p>
     </section>
   );
 }

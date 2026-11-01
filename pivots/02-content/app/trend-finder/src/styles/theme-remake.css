@@ -304,3 +304,53 @@
   :root[data-ui="altitude"] :is(.find-start-label, .find-start-arrow) { transition: none; }
   :root[data-ui="altitude"] .find-start-item:hover .find-start-arrow { transform: none; }
 }
+
+/* Find ideas: after saving, say where the saved video went (Plans, under "Still planning"). */
+:root[data-ui="altitude"] .saved-where {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 4px 0 0;
+  color: var(--fg);
+  animation: rk-saved-in var(--dur) var(--ease) both;
+}
+@keyframes rk-saved-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ui="altitude"] .saved-where { animation: none; }
+}
+
+/* Remake wordmark: the logo file used as a mask, filled with the current text colour. */
+.remake-logo {
+  display: inline-block; flex: none; background: currentColor;
+  mask-size: contain; mask-repeat: no-repeat; mask-position: left center;
+  -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: left center;
+}
+
+/* Find ideas: "Search on" always sits left of the platform icons, however long the note gets.
+   The note wraps inside its own space instead of pushing the icons onto a new line. */
+:root[data-ui="altitude"] .search-on { flex-wrap: nowrap; }
+:root[data-ui="altitude"] .search-on .platforms { flex: 1; min-width: 0; }
+:root[data-ui="altitude"] .search-on .platforms-note { flex: 1 1 180px; min-width: 0; }
+@media (max-width: 520px) {
+  :root[data-ui="altitude"] .search-on { flex-wrap: wrap; }
+}
+
+/* Find ideas: selected platforms glow in brand blue. A quick flare when switched on, then a slow, soft pulse.
+   Kept tight (small blur) so the edge stays clean. */
+:root[data-ui="altitude"] .platform-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent), 0 0 8px 0 color-mix(in srgb, var(--accent) 40%, transparent);
+  animation:
+    rk-platform-flare 420ms var(--ease) both,
+    rk-platform-glow 2.4s ease-in-out 420ms infinite;
+}
+@keyframes rk-platform-flare {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent), 0 0 0 0 transparent; }
+  60% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 10px 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+  100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent), 0 0 8px 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+}
+@keyframes rk-platform-glow {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent), 0 0 8px 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 34%, transparent), 0 0 11px 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No movement: keep the strong blue glow, still. */
+  :root[data-ui="altitude"] .platform-on { animation: none; }
+}

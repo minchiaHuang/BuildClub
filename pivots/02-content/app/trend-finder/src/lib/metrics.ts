@@ -77,7 +77,7 @@ export function stageText(t: FormatTrend): string {
 
 export const stageOrder: Record<TrendStage, number> = { early: 0, rising: 1, everywhere: 2, 'one-off': 3 }
 
-export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram' }
+export const platformName: Record<Platform, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }
 
 export function clientFit(format: Format, client: Client) {
   if (format.needs.length === 0) return { ok: true, text: `We can't check this one for ${client.name} yet. Watch it and decide.` }

@@ -44,12 +44,14 @@ export function interpretMedia(
       ? 'tiktok'
       : /instagram\.com/i.test(url)
         ? 'instagram'
+        : /youtube\.com|youtu\.be/i.test(url)
+          ? 'youtube'
         : null
     : null
 
   const source: MediaSource = image
     ? { kind: 'image', label: image.name, platform: null, previewUrl: image.url }
-    : { kind: 'link', label: platform ? `${platform === 'tiktok' ? 'TikTok' : 'Instagram'} link` : 'video link', platform }
+    : { kind: 'link', label: platform ? `${platform === 'tiktok' ? 'TikTok' : platform === 'youtube' ? 'YouTube' : 'Instagram'} link` : 'video link', platform }
 
   return {
     text: image ? image.name : url!,
@@ -81,6 +83,8 @@ const lengthRules: [RegExp, number][] = [
 
 const platformRules: [RegExp, Platform][] = [
   [/\b(tiktok|tik tok|tiktoks)\b/, 'tiktok'],
+  [/\b(instagram|insta|reels?)\b/, 'instagram'],
+  [/\b(youtube|yt|shorts)\b/, 'youtube'],
 ]
 
 const audienceRules: [RegExp, string][] = [

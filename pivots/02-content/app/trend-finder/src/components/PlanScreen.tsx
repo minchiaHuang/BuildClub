@@ -22,8 +22,8 @@ interface Props {
 }
 
 const statusLabel: Record<IdeaStatus, string> = {
-  saved: 'Not sent yet',
-  waiting: 'Waiting for you to approve',
+  saved: 'Still planning',
+  waiting: 'Waiting for approval',
   approved: 'Approved',
   rejected: 'Sent back',
 }

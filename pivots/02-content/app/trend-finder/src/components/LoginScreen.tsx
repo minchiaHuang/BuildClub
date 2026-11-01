@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Logo } from './Logo'
 import { useApp } from '../lib/appContext'
 import { LandingAltitude } from './landing/LandingAltitude'
 
@@ -41,7 +42,7 @@ export function LoginScreen({ onSignIn, startOn = 'landing' }: Props) {
       <nav className="rk-nav" aria-label="Main">
         <div className="rk-wrap rk-nav-in">
           <button type="button" className="rk-logo rk-logo-btn" onClick={() => setMode('landing')}>
-            <span className="rk-mark" aria-hidden="true">↗</span> Remake
+            <Logo height={24} />
           </button>
           <div className="rk-nav-actions">
             <button type="button" className="rk-btn rk-btn-ghost" onClick={() => setMode('landing')}>Back</button>

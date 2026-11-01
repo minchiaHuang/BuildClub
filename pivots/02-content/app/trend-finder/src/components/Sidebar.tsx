@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Logo } from './Logo'
 import type { Client } from '../types'
 import type { Workspace } from '../state'
 import { useApp } from '../lib/appContext'
@@ -164,10 +165,7 @@ export function Sidebar(p: Props) {
       {p.open && <div className="side-scrim" onClick={p.onClose} />}
       <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label="Main">
         <div className="side-brand">
-          <span className="brand-mark" aria-hidden="true">
-            ↗
-          </span>
-          Remake
+          <Logo height={22} />
         </div>
 
         {/* On phones the sidebar is a slide-out menu: close it after a pick so the new screen isn't hidden behind it. */}
