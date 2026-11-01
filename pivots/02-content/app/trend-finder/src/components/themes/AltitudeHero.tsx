@@ -51,7 +51,7 @@ export function AltitudeHero({ clientName, children }: { clientName: string; chi
           </span>
           <span className="alt-right">One place for every client.</span>
         </h1>
-        <p className="alt-lede">Search TikTok, see which small accounts are beating their size, and turn the best one into a plan your client can approve.</p>
+        <p className="alt-lede">Search short-form video, see which small accounts are beating their size, and turn the best one into a plan your client can approve.</p>
         {children && <div className="alt-search">{children}</div>}
       </div>
     </header>

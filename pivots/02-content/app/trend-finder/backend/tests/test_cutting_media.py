@@ -172,13 +172,50 @@ def test_all_silent_take_renders(tmp_path):
     assert mean_volume(out, 0.2, 1.5) < -60
 
 
+def frame_rows(path, t=0.5):
+    """Mean luma (0-255) of horizontal bands of one frame: top, upper-middle, centre, bottom of the 1080x1920 output."""
+    bands = {}
+    for name, y in (("top", 20), ("upper", 600), ("centre", 960), ("bottom", 1880)):
+        r = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t), "-i", str(path), "-frames:v", "1",
+                            "-vf", f"crop=1080:20:0:{y},format=gray", "-f", "rawvideo", "-"],
+                           capture_output=True, stdin=subprocess.DEVNULL)
+        assert r.returncode == 0 and r.stdout, r.stderr
+        bands[name] = sum(r.stdout) / len(r.stdout)
+    return bands
+
+
 @need_ffmpeg
-def test_landscape_is_center_cropped(tmp_path):
-    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)], size="640x360")
-    _, p, _ = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [])
+def test_landscape_is_letterboxed_not_cropped(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)], size="1280x720")
+    _, p, out = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [])
     assert_spec(p)
+    rows = frame_rows(out)
+    # 1280x720 fits as 1080x608, centred: black bars of about 656 px above and below, picture in the middle.
+    assert rows["top"] < 3 and rows["bottom"] < 3 and rows["upper"] < 3
+    assert rows["centre"] > 20
     graph = cutting.build_join_graph([{"hasAudio": True, "duration": 1.5}])
-    assert "crop=1080:1920" in graph and "pad=" not in graph
+    assert "pad=1080:1920" in graph
+
+
+@need_ffmpeg
+def test_square_is_letterboxed(tmp_path):
+    clip = make_clip(tmp_path / "a.mp4", [("tone", 440, 1.5)], size="720x720")
+    _, p, out = cut(tmp_path, [{"path": clip}], words_fn=lambda w, d: [])
+    assert_spec(p)
+    rows = frame_rows(out)
+    assert rows["top"] < 3 and rows["bottom"] < 3 and rows["centre"] > 20
+
+
+@need_ffmpeg
+def test_vertical_fills_the_frame_with_no_bars(tmp_path):
+    for size in ("360x640", "270x600"):  # 9:16 and a taller phone: both fill and crop, as before
+        clip = make_clip(tmp_path / f"{size}.mp4", [("tone", 440, 1.5)], size=size)
+        out_dir = tmp_path / size
+        out_dir.mkdir()
+        _, p, out = cut(out_dir, [{"path": clip}], words_fn=lambda w, d: [])
+        assert_spec(p)
+        rows = frame_rows(out)
+        assert min(rows.values()) > 15, (size, rows)
 
 
 @need_ffmpeg

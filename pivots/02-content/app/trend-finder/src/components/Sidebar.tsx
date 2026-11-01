@@ -85,7 +85,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
       <button className="switcher-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className={`avatar ${current ? '' : 'avatar-agency'}`}>{current ? initials(current.name) : '▦'}</span>
         <span className="switcher-text">
-          <span className="switcher-label">{current ? 'Client' : agency.agencyName}</span>
+          <span className="switcher-label">{current ? 'Client' : agency.agencyName || 'All clients'}</span>
           <strong>{current ? current.name : 'All clients'}</strong>
         </span>
         <span className="switcher-caret" aria-hidden="true">
@@ -139,8 +139,9 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
 }
 
 export function Sidebar(p: Props) {
-  const { agency, role } = useApp()
-  const userName = role === 'manager' ? agency.managerName : 'Team member'
+  const { agency, role, account } = useApp()
+  // A signed-in account shows its own name; the demo (no accounts) shows the role it picked at sign-in.
+  const userName = account?.name || account?.email || (role === 'manager' ? agency.managerName || 'Manager' : 'Team member')
   const inClient = p.workspace !== 'all'
   const item = (v: View, icon: keyof typeof paths, label: string, count?: number, active = p.view === v) => (
     <button
@@ -199,8 +200,8 @@ export function Sidebar(p: Props) {
             How we calculate this
           </a>
           {p.live ? (
-            <span className="live-pill" title="Search results are real videos from the platforms you pick">
-              Live data
+            <span className="live-pill" title="Searches look up real videos from the platforms you pick. A repeat search can show results saved in the last 24 hours.">
+              Real videos
             </span>
           ) : (
             <span className="sample-pill" title="All accounts and numbers are made up for this demo">
@@ -210,8 +211,8 @@ export function Sidebar(p: Props) {
           <div className="side-user">
             <span className="avatar avatar-user">{initials(userName) || '?'}</span>
             <span className="side-user-text">
-              <strong>{role === 'manager' ? `${userName} (manager)` : userName}</strong>
-              <span className="small muted">{agency.agencyName}</span>
+              <strong>{role === 'manager' && !account ? `${userName} (manager)` : userName}</strong>
+              {agency.agencyName && <span className="small muted">{agency.agencyName}</span>}
             </span>
             <button className="icon-btn" onClick={p.onSignOut} aria-label="Sign out" title="Sign out">
               <Icon name="out" />

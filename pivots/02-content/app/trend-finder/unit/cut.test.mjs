@@ -209,6 +209,7 @@ test('reviewLine words the three states and gives null without a review', () => 
   assert.equal(reviewLine({ status: 'waiting', sentAt: 1 }, 'Daphne', day), "Waiting for Daphne's approval · sent day1")
   assert.equal(reviewLine({ status: 'approved', sentAt: 1, decidedAt: 2 }, 'Daphne', day), 'Daphne approved this video · day2')
   assert.equal(reviewLine({ status: 'rejected', sentAt: 1, decidedAt: 3, reason: 'too long' }, 'Daphne', day), 'Daphne sent this back · day3')
+  assert.equal(reviewLine({ status: 'approved', sentAt: 1, decidedAt: 2 }, 'your approver', day), 'Your approver approved this video · day2')
 })
 
 test('sendCutForReview posts with no body and returns the state; failures use the server error', async () => {

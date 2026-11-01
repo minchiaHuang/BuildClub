@@ -46,6 +46,9 @@ export const useSavedIdeas = () => useStored<SavedIdea[]>('trend-finder.ideas.v4
 // 'all' is the agency view across every client.
 export type Workspace = 'all' | string
 
+export const blankAgency: AgencySettings = { agencyName: '', managerName: '' }
+
+// Only the demo shows these; a real account uses its own agency name and whatever approver it sets.
 export const defaultAgency: AgencySettings = { agencyName: 'Sample Social Co.', managerName: 'Annie' }
 
 export function inTwoWeeks(): string {

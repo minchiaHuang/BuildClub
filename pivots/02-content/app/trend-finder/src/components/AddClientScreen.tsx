@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formats } from '../data/sample'
+import { GENERIC_NEEDS } from '../data/needs'
 import { useApp } from '../lib/appContext'
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
 }
 
 // Same lists as client settings.
-const allNeeds = [...new Set(formats.flatMap((f) => f.needs))]
+const allNeeds = GENERIC_NEEDS
 const allAudiences = [...new Set(formats.flatMap((f) => f.audiences))]
 
 const splitList = (text: string) =>

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AgencySettings, ClientEvent, Role, SavedIdea } from './types'
 import { clients as sampleClients, formats, sampleIdeas, videos } from './data/sample'
 import { formatTrend, groupFailures, hasDate, outlierScore, platformList, platformName, stageOrder, viewsPerDay, viewsPerFollower } from './lib/metrics'
-import { defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
+import { GENERIC_NEEDS } from './data/needs'
+import { blankAgency, defaultAgency, defaultQuery, inTwoWeeks, useSavedIdeas, useStored } from './state'
 import type { Query, Sort, Workspace } from './state'
 import { SearchScreen } from './components/SearchScreen'
 import { ResultsScreen } from './components/ResultsScreen'
@@ -56,7 +57,7 @@ import { AppContext } from './lib/appContext'
 import type { AppContextValue } from './lib/appContext'
 import { ShortlistBoard } from './components/ShortlistBoard'
 import { AddClientScreen } from './components/AddClientScreen'
-import { logout, me } from './lib/auth'
+import { logout, me, type Account } from './lib/auth'
 import { nextView, onUnauthorized } from './lib/authGate'
 import { markMigrated, pickInitialIdeas, wasMigrated } from './lib/migrateLocal'
 import { applyDraft, keepUnsavedDraft, rebaseIdeas, sameIdeaList, withoutSamples } from './lib/ideasSync'
@@ -84,7 +85,8 @@ const NO_CLIENT: Client = { id: '', name: '', niche: '', audience: '', monthlyTa
 export default function App() {
   const [signedIn, setSignedIn] = useStored('trend-finder.signed-in', false)
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
-  const [agency, setAgencyRaw] = useStored<AgencySettings>('remake.agency.v1', defaultAgency)
+  // Only what the user typed; the sample agency or the account's own name fills the rest (see `agency` below).
+  const [agencyEdits, setAgencyRaw] = useStored<AgencySettings>('remake.agency.v2', blankAgency)
   const [role, setRole] = useStored<Role>('remake.role.v1', 'member')
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   const [view, setViewRaw] = useState<View>(() => (workspace === 'all' ? 'overview' : 'search'))
@@ -111,6 +113,14 @@ export default function App() {
 
   // 'open' = the API has no accounts (demo sign-in above); otherwise the API's session decides.
   const [auth, setAuth] = useState<'checking' | 'open' | 'signed-out' | 'signed-in'>('checking')
+  const [account, setAccount] = useState<Account | null>(null)
+  const [demoApi, setDemoApi] = useState(false)
+  // The built-in sample agency and approver only show in the demo (no accounts, or an API started with --demo-data).
+  const sample = auth === 'open' || demoApi
+  const agency: AgencySettings = {
+    agencyName: agencyEdits.agencyName || account?.agency || (sample ? defaultAgency.agencyName : ''),
+    managerName: agencyEdits.managerName || (sample ? defaultAgency.managerName : ''),
+  }
   const returnTo = useRef<ReturnTo | null>(null)
   const keepDraft = useRef<() => void>(() => {})
   const restoreView = useCallback(() => {
@@ -136,7 +146,9 @@ export default function App() {
     return true
   }, [setWorkspaceRaw])
   useEffect(() => {
-    me().then((a) => {
+    Promise.all([me(), checkDemo()]).then(([a, demo]) => {
+      setDemoApi(demo)
+      setAccount(a.kind === 'signed-in' ? a.account : null)
       setAuth(a.kind)
       if (a.kind === 'signed-in') restoreView()
     })
@@ -778,7 +790,7 @@ export default function App() {
     const f = v && formatById.get(v.formatId)
     if (!v?.live || !v.url || !f || !f.shotList.length || f.needsKnown || needsAsked.current.has(videoId)) return
     needsAsked.current.add(videoId)
-    checkNeeds(v.url, [...new Set(formats.flatMap((x) => x.needs))])
+    checkNeeds(v.url, GENERIC_NEEDS)
       .then((needs) =>
         setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? { ...x, needs, needsKnown: true } : x)) })),
       )
@@ -817,6 +829,7 @@ export default function App() {
 
   const appContext: AppContextValue = {
     agency,
+    account,
     setAgency: (patch) => setAgencyRaw((a) => ({ ...a, ...patch })),
     role,
     setRole,
@@ -838,7 +851,7 @@ export default function App() {
     overview: 'overview',
     search: 'search',
     results: 'search results',
-    review: `${agency.managerName}'s review`,
+    review: `${agency.managerName || 'your approver'}'s review`,
     plan: 'search results',
     settings: 'settings',
     channel: 'channel',
@@ -860,6 +873,7 @@ export default function App() {
           onSignIn={() => {
             if (auth === 'signed-out') {
               setAuth('signed-in')
+              void me().then((a) => setAccount(a.kind === 'signed-in' ? a.account : null))
               setRetryTick((t) => t + 1)
               // Back from an ended session: return to where the user was, not the overview.
               if (restoreView()) return

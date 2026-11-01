@@ -68,9 +68,7 @@ THUMB = re.compile(r"([A-Za-z0-9_-]+)\.jpg")
 
 class OverBudget(Exception):
     def __init__(self, wallet: str):
-        name, env = WALLETS[wallet]
-        super().__init__(f"Today's {name} budget is used up. Raise {env} in .env and restart the API; "
-                         "work already done is kept.")
+        super().__init__("This has reached its limit for today. Work already done is kept.")
         self.wallet = wallet
 
 

@@ -405,7 +405,7 @@ def search_youtube(query: str):
         youtube.apply(videos, stats)
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
-        return error(502, "YouTube search failed. Check the API terminal for details.", str(e))
+        return error(502, "YouTube search failed. Try again in a moment, or try a saved search.", str(e))
     missing = [c for c in channels if c not in stats]
     payload = {"query": query, "platform": "youtube", "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
@@ -442,7 +442,7 @@ def search_x(query: str):
         x.apply(videos, medians)
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
-        return error(502, "X search failed. Check the API terminal for details.", str(e))
+        return error(502, "X search failed. Try again in a moment, or try a saved search.", str(e))
     missing = [a for a in authors if a.lower() not in medians][:x.AUTHORS_PER_FILL]
     payload = {"query": query, "platform": "x", "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
@@ -486,7 +486,7 @@ def search_ig(query: str):
         instagram.apply(videos, baselines)
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
-        return error(502, "Instagram search failed. Check the API terminal for details.", str(e))
+        return error(502, "Instagram search failed. Try again in a moment, or try a saved search.", str(e))
     missing = [a for a in authors if a not in baselines][:instagram.ACCOUNTS_PER_FILL]
     payload = {"query": query, "platform": "instagram", "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
@@ -529,7 +529,7 @@ def search_reddit(query: str):
         reddit.apply(videos, medians)
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
-        return error(502, "Reddit search failed. Check the API terminal for details.", str(e))
+        return error(502, "Reddit search failed. Try again in a moment, or try a saved search.", str(e))
     missing = [s for s in subs if s not in medians][:reddit.SUBS_PER_SEARCH]
     payload = {"query": query, "platform": "reddit", "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
@@ -619,7 +619,7 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
     if platform not in ("tiktok", "instagram", "youtube", "reddit", "x"):
         return error(400, "Search TikTok, Instagram, YouTube, Reddit or X.")
     if not TOKEN and platform != "youtube":
-        return error(503, "Live search is off. Add APIFY_TOKEN to .env and restart the API.")
+        return error(503, "Search is unavailable right now. Try a saved search.")
     if fresh != "1":
         cached = read_cache(query, platform)
         if cached:
@@ -646,7 +646,7 @@ def search(q: str = "", fresh: str = "", platform: str = "tiktok", cachedOnly: s
         apply_medians(videos, medians)
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
-        return error(502, f"TikTok search failed. Check the API terminal for details.", str(e))
+        return error(502, f"TikTok search failed. Try again in a moment, or try a saved search.", str(e))
     payload = {"query": query, "platform": platform, "fetchedAt": int(time.time() * 1000), "videos": videos,
                "mediansPending": bool(missing)}
     write_cache(payload)
@@ -852,14 +852,25 @@ def saved_searches(limit: int = 3) -> list[str]:
 
 
 def over_budget(name: str, cap: float, env: str, unit: str = "US$") -> JSONResponse:
+    """The 429 for a spent or zero daily cap. The message is for the user, with no vendor or setting names;
+    the operator hint (which env var to raise) goes to the log."""
     print(f"[budget] {name} budget used up; to allow more, raise {env} in .env and restart the API.", flush=True)
-    if cap <= 0:
-        saved = saved_searches() if name == "Apify" else []
+    off = cap <= 0
+    if name == "Apify":
+        saved = saved_searches() if off else []
         names = ", ".join('"' + q + '"' for q in saved)
         hint = f" Try a saved search, like {names}." if saved else ""
-        return error(429, f"New {name} work is turned off. Saved searches and finished breakdowns still work.{hint}")
-    return error(429, f"Today's {name} budget ({unit}{cap:.2f}) is used up. Saved searches and finished "
-                      "breakdowns still work, and the budget resets at midnight.")
+        if off:
+            return error(429, f"Search is unavailable right now. Saved searches and finished breakdowns still work.{hint}")
+        return error(429, "Search has reached its limit for today. Saved searches and finished breakdowns still work, "
+                          "and it resets at midnight.")
+    if name == "Claude":
+        if off:
+            return error(429, "Breakdown isn't available right now. Add the shots yourself.")
+        return error(429, "Breakdowns have reached their limit for today. Add the shots yourself, or try again tomorrow.")
+    if off:
+        return error(429, "This isn't available right now. Finished results still work.")
+    return error(429, "This has reached its limit for today. Finished results still work, and it resets at midnight.")
 
 
 # A breakdown takes minutes, so it runs in the background and the front end polls for progress.
@@ -935,7 +946,7 @@ def like_image(body: LikeImageRequest):
     if cached:
         return cached
     if not spend("claude", IMAGE_USD, DAILY_CLAUDE_USD):
-        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+        return over_budget("Claude assist", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
     try:
         keywords, name, description = assist.like_image_terms(data, body.mediaType)
     except Exception as e:
@@ -954,7 +965,7 @@ def answer_search(body: AnswerRequest):
     if cached:
         return cached
     if not spend("claude", ASK_USD, DAILY_CLAUDE_USD):
-        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+        return over_budget("Claude assist", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
     try:
         lines = assist.answer_lines(body.query, [v.model_dump(exclude={"id"}, exclude_none=True) for v in body.videos])
     except Exception as e:
@@ -975,7 +986,7 @@ def check_needs(body: NeedsRequest):
     if "needs" in data:
         return {"needs": data["needs"]}
     if not spend("claude", NEEDS_USD, DAILY_CLAUDE_USD):
-        return over_budget("Claude", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
+        return over_budget("Claude assist", DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD")
     try:
         needs = assist.pick_needs(data, body.needs or DEFAULT_NEEDS)
     except Exception as e:
@@ -1007,7 +1018,7 @@ def start_channel(body: ChannelRequest):
         return error(400, str(e))
     except channels.OverBudget as e:
         name, env = channels.WALLETS[e.wallet]
-        return over_budget(name, CHANNEL_CAPS[e.wallet], env, "" if e.wallet == "scrapecreators" else "US$")
+        return over_budget(f"Channel ({name})", CHANNEL_CAPS[e.wallet], env, "" if e.wallet == "scrapecreators" else "US$")
 
 
 @app.get("/api/channel/{job_id}", response_model=ChannelJob, response_model_exclude_none=True)

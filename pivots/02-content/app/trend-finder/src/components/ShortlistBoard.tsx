@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Stage, Video } from '../types'
 import { compact, hasScore, outlierScore, plural, times } from '../lib/metrics'
 import { dueLabel } from '../lib/dates'
-import { useManagerName } from '../lib/appContext'
+import { capFirst, useManagerName } from '../lib/appContext'
 import { inTwoWeeks } from '../state'
 import { lastSentBack } from '../lib/memory'
 import { createShareLink, revokeClientLinks } from '../lib/share'
@@ -128,7 +128,7 @@ export function ShortlistBoard(p: Props) {
           </span>
           {idea.status === 'rejected' && (
             <span className="board-reason small">
-              {manager}: {idea.rejectTags?.length ? `${idea.rejectTags.join(' · ')}. ` : ''}
+              {capFirst(manager)}: {idea.rejectTags?.length ? `${idea.rejectTags.join(' · ')}. ` : ''}
               {idea.rejectReason || (idea.rejectTags?.length ? '' : 'No reason given.')}
             </span>
           )}
