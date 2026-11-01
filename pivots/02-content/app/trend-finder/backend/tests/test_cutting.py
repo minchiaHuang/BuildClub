@@ -111,13 +111,13 @@ def test_cut_graph_music_and_second_pass():
     assert "[1:a]atrim=0:2.727" in graph
 
 
-def test_join_graph_crops_and_fills_silence():
+def test_join_graph_fits_and_fills_silence():
     graph = cutting.build_join_graph([{"hasAudio": True, "duration": 3.0}, {"hasAudio": False, "duration": 2.5}])
     assert graph.count("anullsrc=r=48000:cl=stereo") == 1 and "atrim=0:2.5" in graph
     assert "[1:a]" not in graph and "[0:a]aresample=48000,aformat=channel_layouts=stereo" in graph
     chains = [c for c in graph.split(";") if c.startswith(("[0:v]", "[1:v]"))]
     assert len(chains) == 2 and all(c.endswith("format=yuv420p[v%d]" % i) for i, c in enumerate(chains))
-    assert "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30" in graph
+    assert f"{cutting.FIT_TO_VERTICAL},setsar=1,fps=30" in graph and "pad=1080:1920" in graph
     assert graph.endswith("concat=n=2:v=1:a=1[v][a]")
 
 

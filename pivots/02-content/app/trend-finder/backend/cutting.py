@@ -139,13 +139,21 @@ def output_duration(keeps: list[tuple[float, float]], speed: float) -> float:
     return sum(b - a for a, b in keeps) / speed
 
 
+# Per take, after the player's rotation is applied. A portrait take (taller than wide) fills the frame and is
+# centre-cropped to 9:16, as before. A landscape or square take is scaled to fit the width and padded with black
+# bars top and bottom, so nothing is cut off. The scale expression is the whole decision: -2 keeps the aspect
+# ratio and an even size; only a take between 9:16 and square is sized by its height.
+FIT_TO_VERTICAL = ("scale=w='if(gt(iw/ih,0.5625)*lt(iw/ih,1),-2,1080)':h='if(gt(iw/ih,0.5625)*lt(iw/ih,1),1920,-2)',"
+                   "crop='min(iw,1080)':'min(ih,1920)',pad=1080:1920:'(ow-iw)/2':'(oh-ih)/2':black")
+
+
 def build_join_graph(takes: list[dict]) -> str:
-    """Filtergraph that crops every take to 1080x1920/30fps/48 kHz stereo and concatenates them.
+    """Filtergraph that brings every take to 1080x1920/30fps/48 kHz stereo and concatenates them: portrait takes
+    are cropped to fill, landscape takes are letterboxed (see FIT_TO_VERTICAL).
     Input i is take i; a take without audio gets generated silence of its length."""
     parts, labels = [], ""
     for i, take in enumerate(takes):
-        parts.append(f"[{i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
-                     f"setsar=1,fps=30,format=yuv420p[v{i}]")
+        parts.append(f"[{i}:v]{FIT_TO_VERTICAL},setsar=1,fps=30,format=yuv420p[v{i}]")
         if take["hasAudio"]:
             parts.append(f"[{i}:a]aresample=48000,aformat=channel_layouts=stereo[a{i}]")
         else:
