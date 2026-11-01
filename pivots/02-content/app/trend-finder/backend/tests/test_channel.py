@@ -185,11 +185,11 @@ def test_jev_and_scrapecreators_have_their_own_caps(client, decoder, monkeypatch
         lambda w, n: server.spend(w, n, server.CHANNEL_CAPS[w]), lambda w: server.budget_left(w, server.CHANNEL_CAPS[w])))
     monkeypatch.setitem(server.CHANNEL_CAPS, "jev", 0)
     r = client.post("/api/channel", json={"platform": "youtube", "handle": "chan"})
-    assert r.status_code == 429 and "turned off" in r.json()["error"]
+    assert r.status_code == 429 and "isn't available right now" in r.json()["error"]
     monkeypatch.setitem(server.CHANNEL_CAPS, "jev", 1)
     monkeypatch.setitem(server.CHANNEL_CAPS, "scrapecreators", 0)
     r = client.post("/api/channel", json={"platform": "instagram", "handle": "chan"})
-    assert r.status_code == 429 and "turned off" in r.json()["error"]
+    assert r.status_code == 429 and "isn't available right now" in r.json()["error"]
     assert decoder.calls == []
 
 
@@ -203,7 +203,7 @@ def test_a_job_stops_when_jev_runs_out_after_the_free_steps(money, decoder):
     decoder.jobs, decoder.key = jobs, ("youtube", "chan")
     money.left_in["jev"] = 0.015  # passes the up-front check, but the label estimate (0.02) does not fit
     job = wait(jobs, jobs.submit("youtube", "chan"))
-    assert job.status == "failed" and "DAILY_JEV_USD" in job.error
+    assert job.status == "failed" and "limit for today" in job.error and "DAILY_JEV_USD" not in job.error
     assert "label" not in steps(decoder) and money.spent == []  # nothing paid, Claude never called
 
 

@@ -25,7 +25,7 @@ def test_live_searches_stop_at_the_daily_cap(client, monkeypatch):
     calls.clear()
     r = client.get("/api/search", params={"q": "tofu", "fresh": "1"})
     assert r.status_code == 429
-    assert "budget" in r.json()["error"]
+    assert "limit for today" in r.json()["error"] and "Apify" not in r.json()["error"]
     assert ".env" not in r.json()["error"] and "detail" not in r.json()
     assert calls == []  # refused before Apify is called
 
@@ -91,12 +91,12 @@ def test_a_zero_cap_says_searches_are_off_and_names_saved_ones(client, monkeypat
     r = client.get("/api/search", params={"q": "never cached"})
     assert r.status_code == 429
     msg = r.json()["error"]
-    assert "turned off" in msg and "Saved searches and finished breakdowns still work" in msg and '"tofu"' in msg
-    assert ".env" not in msg and "restart" not in msg
+    assert "unavailable right now" in msg and "Saved searches and finished breakdowns still work" in msg and '"tofu"' in msg
+    assert ".env" not in msg and "restart" not in msg and "Apify" not in msg and "turned off" not in msg
     assert "DAILY_APIFY_USD" in capsys.readouterr().out  # the operator hint goes to the log
 
 
 def test_a_zero_cap_without_saved_searches_still_explains(client, monkeypatch):
     monkeypatch.setattr(server, "DAILY_APIFY_USD", 0)
     r = client.get("/api/search", params={"q": "never cached"})
-    assert r.status_code == 429 and "turned off" in r.json()["error"]
+    assert r.status_code == 429 and "unavailable right now" in r.json()["error"]
