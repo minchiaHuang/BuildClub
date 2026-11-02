@@ -269,8 +269,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
             row = conn.execute(f"SELECT {COLUMNS} FROM renders WHERE idea_id = ?", (idea_id,)).fetchone()
             music = music_row(conn, idea_id)
             out = {"status": "none", "progress": 0, "step": "", "speed": DEFAULT_SPEED, "stale": False,
-                   "music": {"name": music[2], "size": music[3]} if music else None, "review": None,
-                   "options": grading.load_options(conn, idea_id) or None}
+                   "music": {"name": music[2], "size": music[3]} if music else None, "review": None}
+            options = grading.load_options(conn, idea_id)
+            if options:
+                out["options"] = options
             if row is None:
                 return out
             status, progress, step, err, speed, size, duration, out_sig, out_speed, out_shots = row
