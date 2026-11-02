@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Format, Video } from '../types'
 import { suggest } from '../lib/suggest'
 import type { Suggestion } from '../lib/suggest'
+import { t } from '../lib/i18n'
 
 interface Props {
   text: string
@@ -58,7 +59,7 @@ export function Suggestions({ text, formats, videos, onRefine, onAsk, inputId, f
   const questions = items[0].kind === 'question'
   return (
     <div className="suggest" aria-live="polite">
-      <span className="field-label">{questions ? 'Ask:' : 'Narrow it down:'}</span>
+      <span className="field-label">{questions ? t('find.suggest.ask') : t('find.suggest.narrow')}</span>
       <div className="suggest-list">
         {items.map((s) => (
           <button

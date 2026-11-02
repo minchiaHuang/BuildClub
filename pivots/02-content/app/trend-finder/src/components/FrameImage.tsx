@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from '../lib/i18n'
 
 interface Props {
   // The frame's URL; empty until one is made.
@@ -24,14 +25,14 @@ export function FrameImage({ src, alt, busy, error, onRetry, onLoaded }: Props) 
   if (busy) {
     return (
       <div className="sb-frame is-loading" role="status">
-        <span className="sb-frame-msg">Making the frame…</span>
+        <span className="sb-frame-msg">{t('find.frame.making')}</span>
       </div>
     )
   }
   if (error || loadFailed) {
     return (
       <div className="sb-frame is-error" role="alert">
-        <span className="sb-frame-msg">{error ?? "Couldn't load the frame."}</span>
+        <span className="sb-frame-msg">{error ?? t('find.frame.loadFailed')}</span>
         <button
           type="button"
           className="btn btn-ghost btn-sm"
@@ -43,7 +44,7 @@ export function FrameImage({ src, alt, busy, error, onRetry, onLoaded }: Props) 
             }
           }}
         >
-          Try again
+          {t('find.frame.retry')}
         </button>
       </div>
     )
@@ -51,7 +52,7 @@ export function FrameImage({ src, alt, busy, error, onRetry, onLoaded }: Props) 
   if (!src) {
     return (
       <div className="sb-frame is-empty">
-        <span className="sb-frame-msg">No frame yet</span>
+        <span className="sb-frame-msg">{t('find.frame.none')}</span>
       </div>
     )
   }

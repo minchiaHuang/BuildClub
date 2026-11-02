@@ -3,6 +3,7 @@ import { Logo } from './Logo'
 import type { Client } from '../types'
 import type { Workspace } from '../state'
 import { useApp } from '../lib/appContext'
+import { t } from '../lib/i18n'
 
 export type View =
   | 'overview'
@@ -91,8 +92,8 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
       <button className="switcher-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className={`avatar ${current ? '' : 'avatar-agency'}`}>{current ? initials(current.name) : '▦'}</span>
         <span className="switcher-text">
-          <span className="switcher-label">{current ? 'Client' : agency.agencyName}</span>
-          <strong>{current ? current.name : 'All clients'}</strong>
+          <span className="switcher-label">{current ? t('shell.side.client') : agency.agencyName}</span>
+          <strong>{current ? current.name : t('shell.side.allClients')}</strong>
         </span>
         <span className="switcher-caret" aria-hidden="true">
           ▾
@@ -103,12 +104,12 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
           <button role="menuitem" className={`switcher-item ${workspace === 'all' ? 'on' : ''}`} onClick={() => choose('all')}>
             <span className="avatar avatar-agency">▦</span>
             <span>
-              <strong>All clients</strong>
-              <span className="small muted">Every client at a glance</span>
+              <strong>{t('shell.side.allClients')}</strong>
+              <span className="small muted">{t('shell.side.allClientsHint')}</span>
             </span>
           </button>
           <div className="switcher-sep" />
-          <span className="switcher-head">Clients</span>
+          <span className="switcher-head">{t('shell.side.clients')}</span>
           {clients.map((c) => (
             <button
               key={c.id}
@@ -119,7 +120,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
               <span className="avatar">{initials(c.name)}</span>
               <span>
                 <strong>{c.name}</strong>
-                <span className="small muted">Sells: {c.niche}</span>
+                <span className="small muted">{t('shell.side.sells', { niche: c.niche })}</span>
               </span>
             </button>
           ))}
@@ -134,8 +135,8 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
           >
             <span className="avatar avatar-add">+</span>
             <span>
-              <strong>Add client</strong>
-              <span className="small muted">Name, audience, what they can't film</span>
+              <strong>{t('shell.side.addClient')}</strong>
+              <span className="small muted">{t('shell.side.addClientHint')}</span>
             </span>
           </button>
         </div>
@@ -146,7 +147,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
 
 export function Sidebar(p: Props) {
   const { agency, role, account } = useApp()
-  const userName = account?.name || (role === 'manager' ? agency.managerName : 'Team member')
+  const userName = account?.name || (role === 'manager' ? agency.managerName : t('shell.side.teamMember'))
   const inClient = p.workspace !== 'all'
   const item = (v: View, icon: keyof typeof paths, label: string, count?: number, active = p.view === v) => (
     <button
@@ -166,7 +167,7 @@ export function Sidebar(p: Props) {
   return (
     <>
       {p.open && <div className="side-scrim" onClick={p.onClose} />}
-      <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label="Main">
+      <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label={t('shell.side.main')}>
         <div className="side-brand">
           <Logo height={22} />
         </div>
@@ -188,42 +189,42 @@ export function Sidebar(p: Props) {
         <nav className="side-nav">
           {inClient ? (
             <>
-              {item('home', 'home', 'Home')}
-              {item('search', 'search', 'Find ideas', undefined, p.view === 'search' || p.view === 'results')}
+              {item('home', 'home', t('shell.side.home'))}
+              {item('search', 'search', t('shell.side.findIdeas'), undefined, p.view === 'search' || p.view === 'results')}
               {/* Plans = the board of saved ideas + review (batch mode) + one plan */}
-              {item('shortlist', 'plans', 'Plans', p.counts.plans, ['shortlist', 'review', 'plan'].includes(p.view))}
+              {item('shortlist', 'plans', t('shell.side.plans'), p.counts.plans, ['shortlist', 'review', 'plan'].includes(p.view))}
               <div className="side-sep" />
-              {item('channel', 'channel', 'Channel')}
-              {item('settings', 'brief', 'Brief')}
+              {item('channel', 'channel', t('shell.side.channel'))}
+              {item('settings', 'brief', t('shell.side.brief'))}
             </>
           ) : (
             <>
               {/* All clients Home (the view is still called 'overview' inside the app) */}
-              {item('overview', 'home', 'Home')}
-              {item('channel', 'channel', 'Channel')}
-              <p className="side-hint">Pick a client above to find ideas for them.</p>
+              {item('overview', 'home', t('shell.side.home'))}
+              {item('channel', 'channel', t('shell.side.channel'))}
+              <p className="side-hint">{t('shell.side.pickClient')}</p>
             </>
           )}
         </nav>
 
         <div className="side-foot">
           <a className="link-btn" href="/method" target="_blank" rel="noreferrer">
-            How we calculate this
+            {t('shell.side.method')}
           </a>
           {p.live ? (
-            <span className="live-pill" title="Search results are real videos from the platforms you pick">
-              Live data
+            <span className="live-pill" title={t('shell.side.liveTip')}>
+              {t('shell.side.live')}
             </span>
           ) : (
-            <span className="sample-pill" title="All accounts and numbers are made up for this demo">
-              Sample data
+            <span className="sample-pill" title={t('shell.side.sampleTip')}>
+              {t('shell.side.sample')}
             </span>
           )}
-          {item('preferences', 'settings', 'Settings')}
+          {item('preferences', 'settings', t('shell.side.settings'))}
           <div className="side-user">
             <span className="avatar avatar-user">{initials(userName) || '?'}</span>
             <span className="side-user-text">
-              <strong>{role === 'manager' && !account ? `${userName} (manager)` : userName}</strong>
+              <strong>{role === 'manager' && !account ? t('shell.side.manager', { name: userName }) : userName}</strong>
               <span className="small muted">{agency.agencyName}</span>
             </span>
             <button
@@ -232,8 +233,8 @@ export function Sidebar(p: Props) {
                 p.onClose()
                 p.onSignOut()
               }}
-              aria-label="Sign out"
-              title="Sign out"
+              aria-label={t('shell.side.signOut')}
+              title={t('shell.side.signOut')}
             >
               <Icon name="out" />
             </button>

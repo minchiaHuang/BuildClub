@@ -2,6 +2,7 @@ import { compact } from './metrics.ts'
 import type { CutState } from './cut.ts'
 import type { IdeaStatus } from '../types.ts'
 import { formatDay } from './dates.ts'
+import { t, tp } from './i18n.ts'
 
 // Publishing: posts of an approved finished video and the numbers that come back. Mirrors backend/publishing.py.
 // Posting is simulated unless the server says otherwise (see getPublishMode); a simulated post is never "published".
@@ -46,15 +47,15 @@ export function badgeOf(post: Pick<Post, 'status' | 'externalId'>, simulatedMode
   const sim = isSimulated(post, simulatedMode)
   switch (post.status) {
     case 'failed':
-      return { label: 'Failed', kind: 'no' }
+      return { label: t('cut.badge.failed'), kind: 'no' }
     case 'draft':
-      return { label: 'Draft', kind: 'wait' }
+      return { label: t('cut.badge.draft'), kind: 'wait' }
     case 'publishing':
-      return { label: 'Sending', kind: 'wait' }
+      return { label: t('cut.badge.sending'), kind: 'wait' }
     case 'scheduled':
-      return { label: sim ? 'Queued (simulated)' : 'Queued', kind: 'wait' }
+      return { label: sim ? t('cut.badge.queuedSim') : t('cut.badge.queued'), kind: 'wait' }
     default:
-      return sim ? { label: 'Simulated', kind: 'wait' } : { label: 'Published', kind: 'ok' }
+      return sim ? { label: t('cut.common.simulated'), kind: 'wait' } : { label: t('cut.badge.published'), kind: 'ok' }
   }
 }
 
@@ -64,7 +65,7 @@ export const SIMULATED_NOTE = 'Simulated post: nothing was sent to the platform.
 export function postNote(post: Pick<Post, 'status' | 'externalId' | 'platform'>, simulatedMode: boolean): string | null {
   if (post.status === 'failed' || post.status === 'draft' || post.status === 'publishing') return null
   const name = PUB_PLATFORM_NAME[post.platform]
-  if (isSimulated(post, simulatedMode)) return `Simulated post: nothing was sent to ${name}`
+  if (isSimulated(post, simulatedMode)) return t('cut.pub.simNote', { name })
   return null
 }
 
@@ -72,14 +73,7 @@ export function postNote(post: Pick<Post, 'status' | 'externalId' | 'platform'>,
 
 export const METRIC_FIELDS = ['views', 'likes', 'comments', 'shares', 'saves', 'followers'] as const
 export type MetricField = (typeof METRIC_FIELDS)[number]
-export const METRIC_LABEL: Record<MetricField, string> = {
-  views: 'Views',
-  likes: 'Likes',
-  comments: 'Comments',
-  shares: 'Shares',
-  saves: 'Saves',
-  followers: 'Followers (optional)',
-}
+export const metricLabel = (f: MetricField): string => t(`cut.metric.${f}`)
 
 export type MetricInputs = Partial<Record<MetricField, string>>
 export type MetricValues = Partial<Record<MetricField, number>>
@@ -101,7 +95,7 @@ export function checkMetrics(inputs: MetricInputs): MetricCheck {
     if (!raw) continue
     const clean = raw.replace(/[,\s]/g, '')
     if (!/^\d+$/.test(clean) || !Number.isSafeInteger(Number(clean))) {
-      errors[f] = 'Use a whole number, 0 or more.'
+      errors[f] = t('cut.metric.wholeNumber')
       continue
     }
     values[f] = Number(clean)
@@ -136,12 +130,10 @@ export interface PublishSummary {
 export const percent = (rate: number) => `${(rate * 100).toFixed(1).replace(/\.0$/, '')}%`
 
 // "Your last 2 tofu videos: 12.4k views avg, 7.7% engagement". null when no video of the topic has numbers yet.
-export function topicLine(t: TopicSummary): string | null {
-  if (!t.measuredIdeas || t.avgViews === null) return null
-  const subject = t.measuredIdeas === 1 ? `Your last ${t.topic} video` : `Your last ${t.measuredIdeas} ${t.topic} videos`
-  const avg = t.measuredIdeas === 1 ? 'views' : 'views avg'
-  const engagement = t.avgEngagementRate === null ? '' : `, ${percent(t.avgEngagementRate)} engagement`
-  return `${subject}: ${compact(t.avgViews)} ${avg}${engagement}`
+export function topicLine(topic: TopicSummary): string | null {
+  if (!topic.measuredIdeas || topic.avgViews === null) return null
+  const eng = topic.avgEngagementRate === null ? '' : t('cut.topic.engagement', { rate: percent(topic.avgEngagementRate) })
+  return tp('cut.topic.line', topic.measuredIdeas, { topic: topic.topic, views: compact(topic.avgViews), eng })
 }
 
 // The topics a search text speaks about: those named in it, best-measured first. No text lists all of them.
@@ -164,7 +156,7 @@ export function topicsFor(summary: PublishSummary | null, text: string, max = 3)
 // One finished video's result for its board card: "12.4k views · 7.7% engagement". null without numbers.
 export function ideaResultLine(i: IdeaSummary | undefined): string | null {
   if (!i || i.views === null) return null
-  return `${compact(i.views)} views${i.engagementRate === null ? '' : ` · ${percent(i.engagementRate)} engagement`}`
+  return i.engagementRate === null ? t('cut.result.views', { views: compact(i.views) }) : t('cut.result.viewsEng', { views: compact(i.views), rate: percent(i.engagementRate) })
 }
 
 // --- API ---
@@ -179,11 +171,11 @@ const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'cont
 const ideaBase = (id: string) => `/api/ideas/${encodeURIComponent(id)}`
 
 export async function getPublishMode(): Promise<{ mode: string; simulated: boolean }> {
-  return send(await fetch('/api/publishing/mode'), "Couldn't check how posting works.")
+  return send(await fetch('/api/publishing/mode'), t('cut.err.mode'))
 }
 
 export async function listPosts(ideaId: string): Promise<Post[]> {
-  return send(await fetch(`${ideaBase(ideaId)}/publications`), "Couldn't load the posts.")
+  return send(await fetch(`${ideaBase(ideaId)}/publications`), t('cut.err.posts'))
 }
 
 export async function publishIdea(ideaId: string, body: { caption: string; platforms: PubPlatform[]; scheduleAt?: number }): Promise<Post[]> {
@@ -192,30 +184,30 @@ export async function publishIdea(ideaId: string, body: { caption: string; platf
   if (r.status === 502) {
     const out = (await r.json().catch(() => null)) as { posts?: Post[]; error?: string } | null
     if (out?.posts) return out.posts
-    throw new Error(out?.error ?? "Couldn't post.")
+    throw new Error(out?.error ?? t('cut.err.post'))
   }
-  return (await send<{ posts: Post[] }>(r, "Couldn't post.")).posts
+  return (await send<{ posts: Post[] }>(r, t('cut.err.post'))).posts
 }
 
 export async function retryPost(postId: string): Promise<Post> {
   const r = await fetch(`/api/publications/${encodeURIComponent(postId)}/publish`, { method: 'POST' })
   const body = await r.json().catch(() => null)
   if (body && 'id' in body) return body as Post
-  throw new Error(body?.error ?? "Couldn't post.")
+  throw new Error(body?.error ?? t('cut.err.post'))
 }
 
 export async function saveMetrics(postId: string, values: MetricValues): Promise<void> {
-  await send(await fetch(`/api/publications/${encodeURIComponent(postId)}/metrics`, json(values)), "Couldn't save the numbers.")
+  await send(await fetch(`/api/publications/${encodeURIComponent(postId)}/metrics`, json(values)), t('cut.err.saveMetrics'))
 }
 
 // The latest numbers of each post of the idea, by post id.
 export async function latestByPost(ideaId: string): Promise<Record<string, Snapshot | null>> {
-  const out = await send<{ variants: { publicationId: string; latest: Snapshot | null }[] }>(await fetch(`${ideaBase(ideaId)}/compare`), "Couldn't load the numbers.")
+  const out = await send<{ variants: { publicationId: string; latest: Snapshot | null }[] }>(await fetch(`${ideaBase(ideaId)}/compare`), t('cut.err.loadMetrics'))
   return Object.fromEntries(out.variants.map((v) => [v.publicationId, v.latest]))
 }
 
 export async function getSummary(): Promise<PublishSummary> {
-  return send(await fetch('/api/publishing/summary'), "Couldn't load the results.")
+  return send(await fetch('/api/publishing/summary'), t('cut.err.summary'))
 }
 
 // --- Approval record ---
@@ -231,18 +223,18 @@ export function approvalLine(cut: Pick<CutState, 'output' | 'stale' | 'review'> 
   const r = cut?.review
   if (!cut?.output || r?.status !== 'approved') return null
   const when = r.decidedAt ? ` · ${dayTime(r.decidedAt)}` : ''
-  return cut.stale ? `Approved by ${manager}${when} · an older version, the video changed since` : `Approved by ${manager}${when} · this version`
+  return t(cut.stale ? 'cut.approval.old' : 'cut.approval.current', { name: manager, when })
 }
 
 // What is missing before a video can be posted, in plain words; null when it is ready.
 export function missingApproval(status: IdeaStatus, cut: Pick<CutState, 'output' | 'stale' | 'review'> | null, manager: string): string | null {
-  if (status !== 'approved') return `${manager} needs to approve the plan first, then the finished video.`
-  if (!cut || !cut.output) return `Make the video first. ${manager} needs to approve the finished video before it can be posted.`
-  if (cut.stale) return 'The takes or music changed after the video was made. Make it again.'
+  if (status !== 'approved') return t('cut.missing.plan', { name: manager })
+  if (!cut || !cut.output) return t('cut.missing.noVideo', { name: manager })
+  if (cut.stale) return t('cut.missing.stale')
   const review = cut.review
-  if (!review) return `${manager} needs to approve the finished video first. This version was not sent yet. Send it from "Make the video" above.`
-  if (review.status === 'waiting') return `${manager} needs to approve the finished video first. It is waiting for them now.`
-  if (review.status === 'rejected') return `${manager} sent the video back. Fix it, make it again and send it again.`
+  if (!review) return t('cut.missing.notSent', { name: manager })
+  if (review.status === 'waiting') return t('cut.missing.waiting', { name: manager })
+  if (review.status === 'rejected') return t('cut.missing.rejected', { name: manager })
   return null
 }
 

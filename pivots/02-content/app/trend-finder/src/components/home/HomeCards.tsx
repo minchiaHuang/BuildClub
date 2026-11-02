@@ -9,7 +9,7 @@ import type {
   StepRow,
 } from "../../lib/clientHome";
 import { dueText, duration, monthLeft, possessive } from "../../lib/clientHome";
-import { plural } from "../../lib/metrics";
+import { t, tp } from "../../lib/i18n";
 import { Thumb } from "../Thumb";
 
 // Cards for both Homes (one client and All clients). Each card: a small mono label, a serif heading, plain
@@ -83,7 +83,7 @@ export function FilmNextCard(p: {
     <div className="ch-saved" role="status">
       <p className="small">
         <strong>
-          Saved "{saved.name}" to {possessive(p.client.name)} Plans.
+          {t("home.cards.savedTo", { name: saved.name, owner: possessive(p.client.name) })}
         </strong>
       </p>
       <span className="ch-saved-actions">
@@ -91,7 +91,7 @@ export function FilmNextCard(p: {
           className="link-btn"
           onClick={() => p.onPlanShots(saved.videoId)}
         >
-          Plan the shots →
+          {t("home.cards.planShots")}
         </button>
         <button
           className="link-btn"
@@ -100,7 +100,7 @@ export function FilmNextCard(p: {
             setSaved(null);
           }}
         >
-          Undo
+          {t("home.cards.undo")}
         </button>
       </span>
     </div>
@@ -108,11 +108,9 @@ export function FilmNextCard(p: {
   const skipped =
     p.plannedKinds > 0 ? (
       <p className="small muted ch-note">
-        Not suggested here: {plural(p.plannedKinds, "kind")} of video that
-        already {p.plannedKinds === 1 ? "has" : "have"} a plan for{" "}
-        {p.client.name}.{" "}
+        {tp("home.cards.skipped", p.plannedKinds, { name: p.client.name })}{" "}
         <button className="link-btn" onClick={p.onOpenPlans}>
-          See them in Plans
+          {t("home.cards.seeInPlans")}
         </button>
       </p>
     ) : null;
@@ -121,7 +119,7 @@ export function FilmNextCard(p: {
       id="ch-hero"
       className="ch-hero"
       label="Film next"
-      title={<>What should {p.client.name} film next?</>}
+      title={t("home.cards.filmNextTitle", { name: p.client.name })}
     >
       {confirm}
       {!top ? (
@@ -147,14 +145,14 @@ export function FilmNextCard(p: {
               <p className="small muted ch-ref">{top.video.handle}</p>
               <div className="ch-pick-actions">
                 <button className="btn btn-primary" onClick={() => save(top)}>
-                  Save this idea
+                  {t("home.cards.saveIdea")}
                 </button>
               </div>
             </div>
           </div>
           {rest.length > 0 && (
             <div className="ch-sub">
-              <span className="field-label">Also worth filming</span>
+              <span className="field-label">{t("home.cards.alsoFilm")}</span>
               <ul className="ch-alts">
                 {rest.map((pick) => (
                   <li key={pick.key}>
@@ -167,9 +165,9 @@ export function FilmNextCard(p: {
                     <button
                       className="link-btn"
                       onClick={() => save(pick)}
-                      aria-label={`Save this idea: ${pick.name}`}
+                      aria-label={t("home.cards.saveIdeaAria", { name: pick.name })}
                     >
-                      Save this idea
+                      {t("home.cards.saveIdea")}
                     </button>
                   </li>
                 ))}
@@ -194,7 +192,7 @@ function PlanLine(p: {
         {p.plan.name}
       </button>
       {p.plan.copies && (
-        <span className="small muted">Copies {p.plan.copies}</span>
+        <span className="small muted">{t("home.cards.copies", { what: p.plan.copies })}</span>
       )}
       <span className="small muted">{p.detail}</span>
     </span>
@@ -217,20 +215,17 @@ export function NeedsApprovalCard(p: {
       id="ch-needs"
       className="ch-needs"
       label="Needs your approval"
-      title="Waiting for approval"
+      title={t("home.cards.needsTitle")}
       foot={
         p.waiting.length > 1 ? (
           <button className="btn btn-ghost btn-sm" onClick={p.onReview}>
-            Go through all {p.waiting.length}
+            {t("home.cards.goThrough", { n: p.waiting.length })}
           </button>
         ) : undefined
       }
     >
       {p.waiting.length === 0 && (
-        <Empty>
-          Nothing waiting right now. When someone sends a plan for approval, it
-          shows up here so you can approve it in one click.
-        </Empty>
+        <Empty>{t("home.cards.needsEmpty")}</Empty>
       )}
       {shown.length > 0 && (
         <ul className="ch-rows">
@@ -238,34 +233,34 @@ export function NeedsApprovalCard(p: {
             <li key={plan.idea.id} className="ch-row">
               <PlanLine
                 plan={plan}
-                detail={`Film ${dueText(plan.idea.dueDate)}`}
+                detail={t("home.cards.filmDue", { due: dueText(plan.idea.dueDate) })}
                 onOpen={p.onOpenPlan}
               />
               {p.onApprove && (
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => p.onApprove?.(plan.idea.id)}
-                  aria-label={`Approve ${plan.name}`}
+                  aria-label={t("home.cards.approveAria", { name: plan.name })}
                 >
-                  Approve
+                  {t("home.cards.approve")}
                 </button>
               )}
             </li>
           ))}
-          {more > 0 && <li className="small muted">and {more} more</li>}
+          {more > 0 && <li className="small muted">{t("home.cards.andMore", { n: more })}</li>}
         </ul>
       )}
       {p.sentBack.length > 0 && (
         <div className="ch-sub ch-split">
           <span className="field-label">
-            You sent back {plural(p.sentBack.length, "plan")} to fix
+            {t("home.cards.sentBackLabel", { plans: tp("home.count.plan", p.sentBack.length) })}
           </span>
           <ul className="ch-rows">
             {p.sentBack.slice(0, 2).map((plan) => (
               <li key={plan.idea.id} className="ch-row-stack">
                 <PlanLine
                   plan={plan}
-                  detail={`Your reason: ${plan.idea.rejectReason?.trim() || "none given"}`}
+                  detail={t("home.cards.yourReason", { reason: plan.idea.rejectReason?.trim() || t("home.cards.noneGiven") })}
                   onOpen={p.onOpenPlan}
                 />
               </li>
@@ -293,19 +288,18 @@ export function MonthCard(p: {
       id="ch-month"
       className="ch-month"
       label={p.label ?? "This month"}
-      title={p.heading ?? "Videos approved this month"}
+      title={p.heading ?? t("home.cards.monthDefault")}
     >
       <p className="ch-month-num">
         <span className="ch-big">{p.approved}</span>{" "}
-        <span className="muted">of {p.target} approved</span>
+        <span className="muted">{t("home.cards.monthOf", { target: p.target })}</span>
       </p>
       <Bar value={p.approved} of={p.target} />
       <p className="ch-line">
         {need
-          ? `${need} more needed, ${plural(days, "day")} left in ${month}.`
-          : `Target reached, with ${plural(days, "day")} left in ${month}.`}
-        {p.waiting > 0 &&
-          ` ${p.waiting} more ${p.waiting === 1 ? "is" : "are"} waiting for you to approve.`}
+          ? tp("home.cards.monthNeed", days, { need, month })
+          : tp("home.cards.monthReached", days, { month })}
+        {p.waiting > 0 && ` ${tp("home.cards.monthWaiting", p.waiting)}`}
       </p>
     </Card>
   );
@@ -341,7 +335,7 @@ export function StepsCard(p: {
                   <button
                     className="ch-steps-row"
                     onClick={() => p.onOpen!(r.status)}
-                    aria-label={`${r.count} ${r.text}. Open in Plans`}
+                    aria-label={t("home.cards.stepAria", { count: r.count, text: r.text })}
                   >
                     {body}
                   </button>
@@ -369,27 +363,24 @@ export function ReadyCard(p: {
       id="ch-ready"
       className="ch-ready"
       label="Next to film"
-      title="Approved, ready to film"
+      title={t("home.cards.readyTitle")}
       foot={
         p.approved.length > shown.length ? (
           <button className="btn btn-ghost btn-sm" onClick={p.onOpenPlans}>
-            See all {p.approved.length} in Plans
+            {t("home.cards.seeAllPlans", { n: p.approved.length })}
           </button>
         ) : undefined
       }
     >
       {shown.length === 0 ? (
-        <Empty>
-          Nothing approved yet. Once you approve a plan it shows up here, the
-          one due soonest first.
-        </Empty>
+        <Empty>{t("home.cards.readyEmpty")}</Empty>
       ) : (
         <ol className="ch-rows ch-ready-list">
           {shown.map((plan) => (
             <li key={plan.idea.id} className="ch-row-stack">
               <PlanLine
                 plan={plan}
-                detail={`Approved, ${dueText(plan.idea.dueDate)}`}
+                detail={t("home.cards.approvedDue", { due: dueText(plan.idea.dueDate) })}
                 onOpen={p.onOpenPlan}
               />
             </li>
@@ -416,42 +407,39 @@ export function DecisionsCard(p: {
       label="Approvals so far"
       title={
         s.decided
-          ? `You approved ${s.approved} of ${plural(s.decided, "plan")}`
-          : "No decisions yet"
+          ? tp("home.cards.decisionsTitle", s.decided, { approved: s.approved })
+          : t("home.cards.noDecisions")
       }
     >
       {s.decided === 0 ? (
-        <Empty>
-          Every time you approve or send back a plan, Remake saves it. The
-          numbers show up here after your first decision.
-        </Empty>
+        <Empty>{t("home.cards.decisionsEmpty")}</Empty>
       ) : (
         <>
           <Bar value={s.approved} of={s.decided} />
           <ul className="ch-facts">
             <li>
-              <span className="ch-count">{s.approved}</span> approved
-              {s.withChanges > 0 && ` (${s.withChanges} with changes)`}
+              <span className="ch-count">{s.approved}</span> {t("home.cards.approvedCount")}
+              {s.withChanges > 0 && t("home.cards.withChanges", { n: s.withChanges })}
             </li>
             <li>
-              <span className="ch-count">{s.sentBack}</span> sent back to fix
+              <span className="ch-count">{s.sentBack}</span> {t("home.cards.sentBackToFix")}
             </li>
           </ul>
         </>
       )}
       <div className="ch-sub ch-split">
-        <span className="field-label">Time to decide</span>
+        <span className="field-label">{t("home.cards.timeToDecide")}</span>
         <p className="ch-line">
           {s.avgDecideMs !== null
-            ? `On average ${duration(s.avgDecideMs)} from a plan being sent to your decision (${plural(s.timed, "plan")}).`
-            : "Not enough history yet. Remake times this once a plan is sent to you and you decide on it."}
+            ? t("home.cards.avgDecide", { duration: duration(s.avgDecideMs), plans: tp("home.count.plan", s.timed) })
+            : t("home.cards.notEnoughHistory")}
         </p>
       </div>
       {s.decided > 0 && (
         <div className="ch-sub ch-split">
-          <span className="field-label">Why plans were sent back</span>
+          <span className="field-label">{t("home.cards.whySentBack")}</span>
           {reasons.length === 0 ? (
-            <p className="ch-line muted">Nothing sent back yet.</p>
+            <p className="ch-line muted">{t("home.cards.nothingSentBack")}</p>
           ) : (
             <ul className="ch-rows">
               {reasons.map((r) => {
@@ -461,7 +449,7 @@ export function DecisionsCard(p: {
                     <span>"{r.reason}"</span>
                     <span className="small muted">
                       {p.titleOf(r.ideaId)}
-                      {who ? `, for ${who}` : ""}
+                      {who ? t("home.cards.forWho", { who }) : ""}
                     </span>
                   </li>
                 );
@@ -487,18 +475,14 @@ export function ApprovedMostCard(p: {
       id="ch-kinds"
       className="ch-kinds"
       label="What gets approved"
-      title="Kinds of video approved most"
+      title={t("home.cards.kindsTitle")}
     >
       {rows.length === 0 ? (
-        <Empty>
-          Nothing approved yet for {p.subject}. Once you approve plans, this
-          shows which kinds of video you say yes to most.
-        </Empty>
+        <Empty>{t("home.cards.kindsEmpty", { subject: p.subject })}</Empty>
       ) : (
         <>
           <p className="small muted ch-note">
-            Each plan copies a TikTok video. This groups the approved ones for{" "}
-            {p.subject} by the kind of video they copy.
+            {t("home.cards.kindsNote", { subject: p.subject })}
           </p>
           <ul className="ch-kinds-list">
             {rows.map((r) => (
@@ -507,14 +491,14 @@ export function ApprovedMostCard(p: {
                   <strong>{r.name}</strong>
                   {p.showClients && r.clients.length > 0 && (
                     <span className="small muted">
-                      For {r.clients.join(", ")}
+                      {t("home.cards.forClients", { clients: r.clients.join(t("home.list.sep")) })}
                     </span>
                   )}
                   <Bar value={r.count} of={top} />
                 </span>
                 <span className="ch-kinds-num">
                   <span className="ch-count">{r.count}</span>
-                  <span className="small muted">approved</span>
+                  <span className="small muted">{t("home.cards.approvedCount")}</span>
                 </span>
               </li>
             ))}
@@ -528,13 +512,11 @@ export function ApprovedMostCard(p: {
 // Placeholder for analytics that need data we don't collect yet. Never shows a number.
 export function LaterCard(p: { title: string; what: string; needs: string }) {
   return (
-    <section className="ch-later" aria-label={`${p.title}: not built yet`}>
+    <section className="ch-later" aria-label={t("home.cards.notBuilt", { title: p.title })}>
       <h3>{p.title}</h3>
       <p className="small">{p.what}</p>
       <p className="small muted">{p.needs}</p>
-      <p className="small ch-later-ask">
-        Needs a decision before we build this.
-      </p>
+      <p className="small ch-later-ask">{t("home.cards.needsDecision")}</p>
     </section>
   );
 }
@@ -547,7 +529,7 @@ export function LaterSection(p: {
     <section className="ch-later-wrap" aria-labelledby="ch-later-title">
       <div className="ch-later-head">
         <h2 className="ch-section-title" id="ch-later-title">
-          After videos are posted
+          {t("home.cards.afterPosted")}
         </h2>
         <p className="small muted">{p.intro}</p>
       </div>

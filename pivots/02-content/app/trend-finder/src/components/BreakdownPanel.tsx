@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Client, Format, IdeaStatus, Video } from '../types'
 import {
-  ago,
   clientFit,
   compact,
   hasDate,
@@ -14,9 +13,9 @@ import {
   platformName,
   shareSaveRate,
   viewsPerDay,
-  viewsWord,
 } from '../lib/metrics'
-import { beatUsual, timesNumber } from './find/words'
+import { agoDays, beatUsual, timesNumber, viewsLabel } from './find/words'
+import { t } from '../lib/i18n'
 import { useCountUp } from '../lib/motion'
 import { Thumb } from './Thumb'
 import { useManagerName } from '../lib/appContext'
@@ -90,8 +89,8 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
   // Safety net in case the close animation never reports back.
   useEffect(() => {
     if (!closing) return
-    const t = window.setTimeout(onClose, 400)
-    return () => window.clearTimeout(t)
+    const timer = window.setTimeout(onClose, 400)
+    return () => window.clearTimeout(timer)
   }, [closing, onClose])
 
   const score = outlierScore(video)
@@ -106,34 +105,34 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
   // The numbers are the point of this panel, so they get their own row of cards.
   const stats = [
     {
-      label: video.platform === 'reddit' ? 'Upvotes' : 'Views',
+      label: video.platform === 'reddit' ? t('find.bd.upvotes') : t('find.bd.views'),
       value: compact(shownViews),
       note:
         video.comments !== undefined
-          ? `${compact(video.comments)} comments`
+          ? t('find.tile.comments', { count: compact(video.comments) })
           : video.followers
-            ? `${compact(video.followers)} followers`
-            : 'Follower count not available',
+            ? t('find.bd.followersNote', { count: compact(video.followers) })
+            : t('find.bd.noFollowers'),
     },
     // Reddit and YouTube search results have no shares or saves to show.
     ...(video.platform === 'reddit' || video.platform === 'youtube'
       ? []
       : [
           {
-            label: 'Shares + saves',
+            label: t('find.bd.sharesSaves'),
             value: `${shareSaveRate(video).toFixed(1)}`,
-            unit: 'per 100 views',
-            note: video.saves === null ? 'Instagram hides saves' : `${compact(video.shares)} shares · ${compact(video.saves)} saves`,
+            unit: t('find.bd.per100'),
+            note: video.saves === null ? t('find.bd.igHides') : t('find.bd.sharesSavesNote', { shares: compact(video.shares), saves: compact(video.saves) }),
           },
         ]),
     hasDate(video)
-      ? { label: 'Growth', value: compact(viewsPerDay(video)), unit: `${viewsWord(video)} a day`, note: `Posted ${ago(video.daysAgo)}` }
-      : { label: 'Growth', value: '–', unit: '', note: 'Posting date unknown' },
+      ? { label: t('find.bd.growth'), value: compact(viewsPerDay(video)), unit: t('find.bd.aDay', { word: viewsLabel(video) }), note: t('find.bd.posted', { when: agoDays(video.daysAgo) }) }
+      : { label: t('find.bd.growth'), value: '–', unit: '', note: t('find.bd.dateUnknown') },
     {
-      label: 'Accounts posting this idea',
+      label: t('find.bd.accounts'),
       value: String(formatAccounts),
-      unit: formatAccounts === 1 ? 'account' : 'accounts',
-      note: formatAccounts >= 3 ? 'Enough accounts to show it is catching on, not luck' : 'Too few accounts to be sure it works',
+      unit: formatAccounts === 1 ? t('find.bd.account') : t('find.bd.accountsUnit'),
+      note: formatAccounts >= 3 ? t('find.bd.enough') : t('find.bd.tooFew'),
     },
   ]
 
@@ -161,7 +160,7 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
             </span>
             <h2 id="drawer-title">"{video.hook}"</h2>
           </div>
-          <button ref={closeRef} className="icon-btn" onClick={close} aria-label="Close">
+          <button ref={closeRef} className="icon-btn" onClick={close} aria-label={t('find.bd.close')}>
             ✕
           </button>
         </header>
@@ -171,10 +170,10 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
             <Thumb video={video} large />
           </div>
 
-          <section className="stats" aria-label="Video numbers">
+          <section className="stats" aria-label={t('find.bd.numbers')}>
             {hasScore(video) ? (
               <div className="stat-card stat-score">
-                <span className="stat-label">{byFollowers(video) ? 'Views compared with followers' : "Views compared with the account's usual"}</span>
+                <span className="stat-label">{byFollowers(video) ? t('find.bd.vsFollowers') : t('find.bd.vsUsual')}</span>
                 <div className="stat-score-row">
                   <span className="stat-big">{timesNumber(shownScore)}×</span>
                 </div>
@@ -184,13 +183,13 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
                 </span>
                 {byFollowers(video) && usualMultiple(video) !== null && (
                   <span className="stat-note small muted">
-                    {timesNumber(usualMultiple(video) as number)} times the account's usual views
+                    {t('find.bd.usualMultiple', { x: timesNumber(usualMultiple(video) as number) })}
                   </span>
                 )}
               </div>
             ) : (
               <div className="stat-card stat-score">
-                <span className="stat-label">Views compared with usual</span>
+                <span className="stat-label">{t('find.bd.vsUsualShort')}</span>
                 <span className="stat-big">–</span>
                 <span className="stat-note">{scoreLine(video)}</span>
               </div>
@@ -210,7 +209,7 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
 
           {video.live && (
             <section className="block calc" aria-labelledby="calc-title">
-              <h3 id="calc-title">How this multiple is calculated</h3>
+              <h3 id="calc-title">{t('find.bd.howCalc')}</h3>
               <EvidenceChip video={video} cohort={cohort} />
               {formula && <p className="calc-formula">{formula}</p>}
               {fetched && <p className="small muted">{fetched}</p>}
@@ -220,7 +219,7 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
                 ))}
               </ul>
               <a className="link-btn" href="/method" target="_blank" rel="noreferrer">
-                How we calculate this ↗
+                {t('find.bd.howCalcLink')}
               </a>
             </section>
           )}
@@ -229,43 +228,43 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
             <section className="block live-facts">
               {video.url && (
                 <a className="btn btn-ghost watch-link" href={video.url} target="_blank" rel="noreferrer">
-                  Watch on {platformName[video.platform]} ↗
+                  {t('find.watchOn', { platform: platformName[video.platform] })} ↗
                 </a>
               )}
               {video.caption && <p className="caption">{video.caption}</p>}
-              {video.music && <span className="small muted">Sound: {video.music}</span>}
+              {video.music && <span className="small muted">{t('find.bd.sound', { music: video.music })}</span>}
             </section>
           )}
 
           <section className={`block fit ${fit.ok ? 'fit-ok' : 'fit-no'}`}>
-            <h3>Can {client.name} film it?</h3>
+            <h3>{t('find.bd.canFilm', { client: client.name })}</h3>
             <p>{fit.text}</p>
           </section>
 
           <section className="block">
-            <h3>{video.live ? 'What we know' : 'Why it worked'}</h3>
+            <h3>{video.live ? t('find.bd.whatWeKnow') : t('find.bd.whyWorked')}</h3>
             <p className="small muted">
-              {video.live ? `From ${platformName[video.platform]}.` : 'A sample, written by hand for the demo.'}
+              {video.live ? t('find.bd.fromPlatform', { platform: platformName[video.platform] }) : t('find.bd.handwritten')}
             </p>
             <dl className="why">
               <div>
-                <dt>How it starts</dt>
+                <dt>{t('find.why.start')}</dt>
                 <dd>{format.why.hook}</dd>
               </div>
               <div>
-                <dt>First 3 seconds</dt>
+                <dt>{t('find.why.first3s')}</dt>
                 <dd>{format.why.first3s}</dd>
               </div>
               <div>
-                <dt>Length</dt>
+                <dt>{t('find.why.length')}</dt>
                 <dd>{format.why.length}</dd>
               </div>
               <div>
-                <dt>How it's made</dt>
+                <dt>{t('find.why.made')}</dt>
                 <dd>{format.why.format}</dd>
               </div>
               <div>
-                <dt>Sound</dt>
+                <dt>{t('find.why.sound')}</dt>
                 <dd>{format.why.sound}</dd>
               </div>
             </dl>
@@ -273,11 +272,11 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">
-              <h3>What each line does</h3>
+              <h3>{t('find.bd.lineRoles')}</h3>
               <ul className="line-roles">
                 {format.lines.map((l, i) => (
                   <li key={i}>
-                    <span className="shot-time">{l.time}</span> <span className="ai-tag">{l.role}</span> <span>{l.text}</span>
+                    <span className="shot-time">{l.time}</span> <span className="ai-tag">{t(`shell.role.${l.role}`)}</span> <span>{l.text}</span>
                   </li>
                 ))}
               </ul>
@@ -289,22 +288,22 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
         <footer className="drawer-foot">
           {!status && (
             <button className="btn btn-primary" onClick={onSave}>
-              Save for {client.name}
+              {t('find.saveFor', { client: client.name })}
             </button>
           )}
           {status === 'saved' && (
             <>
               <button className="btn btn-ghost" aria-pressed="true" onClick={onSave}>
-                ✓ Saved
+                {t('find.savedMark')}
               </button>
               <button className="btn btn-primary" onClick={onPlan}>
-                Open plan
+                {t('find.openPlan')}
               </button>
             </>
           )}
           {status && status !== 'saved' && (
             <button className="btn btn-primary" onClick={onPlan}>
-              Open plan · {status === 'waiting' ? `Waiting for ${manager}` : status === 'approved' ? 'Approved' : 'Sent back'}
+              {status === 'waiting' ? t('find.planWaiting', { manager }) : status === 'approved' ? t('find.planApproved') : t('find.planSentBack')}
             </button>
           )}
         </footer>

@@ -1,5 +1,6 @@
 import type { Baseline, Format, Line, Platform, SavedIdea, Shot, Video } from '../types'
 import type { Answer } from './answer'
+import { t } from './i18n.ts'
 import { UNKNOWN_DAYS, hasScore, meanScore, outlierScore } from './metrics.ts'
 
 // One video as the local API returns it (SearchVideo in backend/models.py).
@@ -135,11 +136,11 @@ function toFormat(item: LiveItem, v: Video): Format {
     audiences: [],
     summary: item.text,
     why: {
-      hook: v.hook === noCaption[v.platform] ? 'No caption hook.' : `Caption opens with "${v.hook}".`,
-      first3s: 'Save or plan this video to get the AI breakdown of its shots.',
-      length: v.lengthSec ? `${v.lengthSec} seconds.` : 'Length not given.',
-      format: tags.length ? `Tagged ${tags.join(' ')}.` : 'No hashtags.',
-      sound: item.music ? `${item.musicOriginal ? 'Original sound' : 'Uses the sound'} "${item.music}".` : 'Unknown sound.',
+      hook: v.hook === noCaption[v.platform] ? t('find.live.noCaption') : t('find.live.captionOpens', { hook: v.hook }),
+      first3s: t('find.live.first3s'),
+      length: v.lengthSec ? t('find.live.lengthSec', { n: v.lengthSec }) : t('find.live.lengthUnknown'),
+      format: tags.length ? t('find.live.tagged', { tags: tags.join(' ') }) : t('find.live.noTags'),
+      sound: item.music ? t(item.musicOriginal ? 'find.live.originalSound' : 'find.live.usesSound', { music: item.music }) : t('find.live.unknownSound'),
     },
     shotList: [],
     props: [],
@@ -159,7 +160,7 @@ export async function searchLive(
     `/api/search?q=${encodeURIComponent(query)}&platform=${platform}${fresh ? '&fresh=1' : ''}${cachedOnly ? '&cachedOnly=1' : ''}`,
   )
   const body = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(body.error ?? 'Search failed. Is the API running (npm run api)?')
+  if (!r.ok) throw new Error(body.error ?? t('find.live.err.search'))
   const videos: Video[] = []
   const formats: Format[] = []
   for (const item of body.videos as LiveItem[]) {
@@ -200,7 +201,7 @@ export async function searchAll(
   settled.forEach((r, i) => {
     const platform = platforms[i]
     if (r.status === 'rejected') {
-      failed.push({ platform, message: r.reason instanceof Error ? r.reason.message : 'Search failed.' })
+      failed.push({ platform, message: r.reason instanceof Error ? r.reason.message : t('find.live.err.searchShort') })
       return
     }
     if (!r.value.videos.length) empty.push(platform)
@@ -239,13 +240,13 @@ export async function analyzeVideo(url: string, onStep: (step: string) => void):
     body: JSON.stringify({ url }),
   })
   const started = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(started.error ?? 'Could not start the breakdown.')
+  if (!r.ok) throw new Error(started.error ?? t('find.live.err.startBreakdown'))
   for (;;) {
     const res = await fetch(`/api/analyze/${started.job}`)
     const job = (await res.json().catch(() => ({}))) as Partial<AnalyzeJob>
-    if (!res.ok) throw new Error(job.error ?? 'The breakdown was lost. Try again.')
+    if (!res.ok) throw new Error(job.error ?? t('find.live.err.breakdownLost'))
     if (job.status === 'done' && job.result) return job.result
-    if (job.status === 'failed') throw new Error(job.error ?? 'The breakdown failed.')
+    if (job.status === 'failed') throw new Error(job.error ?? t('find.live.err.breakdownFailed'))
     onStep(job.step ?? '')
     await new Promise((done) => setTimeout(done, 2000))
   }
@@ -266,15 +267,15 @@ export async function likeVideo(url: string, onStep: (step: string) => void): Pr
     body: JSON.stringify({ url }),
   })
   const started = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(started.error ?? 'Could not start reading that link.')
+  if (!r.ok) throw new Error(started.error ?? t('find.live.err.startLink'))
   for (;;) {
     const res = await fetch(`/api/like/${started.job}`)
     const job = (await res.json().catch(() => ({}))) as Partial<AnalyzeJob> & Partial<LikeResult>
-    if (!res.ok) throw new Error((job as { error?: string }).error ?? 'Could not read that link. Try again.')
+    if (!res.ok) throw new Error((job as { error?: string }).error ?? t('find.live.err.readLinkRetry'))
     if (job.status === 'done' && job.breakdown && job.keywords?.length) {
       return { breakdown: job.breakdown, keywords: job.keywords, formatName: job.formatName ?? job.keywords[0] }
     }
-    if (job.status === 'failed') throw new Error(job.error ?? 'Could not read that link.')
+    if (job.status === 'failed') throw new Error(job.error ?? t('find.live.err.readLink'))
     onStep(job.step ?? '')
     await new Promise((done) => setTimeout(done, 2000))
   }
@@ -291,7 +292,7 @@ export interface LikeImageResult {
 // "Find videos like this screenshot": sends the picture (base64 in JSON) and returns what it shows
 // and search keywords. The same picture a second time is free.
 export async function likeImage(file: File): Promise<LikeImageResult> {
-  if (file.size > MAX_IMAGE_BYTES) throw new Error('That image is too big. Use one under 5 MB.')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error(t('find.live.err.imageBig'))
   const bytes = new Uint8Array(await file.arrayBuffer())
   let binary = ''
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
@@ -301,7 +302,7 @@ export async function likeImage(file: File): Promise<LikeImageResult> {
     body: JSON.stringify({ image: btoa(binary), mediaType: file.type }),
   })
   const body = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(body.error ?? 'Could not read that image. Try again.')
+  if (!r.ok) throw new Error(body.error ?? t('find.live.err.readImage'))
   return body as LikeImageResult
 }
 
@@ -326,7 +327,7 @@ export async function checkNeeds(url: string, vocab: string[]): Promise<string[]
     body: JSON.stringify({ url, needs: vocab }),
   })
   const body = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(body.error ?? 'Could not check what this video needs.')
+  if (!r.ok) throw new Error(body.error ?? t('find.live.err.needs'))
   return body.needs as string[]
 }
 
@@ -350,7 +351,7 @@ export async function askAnswer(query: string, videos: Video[]): Promise<Answer>
     }),
   })
   const body = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(body.error ?? 'Could not write an answer.')
+  if (!r.ok) throw new Error(body.error ?? t('find.live.err.answer'))
   return body as Answer
 }
 
@@ -396,7 +397,7 @@ export function findPatterns(videos: Video[], query: string): Pattern[] {
 // null means nothing has been saved there yet.
 export async function loadList<T>(name: 'clients'): Promise<T[] | null> {
   const r = await fetch(`/api/${name}`)
-  if (!r.ok) throw new Error(`Could not load ${name}.`)
+  if (!r.ok) throw new Error(t('find.live.err.load', { name }))
   return r.json()
 }
 
@@ -415,13 +416,13 @@ export async function saveList<T>(name: 'clients', items: T[]): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(items),
   })
-  if (!r.ok) throw new SaveError(`Could not save ${name}.`, r.status)
+  if (!r.ok) throw new SaveError(t('find.live.err.save', { name }), r.status)
 }
 
 // The ideas list carries a revision (the ETag header), so a tab holding an old copy can't overwrite a newer one.
 export async function loadIdeas(): Promise<{ items: SavedIdea[] | null; rev: string | null }> {
   const r = await fetch('/api/ideas')
-  if (!r.ok) throw new SaveError('Could not load ideas.', r.status)
+  if (!r.ok) throw new SaveError(t('find.live.err.loadIdeas'), r.status)
   return { items: await r.json(), rev: r.headers.get('ETag') }
 }
 
@@ -431,7 +432,7 @@ export class IdeasConflict extends Error {
   items: SavedIdea[]
   rev: string | null
   constructor(items: SavedIdea[], rev: string | null) {
-    super('The ideas changed in another tab.')
+    super(t('find.live.err.ideasChanged'))
     this.items = items
     this.rev = rev
   }
@@ -452,7 +453,7 @@ export async function saveIdeas(
     const body = await r.json().catch(() => ({}))
     throw new IdeasConflict(body.ideas ?? [], r.headers.get('ETag'))
   }
-  if (!r.ok) throw new SaveError('Could not save ideas.', r.status)
+  if (!r.ok) throw new SaveError(t('find.live.err.saveIdeas'), r.status)
   const kept = (await r.json().catch(() => null)) as SavedIdea[] | null
   return { rev: r.headers.get('ETag'), items: Array.isArray(kept) ? kept : items }
 }
@@ -466,7 +467,7 @@ export interface Library {
 
 export async function loadLibrary(): Promise<Library | null> {
   const r = await fetch('/api/library')
-  if (!r.ok) throw new Error('Could not load saved videos.')
+  if (!r.ok) throw new Error(t('find.live.err.loadSaved'))
   return r.json()
 }
 
@@ -476,5 +477,5 @@ export async function saveLibrary(library: Library): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(library),
   })
-  if (!r.ok) throw new SaveError('Could not save saved videos.', r.status)
+  if (!r.ok) throw new SaveError(t('find.live.err.saveSaved'), r.status)
 }

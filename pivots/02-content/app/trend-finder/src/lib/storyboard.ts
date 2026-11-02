@@ -1,4 +1,5 @@
 import type { Shot } from '../types'
+import { t } from './i18n.ts'
 
 export type Purpose = 'hook' | 'body' | 'cta'
 
@@ -7,7 +8,7 @@ export function purposeFor(index: number, total: number): Purpose {
   return index === 0 ? 'hook' : index === total - 1 ? 'cta' : 'body'
 }
 
-export const purposeLabel: Record<Purpose, string> = { hook: 'Hook', body: 'Body', cta: 'CTA' }
+export const purposeLabel = (p: Purpose): string => t(`plan.sb.purpose.${p}`)
 
 // ---- merging what the generate routes return into the plan's shots -------------------------------
 // The routes never save anything. The page merges their answer into the shots it holds now (which may have
@@ -124,7 +125,7 @@ async function post<T>(url: string, body: unknown, fallback: string): Promise<T>
 }
 
 export async function writeScript(ideaId: string, force = false): Promise<{ source: string; shots: WrittenShot[] }> {
-  return post(`${base(ideaId)}/script`, { force }, "Couldn't write the script. Try again.")
+  return post(`${base(ideaId)}/script`, { force }, t('plan.sb.err.write'))
 }
 
 export async function writeShotScript(
@@ -132,7 +133,7 @@ export async function writeShotScript(
   index: number,
   force = false,
 ): Promise<WrittenShot & { source: string; index: number }> {
-  return post(`${base(ideaId)}/shots/${index}/script`, { force }, "Couldn't rewrite this shot. Try again.")
+  return post(`${base(ideaId)}/shots/${index}/script`, { force }, t('plan.sb.err.rewrite'))
 }
 
 export async function makeFrame(
@@ -140,5 +141,5 @@ export async function makeFrame(
   index: number,
   draft: { line?: string; purpose?: Purpose },
 ): Promise<{ index: number; frameImage: string }> {
-  return post(`${base(ideaId)}/shots/${index}/frame`, draft, "Couldn't make the frame. Try again.")
+  return post(`${base(ideaId)}/shots/${index}/frame`, draft, t('plan.sb.err.frame'))
 }

@@ -53,6 +53,8 @@ import { buildChipGroups, clientTopic, pulseFrom } from './lib/clientChips'
 import type { Pulse } from './lib/clientChips'
 import { LiveLoading } from './components/LiveLoading'
 import { withScreenTransition } from './lib/motion'
+import { htmlLang, readLang, setActiveLang, t, writeLang } from './lib/i18n'
+import type { Key, Lang, Vars } from './lib/i18n'
 import { AppContext } from './lib/appContext'
 import type { AppContextValue } from './lib/appContext'
 import { ShortlistBoard } from './components/ShortlistBoard'
@@ -105,6 +107,11 @@ export default function App() {
   const [clients, setClients] = useStored<Client[]>('trend-finder.clients.v3', sampleClients)
   const [agency, setAgencyRaw] = useStored<AgencySettings>('remake.agency.v1', defaultAgency)
   const [role, setRole] = useStored<Role>('remake.role.v2', 'manager')
+  const [lang, setLangState] = useState<Lang>(() => readLang())
+  const setLang = useCallback((l: Lang) => {
+    writeLang(l)
+    setLangState(l)
+  }, [])
   const [workspace, setWorkspaceRaw] = useStored<Workspace>('trend-finder.workspace.v2', sampleClients[0].id)
   // The last client worked on. Log-in reopens it; empty means a first-ever log-in. Visiting All clients keeps it.
   const [lastClient, setLastClient] = useStored<string | null>('remake.last-client.v1', null)
@@ -237,13 +244,13 @@ export default function App() {
   // change is saved back. Only the first load can move this browser's older ideas up (see migrateLocal).
   const access = auth === 'open' || auth === 'signed-in'
   const [synced, setSynced] = useState(false)
-  const [syncProblem, setSyncProblem] = useState<string | null>(null)
+  const [syncProblem, setSyncProblem] = useState<{ key: Key; vars?: Vars } | null>(null)
   // Bumped by Retry and after signing back in, so every save effect looks again for changes the API doesn't hold.
   const [retryTick, setRetryTick] = useState(0)
-  const saveFailed = useCallback((what: string, e: unknown) => {
+  const saveFailed = useCallback((what: 'clients' | 'ideas' | 'videos', e: unknown) => {
     // A 401 sends the user to the sign-in page; the save is tried again after that.
     if (e instanceof SaveError && e.status === 401) return
-    setSyncProblem(`Couldn't save your ${what}. Your changes are still here; check your connection, then press Retry.`)
+    setSyncProblem({ key: `shell.sync.save.${what}` })
   }, [])
   const saved = useCallback(() => setSyncProblem(null), [])
   // The ideas list is saved one request at a time, each with the revision the last one returned.
@@ -326,7 +333,7 @@ export default function App() {
       })
       .catch((e) => {
         if (!(e instanceof SaveError && e.status === 401))
-          setSyncProblem("Couldn't load your data. Reload the page to try again; nothing will be saved until it loads.")
+          setSyncProblem({ key: 'shell.sync.load' })
       })
   }, [live, access, synced, setClients, setIdeas, setLiveStore, setWorkspaceRaw])
   useEffect(() => {
@@ -371,7 +378,7 @@ export default function App() {
             base = e.items
             attempt = merged
             onServer.current.ideas = merged
-            setSyncProblem('This list was changed in another tab, so we loaded the latest and kept your edit.')
+            setSyncProblem({ key: 'shell.sync.conflict' })
           }
         }
         if (attempt !== ideas) {
@@ -424,7 +431,7 @@ export default function App() {
       .then(saved)
       .catch((e) => {
         if (onServer.current.library === key) onServer.current.library = prev
-        saveFailed('saved videos', e)
+        saveFailed('videos', e)
       })
   }, [synced, library, retryTick, saved, saveFailed])
 
@@ -491,7 +498,7 @@ export default function App() {
     const source = interpretMedia(url, null, formats)?.source ?? null
     const seq = ++searchSeq.current
     setSearchError(null)
-    setSearching({ q: url, platforms: [], step: 'Reading the video' })
+    setSearching({ q: url, platforms: [], step: t('shell.search.readingVideo') })
     let like
     try {
       like = await likeVideo(url, (step) => {
@@ -500,7 +507,7 @@ export default function App() {
     } catch (e) {
       if (seq !== searchSeq.current) return
       setSearching(null)
-      setSearchError(e instanceof Error ? e.message : 'Could not read that link.')
+      setSearchError(e instanceof Error ? e.message : t('shell.search.linkFailed'))
       return
     }
     if (seq !== searchSeq.current) return
@@ -519,14 +526,14 @@ export default function App() {
     const seq = ++searchSeq.current
     const previewUrl = URL.createObjectURL(file)
     setSearchError(null)
-    setSearching({ q: file.name, platforms: [], step: 'Looking at your screenshot' })
+    setSearching({ q: file.name, platforms: [], step: t('shell.search.readingImage') })
     let like
     try {
       like = await likeImage(file)
     } catch (e) {
       if (seq !== searchSeq.current) return
       setSearching(null)
-      setSearchError(e instanceof Error ? e.message : 'Could not read that image.')
+      setSearchError(e instanceof Error ? e.message : t('shell.search.imageFailed'))
       return
     }
     if (seq !== searchSeq.current) return
@@ -600,7 +607,7 @@ export default function App() {
       setView('results')
     } catch (e) {
       if (seq !== searchSeq.current) return
-      setSearchError(e instanceof Error ? e.message : 'Search failed.')
+      setSearchError(e instanceof Error ? e.message : t('shell.search.failed'))
     } finally {
       if (seq === searchSeq.current) setSearching(null)
     }
@@ -675,7 +682,7 @@ export default function App() {
         setPulses((prev) => ({ ...prev, [c.id]: pulseFrom(topic, res.videos, findPatterns(res.videos, topic)) }))
       } catch (e) {
         // No saved result for an automatic check is normal (404): show no pulse, no banner.
-        if (fresh) setPulseError(e instanceof Error ? e.message : 'Trend check failed.')
+        if (fresh) setPulseError(e instanceof Error ? e.message : t('shell.search.trendFailed'))
       } finally {
         setPulseLoading(null)
       }
@@ -790,13 +797,13 @@ export default function App() {
     const patchFormat = (update: (x: Format) => Format) =>
       setLiveStore((prev) => ({ ...prev, formats: prev.formats.map((x) => (x.id === f.id ? update(x) : x)) }))
     const say = (text: string) => patchFormat((x) => ({ ...x, why: { ...x.why, first3s: text } }))
-    analyzeVideo(v.url, (step) => say(`Breaking down the video: ${step || 'waiting'}…`))
+    analyzeVideo(v.url, (step) => say(t('shell.breakdown.progress', { step: step || t('shell.breakdown.waiting') })))
       .then((b) => {
         patchFormat((x) => applyBreakdown(x, b))
         // Ideas saved before the breakdown still carry the placeholder editor notes.
         setIdeas((prev) => prev.map((i) => (i.videoId === videoId && i.notes === f.editorNotes ? { ...i, notes: b.editorNotes } : i)))
       })
-      .catch((e) => say(`Couldn't break down this video. ${e instanceof Error ? e.message : ''}`.trim()))
+      .catch((e) => say(`${t('shell.breakdown.failed')} ${e instanceof Error ? e.message : ''}`.trim()))
       .finally(() => analyzing.current.delete(videoId))
   }
 
@@ -884,6 +891,8 @@ export default function App() {
     role,
     setRole,
     addClient: (c) => setClients((prev) => [...prev, c]),
+    lang,
+    setLang,
     recordEvent,
   }
 
@@ -898,17 +907,17 @@ export default function App() {
     [...formatById.values()].filter((f) => f.needs.some((n) => client.cannot.includes(n))).map((f) => f.id),
   )
   const backLabel: Record<View, string> = {
-    overview: 'overview',
-    home: 'home',
-    search: 'find ideas',
-    results: 'search results',
-    review: 'review',
-    plan: 'plan',
-    settings: 'brief',
-    preferences: 'settings',
-    channel: 'channel',
-    shortlist: 'plans',
-    'add-client': 'add client',
+    overview: t('shell.back.overview'),
+    home: t('shell.back.home'),
+    search: t('shell.back.search'),
+    results: t('shell.back.results'),
+    review: t('shell.back.review'),
+    plan: t('shell.back.plan'),
+    settings: t('shell.back.settings'),
+    preferences: t('shell.back.preferences'),
+    channel: t('shell.back.channel'),
+    shortlist: t('shell.back.shortlist'),
+    'add-client': t('shell.back.addClient'),
   }
   // Sidebar badge: what needs action (waiting for approval + sent back), not the whole shortlist.
   const counts = { plans: mine.filter((i) => i.status === 'waiting' || i.status === 'rejected').length }
@@ -923,7 +932,7 @@ export default function App() {
   }
   // Review's Back: to where it was opened from. From All clients, that means leaving the client.
   const reviewBack = () => (reviewFrom === 'overview' ? setWorkspace('all') : setView(reviewFrom))
-  const reviewBackLabel = reviewFrom === 'overview' ? 'All clients' : reviewFrom === 'home' ? 'Home' : 'Plans'
+  const reviewBackLabel = reviewFrom === 'overview' ? t('shell.side.allClients') : reviewFrom === 'home' ? t('shell.side.home') : t('shell.side.plans')
   // The next client (in list order, after this one) with plans waiting, for clearing approvals across clients.
   const nextWaiting = (() => {
     const at = clients.findIndex((c) => c.id === client.id)
@@ -961,7 +970,10 @@ export default function App() {
   if (auth === 'checking') return null
   // Client accounts aren't live yet (see ClientPortal), so a saved client login goes back to the login screen.
   const gate = auth === 'signed-out' ? { kind: 'signed-out' as const } : { signedIn: auth === 'signed-in' || signedIn }
-  if (nextView(gate, 'app') === 'login' || role === 'client')
+  if (nextView(gate, 'app') === 'login' || role === 'client') {
+    // Landing and sign-in stay in English whatever the setting is.
+    setActiveLang('en')
+    document.documentElement.lang = 'en'
     return (
       <AppContext.Provider value={appContext}>
         {/* stream A: after login, staff land on the all-clients overview */}
@@ -974,7 +986,7 @@ export default function App() {
             if (auth === 'signed-out') {
               setAuth('signed-in')
               void me().then((m) => setAccount(m.kind === 'signed-in' ? m.account : null))
-              setRetryTick((t) => t + 1)
+              setRetryTick((n) => n + 1)
               // Back from an ended session: return to where the user was, not the overview.
               if (restoreView()) return
             } else setSignedIn(true)
@@ -985,6 +997,9 @@ export default function App() {
         />
       </AppContext.Provider>
     )
+  }
+  setActiveLang(lang)
+  document.documentElement.lang = htmlLang(lang)
 
   const signOut = () => {
     if (auth !== 'signed-in') return setSignedIn(false)
@@ -1006,7 +1021,8 @@ export default function App() {
 
   return (
     <AppContext.Provider value={appContext}>
-    <div className="shell">
+    {/* Keyed by language so every screen redraws in the new one (the switch happens on Settings, which holds no work in progress). */}
+    <div className="shell" key={lang}>
       <Sidebar
         clients={clients}
         workspace={workspace}
@@ -1026,17 +1042,17 @@ export default function App() {
 
       <div className="shell-main">
         <header className="mobile-bar">
-          <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+          <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label={t('shell.openMenu')}>
             ☰
           </button>
-          <strong>{inClient ? client.name : 'All clients'}</strong>
+          <strong>{inClient ? client.name : t('shell.side.allClients')}</strong>
         </header>
 
         {syncProblem && (
           <div className="sync-note" role="status">
-            <span>{syncProblem}</span>
-            <button type="button" className="link-btn" onClick={() => { setSyncProblem(null); setRetryTick((t) => t + 1) }}>
-              Retry
+            <span>{t(syncProblem.key, syncProblem.vars)}</span>
+            <button type="button" className="link-btn" onClick={() => { setSyncProblem(null); setRetryTick((n) => n + 1) }}>
+              {t('shell.sync.retry')}
             </button>
           </div>
         )}
@@ -1258,7 +1274,7 @@ export default function App() {
           title={
             searching.step
               ? `${searching.step}…`
-              : `Searching ${searching.platforms.map((p) => platformName[p]).join(', ')} for "${searching.q}"…`
+              : t('shell.search.searching', { platforms: searching.platforms.map((p) => platformName[p]).join(', '), q: searching.q })
           }
         />
       )}

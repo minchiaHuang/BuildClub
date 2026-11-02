@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { PresetPicker } from '../PresetPicker'
+import { t } from '../../lib/i18n'
 import type { SubtitleStyle, ZonePlatform } from '../../lib/grading'
 import { FRAME_W, SAFE_ZONES, zoneWarning } from '../../lib/grading'
 
@@ -13,13 +14,13 @@ export function SafeZoneLayer({ platform }: { platform: ZonePlatform }) {
   return (
     <div className="gr-zones" aria-hidden="true" style={{ '--gr-zt': cq(z.top), '--gr-zb': cq(z.bottom), '--gr-zr': cq(z.right) } as CSSProperties}>
       <div className="gr-zone gr-zone-top">
-        <span>{z.topLabel}</span>
+        <span>{t('cut.zone.top')}</span>
       </div>
       <div className="gr-zone gr-zone-bottom">
-        <span>{z.bottomLabel}</span>
+        <span>{t('cut.zone.bottom')}</span>
       </div>
       <div className="gr-zone gr-zone-right">
-        <span>{z.rightLabel}</span>
+        <span>{t('cut.zone.right')}</span>
       </div>
     </div>
   )
@@ -37,15 +38,15 @@ export function SafeZoneToggle({ zone, style, onZone }: Props) {
     <div className="gr-zone-controls">
       <label className="check small">
         <input type="checkbox" checked={zone !== null} onChange={(e) => onZone(e.target.checked ? 'tiktok' : null)} />
-        <span>Show safe zones</span>
+        <span>{t('cut.zones.show')}</span>
       </label>
       {zone && (
         <>
-          <PresetPicker label="Platform" options={PLATFORMS} value={zone} onChange={(id) => onZone(id as ZonePlatform)} />
-          <p className="muted small">Preview only, never added to the video. Areas are approximate.</p>
+          <PresetPicker label={t('cut.zones.platform')} options={PLATFORMS} value={zone} onChange={(id) => onZone(id as ZonePlatform)} />
+          <p className="muted small">{t('cut.zones.note')}</p>
           {warning && (
             <p className="small gr-zone-warning" role="status">
-              <strong>Heads up:</strong> {warning}
+              <strong>{t('cut.zones.headsUp')}</strong> {warning}
             </p>
           )}
         </>

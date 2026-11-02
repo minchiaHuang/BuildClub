@@ -1,6 +1,8 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
 import { formats } from '../data/sample'
+import { t } from '../lib/i18n'
 import { ClientMemory } from './ClientMemory'
+import { needLabel } from '../lib/needs'
 
 interface Props {
   client: Client
@@ -24,22 +26,22 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
   return (
     <section className="settings">
       <header className="page-head">
-        <span className="eyebrow">{client.name} · Brief</span>
-        <h1>About this client</h1>
-        <p className="muted">Remake uses this to suggest searches, check what they can film, and track the monthly target. Changes save as you type.</p>
+        <span className="eyebrow">{t('home.settings.eyebrow', { name: client.name })}</span>
+        <h1>{t('home.settings.title')}</h1>
+        <p className="muted">{t('home.settings.intro')}</p>
       </header>
 
       <div className="settings-grid">
         <label className="field">
-          <span className="field-label">Client name</span>
+          <span className="field-label">{t('home.client.fieldName')}</span>
           <input id="client-name" value={client.name} onChange={(e) => onChange({ name: e.target.value })} />
         </label>
         <label className="field">
-          <span className="field-label">What they sell</span>
+          <span className="field-label">{t('home.client.fieldNiche')}</span>
           <input id="client-niche" value={client.niche} onChange={(e) => onChange({ niche: e.target.value })} />
         </label>
         <label className="field">
-          <span className="field-label">Main audience</span>
+          <span className="field-label">{t('home.client.fieldAudience')}</span>
           <input
             id="client-audience"
             list="audience-options"
@@ -53,18 +55,18 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
           </datalist>
         </label>
         <label className="field field-wide">
-          <span className="field-label">Topics to watch (comma-separated)</span>
+          <span className="field-label">{t('home.client.fieldTopics')}</span>
           <input
             id="client-topics"
             value={(client.topics ?? []).join(', ')}
-            placeholder="e.g. sydney nightclub, club night"
+            placeholder={t('home.settings.topicsPlaceholder')}
             onChange={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trimStart()) })}
             onBlur={(e) => onChange({ topics: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
           />
-          <span className="small muted">We check the first topic on TikTok once a day to fill "Trending now".</span>
+          <span className="small muted">{t('home.client.topicsHelp')}</span>
         </label>
         <label className="field field-wide">
-          <span className="field-label">Starter searches (comma-separated)</span>
+          <span className="field-label">{t('home.client.fieldExamples')}</span>
           <input
             id="client-examples"
             value={client.examples.join(', ')}
@@ -73,7 +75,7 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
           />
         </label>
         <label className="field">
-          <span className="field-label">Videos per month</span>
+          <span className="field-label">{t('home.client.fieldTarget')}</span>
           <input
             id="client-target"
             type="number"
@@ -89,14 +91,14 @@ export function SettingsScreen({ client, onChange, ideas, videoById, formatById 
       <div className="brief-pair">
         <fieldset className="cannot">
           <legend>
-            <h3>What this client can't do</h3>
-            <span className="small muted">Videos that need a ticked item get marked as hard to film.</span>
+            <h3>{t('home.client.cannotTitle')}</h3>
+            <span className="small muted">{t('home.client.cannotHelp')}</span>
           </legend>
           <div className="cannot-list">
             {allNeeds.map((need) => (
               <label key={need} className="check">
                 <input type="checkbox" checked={client.cannot.includes(need)} onChange={() => toggleCannot(need)} />
-                {need}
+                {needLabel(need)}
               </label>
             ))}
           </div>

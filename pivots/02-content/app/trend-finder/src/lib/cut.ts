@@ -1,5 +1,6 @@
 import type { IdeaStatus } from '../types'
 import type { AutoCut, CutOptions } from './grading'
+import { t } from './i18n.ts'
 
 // The cut of an approved plan: its chosen takes joined into one publishable 9:16 MP4. Mirrors backend/renders.py.
 export interface CutReview {
@@ -32,8 +33,6 @@ export interface CutState {
 // Same limits and copy as backend/renders.py.
 export const MAX_MUSIC_BYTES = 30 * 1024 * 1024
 export const SPEEDS = [1, 1.1, 1.25]
-const TOO_BIG = 'The music file is over the 30 MB limit.'
-const NOT_AUDIO = 'Upload an .mp3, .m4a or .wav audio file.'
 
 type MusicType = 'audio/mpeg' | 'audio/mp4' | 'audio/wav' | 'audio/x-wav'
 
@@ -48,8 +47,8 @@ export function musicType(file: { name: string; type: string }): MusicType | nul
 
 // The reason a music file can't be uploaded, checked before sending it; null when it can.
 export function checkMusic(file: { name: string; type: string; size: number }): string | null {
-  if (!musicType(file)) return NOT_AUDIO
-  if (file.size > MAX_MUSIC_BYTES) return TOO_BIG
+  if (!musicType(file)) return t('cut.music.notAudio')
+  if (file.size > MAX_MUSIC_BYTES) return t('cut.music.tooBig')
   return null
 }
 
@@ -74,7 +73,7 @@ async function send<T>(r: Response, fallback: string): Promise<T> {
 
 export async function getCut(ideaId: string, shotCount?: number): Promise<CutState> {
   const q = shotCount === undefined ? '' : `?shots=${shotCount}`
-  return send(await fetch(`${base(ideaId)}${q}`), "Couldn't load the cut.")
+  return send(await fetch(`${base(ideaId)}${q}`), t('cut.err.load'))
 }
 
 export async function putMusic(ideaId: string, file: File): Promise<CutState> {
@@ -87,11 +86,11 @@ export async function putMusic(ideaId: string, file: File): Promise<CutState> {
       'x-license-confirmed': 'yes',
     },
   })
-  return send(r, "Couldn't upload the music.")
+  return send(r, t('cut.err.putMusic'))
 }
 
 export async function deleteMusic(ideaId: string): Promise<CutState> {
-  return send(await fetch(`${base(ideaId)}/music`, { method: 'DELETE' }), "Couldn't remove the music.")
+  return send(await fetch(`${base(ideaId)}/music`, { method: 'DELETE' }), t('cut.err.deleteMusic'))
 }
 
 // `extra` (grade, burnSubtitles, subtitleStyle) is added only when something was chosen.
@@ -101,20 +100,20 @@ export async function startCut(ideaId: string, shotCount: number, speed: number,
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ shotCount, speed, ...extra }),
   })
-  return send(r, "Couldn't start the cut.")
+  return send(r, t('cut.err.start'))
 }
 
 // Sends the finished video to the approver. Failures carry the server's reason.
 export async function sendCutForReview(ideaId: string): Promise<CutState> {
-  return send(await fetch(`${base(ideaId)}/review`, { method: 'POST' }), "Couldn't send the video.")
+  return send(await fetch(`${base(ideaId)}/review`, { method: 'POST' }), t('cut.err.sendVideo'))
 }
 
 // The status line for a sent video; the reason is shown separately. null when it was never sent.
 export function reviewLine(r: CutReview | null, manager: string, day: (ms: number) => string): string | null {
   if (!r) return null
-  if (r.status === 'waiting') return `Waiting for ${manager}'s approval · sent ${day(r.sentAt)}`
+  if (r.status === 'waiting') return t('cut.review.waiting', { name: manager, day: day(r.sentAt) })
   const when = day(r.decidedAt ?? r.sentAt)
-  return r.status === 'approved' ? `${manager} approved this video · ${when}` : `${manager} sent this back · ${when}`
+  return t(r.status === 'approved' ? 'cut.review.approved' : 'cut.review.sentBack', { name: manager, when })
 }
 
 // Resolves after ms, or early when the signal aborts.

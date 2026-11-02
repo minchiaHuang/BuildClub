@@ -1,4 +1,5 @@
 import { UNKNOWN_DAYS, compact } from './metrics.ts'
+import { t, tp } from './i18n.ts'
 import type { Pattern } from './live.ts'
 import type { Baseline, Denominator, Platform, Video } from '../types.ts'
 
@@ -24,25 +25,58 @@ export interface Cohort {
   counted: number
 }
 
+// Getters, so the text follows the language on show.
 export const EVIDENCE_TEXT: Record<Evidence, string> = {
-  high: 'Evidence: high',
-  medium: 'Evidence: medium',
-  limited: 'Evidence: limited',
+  get high() {
+    return t('home.evidence.high')
+  },
+  get medium() {
+    return t('home.evidence.medium')
+  },
+  get limited() {
+    return t('home.evidence.limited')
+  },
 }
 
 export const COPY = {
-  noDetails: 'Baseline details not recorded',
-  noPlatform: 'No baseline details for this platform yet',
-  rough: 'Rough estimate (views ÷ followers)',
-  roughShort: 'Rough',
-  dateUnknown: 'Posting date unknown',
-  tiktokOnly: 'Counts TikTok accounts only for now',
-  oneOff: 'One-off',
-  methodTitle: 'How we calculate this',
-  methodSample: "Each account's baseline is only its latest 6 videos: a small sample.",
-  tags: ["Doesn't fit the brand's tone", "Format doesn't suit this client", 'Too hard or costly to film', 'Did something similar recently', 'Other'],
+  get noDetails() {
+    return t('home.evidence.noDetails')
+  },
+  get noPlatform() {
+    return t('home.evidence.noPlatform')
+  },
+  get rough() {
+    return t('home.evidence.rough')
+  },
+  get roughShort() {
+    return t('home.evidence.roughShort')
+  },
+  get dateUnknown() {
+    return t('home.evidence.dateUnknown')
+  },
+  get tiktokOnly() {
+    return t('home.evidence.tiktokOnly')
+  },
+  get oneOff() {
+    return t('home.evidence.oneOff')
+  },
+  get methodTitle() {
+    return t('home.evidence.methodTitle')
+  },
+  get methodSample() {
+    return t('home.evidence.methodSample')
+  },
+  get tags() {
+    return [
+      t('home.evidence.tag1'),
+      t('home.evidence.tag2'),
+      t('home.evidence.tag3'),
+      t('home.evidence.tag4'),
+      t('home.evidence.tag5'),
+    ]
+  },
   brand: 'Remake',
-  hitRate: (hits: number, counted: number) => `Hit rate ${hits} / ${counted} · within this search's results`,
+  hitRate: (hits: number, counted: number) => t('home.evidence.hitRate', { hits, counted }),
 }
 
 // One decimal below 100 (22.9×), whole numbers above. metrics.times rounds from 10 up, which would hide the .9.
@@ -121,22 +155,22 @@ export function evidenceOf(v: Video, cohort?: Cohort): Evidence | null {
 export function plainLine(v: Video, cohort?: Cohort): string {
   const m = multipleOf(v)
   if (m === null) return ''
-  if (denominatorOf(v) === 'followers') return `Rough: ${times(m)} views ÷ followers`
+  if (denominatorOf(v) === 'followers') return t('home.evidence.roughLine', { m: times(m) })
   const n = v.baseline?.medianN
-  let s = `${times(m)} this account's median${n ? ` (baseline: ${n} videos)` : ''}`
-  if (cohort && cohort.accounts >= 3) s += `; ${cohort.accounts} accounts use this pattern, ${cohort.hits} also hit ${HIT_MULTIPLE}× or more`
+  let s = `${t('home.evidence.median', { m: times(m) })}${n ? t('home.evidence.baselineN', { n }) : ''}`
+  if (cohort && cohort.accounts >= 3) s += t('home.evidence.cohort', { accounts: cohort.accounts, hits: cohort.hits, hit: HIT_MULTIPLE })
   return s
 }
 
 const range = (b: Baseline | undefined) =>
-  b && b.medianN && b.baselineFrom && b.baselineTo ? `${b.medianN} videos, ${b.baselineFrom} to ${b.baselineTo}` : null
+  b && b.medianN && b.baselineFrom && b.baselineTo ? t('home.evidence.range', { n: b.medianN, from: b.baselineFrom, to: b.baselineTo }) : null
 
 export function formulaLine(v: Video): string {
   const m = multipleOf(v)
   const d = denominatorOf(v)
   if (m === null || !d) return ''
-  if (d === 'followers') return `${compact(v.views)} views ÷ ${compact(v.followers)} followers = ${times(m)} · ${COPY.rough}`
-  return `${compact(v.views)} views ÷ ${compact(v.medianViews ?? 0)} median (${range(v.baseline) ?? COPY.noDetails}) = ${times(m)}`
+  if (d === 'followers') return t('home.evidence.formulaFollowers', { views: compact(v.views), followers: compact(v.followers), m: times(m), rough: COPY.rough })
+  return t('home.evidence.formulaMedian', { views: compact(v.views), median: compact(v.medianViews ?? 0), range: range(v.baseline) ?? COPY.noDetails, m: times(m) })
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -147,22 +181,22 @@ export function stamp(ms: number): string {
 
 export function fetchedLine(v: Video): string {
   const parts: string[] = []
-  if (v.baseline?.medianFetchedAt) parts.push(`Median fetched ${stamp(v.baseline.medianFetchedAt)}`)
-  if (v.fetchedAt) parts.push(`${parts.length ? 'this' : 'This'} search fetched ${stamp(v.fetchedAt)}`)
+  if (v.baseline?.medianFetchedAt) parts.push(t('home.evidence.medianFetched', { at: stamp(v.baseline.medianFetchedAt) }))
+  if (v.fetchedAt) parts.push(parts.length ? t('home.evidence.searchFetchedThis', { at: stamp(v.fetchedAt) }) : t('home.evidence.searchFetchedThisCap', { at: stamp(v.fetchedAt) }))
   return parts.join(' · ')
 }
 
 export function sourceLine(v: Video): string {
-  const parts = [v.fetchedAt ? `Public page, fetched ${stamp(v.fetchedAt)}` : 'Public page']
+  const parts = [v.fetchedAt ? t('home.evidence.publicPageAt', { at: stamp(v.fetchedAt) }) : t('home.evidence.publicPage')]
   if (v.daysAgo >= UNKNOWN_DAYS) parts.push(COPY.dateUnknown)
   return parts.join(' · ')
 }
 
 // The three fixed limit lines; line 2 is Instagram only, and line 1 names only what is actually missing.
 export function limitLines(v: Video): string[] {
-  const lines = [`We can't see watch time or retention${v.saves === null ? ' or saves' : ''}`]
-  if (v.platform === 'instagram') lines.push('Instagram views include paid (boosted) views')
-  lines.push("These numbers don't mean a copy will go viral")
+  const lines = [v.saves === null ? t('home.evidence.limitSaves') : t('home.evidence.limit1')]
+  if (v.platform === 'instagram') lines.push(t('home.evidence.limitIg'))
+  lines.push(t('home.evidence.limitViral'))
   return lines
 }
 
@@ -175,9 +209,9 @@ export function followerBand(n: number): string {
 }
 
 export function cachedLabel(fetchedAt: number, now: number): string {
-  if (fetchedAt <= 0) return 'Cached'
+  if (fetchedAt <= 0) return t('home.evidence.cached')
   const days = Math.max(0, Math.floor((now - fetchedAt) / 86_400_000))
-  return days === 0 ? 'Cached · fetched today' : `Cached · fetched ${days} ${days === 1 ? 'day' : 'days'} ago`
+  return days === 0 ? t('home.evidence.cachedToday') : tp('home.evidence.cachedDays', days)
 }
 
 // The score poll brings the median and its details together; copy both so a card never keeps a stale denominator.

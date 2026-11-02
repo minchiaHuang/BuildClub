@@ -2,7 +2,9 @@ import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { formats as sampleFormats, videos as sampleVideos } from '../data/sample'
 import type { Pulse } from './clientChips'
 import { sampleFitsClient } from './clientChips'
-import { clientFit, compact, formatTrend, outlierScore, plural, stageOrder } from './metrics'
+import { clientFit, compact, formatTrend, outlierScore, stageOrder } from './metrics'
+import { t, tp } from './i18n'
+import { dateLocale } from './dates'
 import { beatUsual, beatUsualAverage } from '../components/find/words'
 import type { TrendStage } from './metrics'
 import { parseQuery } from './parseQuery'
@@ -23,17 +25,17 @@ export interface PlanName {
 
 export function planName(idea: SavedIdea, videoById: Map<string, Video>, formatById: Map<string, Format>): PlanName {
   const video = videoById.get(idea.videoId)
-  if (!video) return { name: 'A removed video' }
+  if (!video) return { name: t('home.plan.removedVideo') }
   if (video.live) return { name: video.hook, copies: video.handle }
   const f = formatById.get(video.formatId)
-  return { name: f?.name ?? video.hook, copies: `"${video.hook}" by ${video.handle}` }
+  return { name: f?.name ?? video.hook, copies: t('home.plan.copiesBy', { hook: video.hook, handle: video.handle }) }
 }
 
 // Lookup maps from the sample data, for screens App doesn't hand them to.
 export const sampleVideoById = new Map(sampleVideos.map((v) => [v.id, v]))
 export const sampleFormatById = new Map(sampleFormats.map((f) => [f.id, f]))
 
-export const possessive = (name: string) => (/s$/i.test(name) ? `${name}'` : `${name}'s`)
+export const possessive = (name: string) => (/s$/i.test(name) ? t('home.possessiveS', { name }) : t('home.possessive', { name }))
 
 // ---------- What should <client> film next? ----------
 
@@ -48,12 +50,13 @@ export interface FilmPick {
   reason: string
 }
 
-const trendPhrase: Record<TrendStage, string> = {
-  early: "Right now it's just starting to spread.",
-  rising: "Right now it's still growing.",
-  everywhere: "It's already everywhere, so it may be late.",
-  'one-off': 'One big video so far, not a trend yet.',
-}
+const trendPhrase = (stage: TrendStage): string =>
+  ({
+    early: t('home.film.trend.early'),
+    rising: t('home.film.trend.rising'),
+    everywhere: t('home.film.trend.everywhere'),
+    'one-off': t('home.film.trend.oneOff'),
+  })[stage]
 
 const blocked = (f: Format, c: Client) => f.needs.some((n) => c.cannot.includes(n))
 
@@ -94,9 +97,9 @@ export function filmNext(x: {
           key: p.label,
           name: p.label,
           video: vids[0],
-          proof: `${p.accounts} accounts used it, and on average got ${beatUsualAverage(p.avgScore, false)}. The biggest one got ${compact(vids[0].views)} views`,
-          trend: p.kind === 'sound' ? 'A sound several accounts are using right now.' : 'A hashtag several accounts are using right now.',
-          reason: `Came up in today's TikTok check of "${x.pulse!.topic}" for ${client.name}.`,
+          proof: t('home.film.proofLive', { accounts: p.accounts, beat: beatUsualAverage(p.avgScore, false), views: compact(vids[0].views) }),
+          trend: p.kind === 'sound' ? t('home.film.trendSound') : t('home.film.trendHashtag'),
+          reason: t('home.film.reasonLive', { topic: x.pulse!.topic, name: client.name }),
         }
       })
       .filter((p): p is FilmPick => p !== null)
@@ -110,17 +113,17 @@ export function filmNext(x: {
     .filter((f) => !blocked(f, client) && !planned.has(f.id))
     .map((f) => formatTrend(f, sampleVideos))
     .sort((a, b) => stageOrder[a.stage] - stageOrder[b.stage])
-    .map((t): FilmPick | null => {
-      const vids = sampleVideos.filter((v) => v.formatId === t.format.id).sort(byScore)
+    .map((tr): FilmPick | null => {
+      const vids = sampleVideos.filter((v) => v.formatId === tr.format.id).sort(byScore)
       if (!vids.length) return null
-      const fit = clientFit(t.format, client).text
-      const why = audience && t.format.audiences.includes(audience) ? `Works for ${audience}.` : ''
+      const fit = clientFit(tr.format, client).text
+      const why = audience && tr.format.audiences.includes(audience) ? t('home.film.worksFor', { audience }) : ''
       return {
-        key: t.format.id,
-        name: t.format.name,
+        key: tr.format.id,
+        name: tr.format.name,
         video: vids[0],
-        proof: `${plural(t.accounts, 'account')} on TikTok posted this. The biggest one got ${compact(vids[0].views)} views: ${beatUsual(vids[0]).charAt(0).toLowerCase()}${beatUsual(vids[0]).slice(1)}`,
-        trend: trendPhrase[t.stage],
+        proof: tp('home.film.proofSample', tr.accounts, { views: compact(vids[0].views), beat: `${beatUsual(vids[0]).charAt(0).toLowerCase()}${beatUsual(vids[0]).slice(1)}` }),
+        trend: trendPhrase(tr.stage),
         reason: [why, fit].filter(Boolean).join(' '),
       }
     })
@@ -144,11 +147,11 @@ export interface StepRow {
 export function ideaSteps(ideas: SavedIdea[]): StepRow[] {
   const count = (f: (i: SavedIdea) => boolean) => ideas.filter(f).length
   return [
-    { key: 'no-shots', status: 'saved', count: count((i) => i.status === 'saved' && !hasShots(i)), text: 'saved, shots not planned yet' },
-    { key: 'shots', status: 'saved', count: count((i) => i.status === 'saved' && hasShots(i)), text: 'shots planned, not sent to you yet' },
-    { key: 'waiting', status: 'waiting', count: count((i) => i.status === 'waiting'), text: 'waiting for you to approve' },
-    { key: 'approved', status: 'approved', count: count((i) => i.status === 'approved'), text: 'approved and ready to film' },
-    { key: 'rejected', status: 'rejected', count: count((i) => i.status === 'rejected'), text: 'sent back to fix' },
+    { key: 'no-shots', status: 'saved', count: count((i) => i.status === 'saved' && !hasShots(i)), text: t('home.steps.noShots') },
+    { key: 'shots', status: 'saved', count: count((i) => i.status === 'saved' && hasShots(i)), text: t('home.steps.shots') },
+    { key: 'waiting', status: 'waiting', count: count((i) => i.status === 'waiting'), text: t('home.steps.waiting') },
+    { key: 'approved', status: 'approved', count: count((i) => i.status === 'approved'), text: t('home.steps.approved') },
+    { key: 'rejected', status: 'rejected', count: count((i) => i.status === 'rejected'), text: t('home.steps.rejected') },
   ]
 }
 
@@ -196,16 +199,16 @@ export function decisionStats(clients: Client[], ideas: SavedIdea[]): DecisionSt
     reasons: events
       .filter((e) => e.kind === 'sent-back')
       .sort((a, b) => b.at - a.at)
-      .map((e) => ({ key: `${e.ideaId}-${e.at}`, ideaId: e.ideaId, reason: e.reason?.trim() || 'No reason given.', at: e.at })),
+      .map((e) => ({ key: `${e.ideaId}-${e.at}`, ideaId: e.ideaId, reason: e.reason?.trim() || t('home.decisions.noReason'), at: e.at })),
   }
 }
 
 // "2 days", "5 hours", "under an hour".
 export function duration(ms: number): string {
   const h = ms / 3_600_000
-  if (h < 1) return 'under an hour'
-  if (h < 24) return plural(Math.round(h), 'hour')
-  return plural(Math.round(h / 24), 'day')
+  if (h < 1) return t('home.duration.underHour')
+  if (h < 24) return tp('home.count.hour', Math.round(h))
+  return tp('home.count.day', Math.round(h / 24))
 }
 
 // ---------- What gets approved most ----------
@@ -245,16 +248,16 @@ export function approvedMost(
 
 export function monthLeft(now = new Date()): { days: number; month: string } {
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  return { days: last - now.getDate(), month: now.toLocaleDateString(undefined, { month: 'long' }) }
+  return { days: last - now.getDate(), month: now.toLocaleDateString(dateLocale(), { month: 'long' }) }
 }
 
 export const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  new Date(`${iso}T00:00`).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })
 
 export function dueText(iso: string, now = Date.now()): string {
   const d = Math.round((new Date(`${iso}T00:00`).getTime() - new Date(new Date(now).toDateString()).getTime()) / 86_400_000)
-  if (d < 0) return `was due ${shortDate(iso)}`
-  if (d === 0) return 'due today'
-  if (d === 1) return 'due tomorrow'
-  return `due ${shortDate(iso)}`
+  if (d < 0) return t('home.due.was', { date: shortDate(iso) })
+  if (d === 0) return t('home.due.today')
+  if (d === 1) return t('home.due.tomorrow')
+  return t('home.due.on', { date: shortDate(iso) })
 }

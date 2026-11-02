@@ -3,6 +3,7 @@ import type { IdeaStatus } from '../types'
 import type { CutState } from '../lib/cut'
 import { SPEEDS, canStartCut, checkMusic, deleteMusic, formatDuration, getCut, pollCut, putMusic, reviewLine, sendCutForReview, startCut } from '../lib/cut'
 import { useManagerName } from '../lib/appContext'
+import { t } from '../lib/i18n'
 import { formatDay } from '../lib/dates'
 import { formatSize } from '../lib/takes'
 import type { CutOptions } from '../lib/grading'
@@ -25,7 +26,7 @@ interface Props {
   takesRevision?: number
 }
 
-const speedLabel = (s: number) => (s === 1 ? 'Normal' : `${s}x`)
+const speedLabel = (s: number) => (s === 1 ? t('cut.panel.speedNormal') : `${s}x`)
 const isActive = (c: CutState | null) => c?.status === 'queued' || c?.status === 'running'
 
 // "Make the video": joins the chosen takes of an approved plan into one publishable 9:16 MP4.
@@ -128,7 +129,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
   const review = cut?.review ?? null
   const canSend = approved && !cut?.stale && !active && review?.status !== 'waiting' && review?.status !== 'approved'
   // A reopened plan is hidden from the approver, so a waiting review must not promise that they will see it.
-  const line = !approved && review?.status === 'waiting' ? `Hidden from ${manager} while the plan is reopened.` : reviewLine(review, manager, formatDay)
+  const line = !approved && review?.status === 'waiting' ? t('cut.panel.hidden', { name: manager }) : reviewLine(review, manager, formatDay)
 
   const upload = (file: File) => {
     const problem = checkMusic(file)
@@ -138,18 +139,18 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
 
   return (
     <section className="block cut-panel">
-      <h3>Make the video</h3>
+      <h3>{t('cut.panel.title')}</h3>
 
       {approved && !ready && !active && (
         <p className="muted small">
-          Choose a take for every shot first ({shotsDone} of {shotCount}).
+          {t('cut.panel.chooseTakes', { done: shotsDone, total: shotCount })}
         </p>
       )}
 
       {approved && (
         <div className="cut-options">
           <label className="cut-speed">
-            <span className="small">Speed</span>
+            <span className="small">{t('cut.panel.speed')}</span>
             <select value={speed} disabled={active} onChange={(e) => setSpeed(Number(e.target.value))}>
               {SPEEDS.map((s) => (
                 <option key={s} value={s}>
@@ -173,7 +174,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
           />
 
           <div className="cut-music">
-            <span className="small">Add music (optional)</span>
+            <span className="small">{t('cut.panel.music.label')}</span>
             {cut?.music ? (
               <div className="cut-music-file">
                 <span className="take-name" title={cut.music.name}>
@@ -181,17 +182,17 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
                 </span>
                 <span className="muted small">{formatSize(cut.music.size)}</span>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={active || musicBusy} onClick={() => void music(() => deleteMusic(ideaId))}>
-                  Remove
+                  {t('cut.panel.music.remove')}
                 </button>
               </div>
             ) : (
               <>
                 <label className="cut-license small">
                   <input type="checkbox" checked={licensed} disabled={active} onChange={(e) => setLicensed(e.target.checked)} />
-                  <span>I own this music or have the license to use it in this video.</span>
+                  <span>{t('cut.panel.music.license')}</span>
                 </label>
                 <label className={`btn btn-ghost btn-sm take-add${!licensed || active || musicBusy ? ' is-disabled' : ''}`} aria-disabled={!licensed || active || musicBusy}>
-                  {musicBusy ? 'Uploading…' : 'Choose a music file'}
+                  {musicBusy ? t('cut.panel.music.uploading') : t('cut.panel.music.choose')}
                   <input
                     type="file"
                     hidden
@@ -210,12 +211,12 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
 
           {cut?.status !== 'failed' && (
             <button type="button" className="btn btn-primary" disabled={!ready || starting || musicBusy} onClick={() => void start()}>
-              Make the video
+              {t('cut.panel.make')}
             </button>
           )}
-          {output && !active && optionsDiffer(madeWith, options) && <span className="small gr-hint">Make the video again to apply</span>}
-          {review?.status === 'approved' && <span className="muted small">Making it again clears {manager}'s approval.</span>}
-          {review?.status === 'waiting' && <span className="muted small">Making it again takes it off {manager}'s list until you send it again.</span>}
+          {output && !active && optionsDiffer(madeWith, options) && <span className="small gr-hint">{t('cut.panel.makeAgainHint')}</span>}
+          {review?.status === 'approved' && <span className="muted small">{t('cut.panel.clearsApproval', { name: manager })}</span>}
+          {review?.status === 'waiting' && <span className="muted small">{t('cut.panel.offList', { name: manager })}</span>}
         </div>
       )}
 
@@ -233,7 +234,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
           </p>
           {approved && (
             <button type="button" className="btn btn-primary" disabled={!ready || starting || musicBusy} onClick={() => void start()}>
-              Try again
+              {t('cut.common.tryAgain')}
             </button>
           )}
         </div>
@@ -243,7 +244,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
         <p className="error" role="alert">
           {loadError}{' '}
           <button type="button" className="link-btn" onClick={() => setLoadKey((k) => k + 1)}>
-            Retry
+            {t('cut.common.retry')}
           </button>
         </p>
       )}
@@ -256,21 +257,21 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
 
       {output && (
         <div className="cut-output">
-          {cut?.stale && <p className="small">The takes or music changed after this was made. Make it again.</p>}
+          {cut?.stale && <p className="small">{t('cut.panel.stale')}</p>}
           <CutVideo url={output.url} cues={approved ? (cueData?.cues ?? null) : null} previewStyle={approved && options.burnSubtitles && previewOn && madeWith?.burnSubtitles !== true ? options.subtitleStyle : null} zone={approved && options.burnSubtitles ? zone : null} />
           {approved && options.burnSubtitles && cueData && madeWith?.burnSubtitles !== true && (
             <label className="check small">
               <input type="checkbox" checked={previewOn} onChange={(e) => setPreviewOn(e.target.checked)} />
-              <span>Show a preview of the subtitles on this video (they are added when you make it again)</span>
+              <span>{t('cut.panel.previewSubs')}</span>
             </label>
           )}
           <div className="cut-output-meta">
             <a className="btn btn-ghost btn-sm" href={`${output.url}${output.url.includes('?') ? '&' : '?'}download=1`} download>
-              Download
+              {t('cut.panel.download')}
             </a>
             {canSend && (
               <button type="button" className="btn btn-primary btn-sm" disabled={sending} onClick={() => void send()}>
-                Send to {manager} for approval
+                {t('cut.panel.send', { name: manager })}
               </button>
             )}
             <span className="muted small">

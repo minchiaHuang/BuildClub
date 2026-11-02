@@ -20,6 +20,8 @@
     background: var(--surface); border-right: 0; box-shadow: var(--shadow-lg);
     transform: translateX(-100%); transition: transform var(--dur) var(--ease);
   }
+  /* Closed, it sits just off-screen; its shadow would still bleed in along the left edge, so it only shows when open. */
+  .sidebar:not(.sidebar-open) { box-shadow: none; }
   .sidebar-open { transform: none; }
   .side-scrim { display: block; position: fixed; inset: 0; z-index: var(--z-scrim); background: var(--scrim); animation: fade-in var(--dur) var(--ease); }
   .mobile-bar {
@@ -83,6 +85,7 @@
 .side-foot { margin-top: auto; display: grid; gap: var(--space-base); }
 .side-foot .sample-pill { margin: 0; justify-self: start; }
 .theme-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; background: var(--surface-2); border-radius: var(--radius-pill); }
+.theme-seg.two { grid-template-columns: repeat(2, 1fr); }
 .theme-seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-sm); padding: 6px 4px; min-height: 32px; border-radius: var(--radius-pill); cursor: pointer; }
 .theme-seg button:hover { color: var(--fg); }
 .theme-seg button.on { background: var(--surface); color: var(--fg); font-weight: 600; box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); }

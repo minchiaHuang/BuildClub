@@ -2,6 +2,7 @@ import type { Shot } from '../../types'
 import { purposeFor, purposeLabel } from '../../lib/storyboard'
 import { FrameImage } from '../FrameImage'
 import { SwatchRow } from '../SwatchRow'
+import { t } from '../../lib/i18n'
 
 export type Busy = 'script' | 'frame' | undefined
 
@@ -33,7 +34,7 @@ export function ShotItem(p: Props) {
   const frame = (
     <FrameImage
       src={shot.frameImage}
-      alt={`Frame for shot ${n}`}
+      alt={t('plan.sb.frameAlt', { n })}
       busy={busy === 'frame'}
       error={frameError}
       onRetry={editable ? p.onFrame : undefined}
@@ -42,37 +43,37 @@ export function ShotItem(p: Props) {
   )
   const badges = (
     <>
-      <span className="sb-no" aria-label={`Shot ${n}`}>{n}</span>
-      <span className={`sb-purpose is-${purpose}`}>{purposeLabel[purpose]}</span>
+      <span className="sb-no" aria-label={t('plan.sb.shotAria', { n })}>{n}</span>
+      <span className={`sb-purpose is-${purpose}`}>{purposeLabel(purpose)}</span>
       {shot.time && <span className="sb-time">{shot.time}</span>}
-      {shot.edited && <span className="sb-edited">Edited</span>}
+      {shot.edited && <span className="sb-edited">{t('plan.sb.edited')}</span>}
     </>
   )
   const line = editable ? (
     <div className="sb-line-field">
       <label className="field-label" htmlFor={lineId}>
-        Line to say
+        {t('plan.sb.lineToSay')}
       </label>
       <textarea
         id={lineId}
         rows={3}
         maxLength={500}
         value={shot.line ?? ''}
-        placeholder="Write the script, or type the line yourself"
+        placeholder={t('plan.sb.linePlaceholder')}
         disabled={busy === 'script'}
         onChange={(e) => p.onLine(e.target.value)}
       />
     </div>
   ) : (
     <div className="sb-line-field">
-      <span className="field-label">Line to say</span>
-      {hasLine ? <p className="sb-line quote">{shot.line}</p> : <p className="small muted">No line written yet.</p>}
+      <span className="field-label">{t('plan.sb.lineToSay')}</span>
+      {hasLine ? <p className="sb-line quote">{shot.line}</p> : <p className="small muted">{t('plan.sb.noLine')}</p>}
     </div>
   )
   const options =
     editable && shot.options && shot.options.length > 0 ? (
-      <div className="sb-options" role="group" aria-label={`Other lines for shot ${n}`}>
-        <span className="field-label">Other ways to say it</span>
+      <div className="sb-options" role="group" aria-label={t('plan.sb.otherLines', { n })}>
+        <span className="field-label">{t('plan.sb.otherWays')}</span>
         <div className="chip-row">
           {shot.options.map((o) => (
             <button key={o} type="button" className="cchip sb-option" aria-pressed={shot.line === o} onClick={() => p.onLine(o)}>
@@ -84,22 +85,22 @@ export function ShotItem(p: Props) {
     ) : null
   const ask = confirming ? (
     <div className="sb-confirm" role="alert">
-      <span>You edited this line. Replace it with a new one?</span>
+      <span>{t('plan.sb.confirmText')}</span>
       <button type="button" className="btn btn-ghost btn-sm" onClick={p.onKeepMine}>
-        Keep mine
+        {t('plan.sb.keepMine')}
       </button>
       <button type="button" className="btn btn-primary btn-sm" onClick={p.onConfirmRewrite}>
-        Replace it
+        {t('plan.sb.replaceIt')}
       </button>
     </div>
   ) : null
   const actions = editable ? (
     <div className="sb-actions">
       <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== undefined} onClick={p.onRewrite}>
-        {busy === 'script' ? 'Rewriting…' : 'Regenerate this shot'}
+        {busy === 'script' ? t('plan.sb.rewriting') : t('plan.sb.regenerate')}
       </button>
       <button type="button" className="btn btn-ghost btn-sm" disabled={busy !== undefined} onClick={p.onFrame}>
-        {busy === 'frame' ? 'Making…' : shot.frameImage ? 'Redo frame' : 'Make frame'}
+        {busy === 'frame' ? t('plan.sb.making') : shot.frameImage ? t('plan.sb.redoFrame') : t('plan.sb.makeFrame')}
       </button>
     </div>
   ) : null
@@ -117,7 +118,7 @@ export function ShotItem(p: Props) {
           <div className="sb-row-frame">{frame}</div>
           <div className="sb-row-text">
             <div className="sb-head">{badges}</div>
-            <p className="sb-shot">{shot.shot || 'No description yet'}</p>
+            <p className="sb-shot">{shot.shot || t('plan.sb.noDescription')}</p>
           </div>
         </td>
         <td className="sb-cell-line">
@@ -136,7 +137,7 @@ export function ShotItem(p: Props) {
       <div className="sb-card-frame">{frame}</div>
       <div className="sb-card-body">
         <div className="sb-head">{badges}</div>
-        <p className="sb-shot">{shot.shot || 'No description yet'}</p>
+        <p className="sb-shot">{shot.shot || t('plan.sb.noDescription')}</p>
         {line}
         {options}
         {ask}

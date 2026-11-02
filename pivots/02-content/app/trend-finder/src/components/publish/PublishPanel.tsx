@@ -3,6 +3,7 @@ import type { IdeaStatus } from '../../types'
 import type { CutState } from '../../lib/cut'
 import { getCut } from '../../lib/cut'
 import { useManagerName } from '../../lib/appContext'
+import { t } from '../../lib/i18n'
 import { PlatformLogo } from '../PlatformToggles'
 import {
   MAX_CAPTION,
@@ -77,7 +78,7 @@ export function PublishPanel({ ideaId, status, shotCount }: Props) {
     // Plans that are not approved yet only get the short explanation.
     return (
       <section className="block pub-panel">
-        <h3>Post the video</h3>
+        <h3>{t('cut.pub.title')}</h3>
         <p className="muted small pub-gate">{missing}</p>
       </section>
     )
@@ -119,12 +120,12 @@ export function PublishPanel({ ideaId, status, shotCount }: Props) {
   return (
     <section className="block pub-panel">
       <div className="pub-head">
-        <h3>Post the video</h3>
-        {simulated && <span className="pill pill-wait pub-badge">Simulated</span>}
+        <h3>{t('cut.pub.title')}</h3>
+        {simulated && <span className="pill pill-wait pub-badge">{t('cut.common.simulated')}</span>}
       </div>
       {simulated && (
         <p className="small pub-sim">
-          Simulated posting: nothing is sent to TikTok, Instagram or YouTube. The posts below only show how it will work.
+          {t('cut.pub.simBanner')}
         </p>
       )}
 
@@ -137,15 +138,15 @@ export function PublishPanel({ ideaId, status, shotCount }: Props) {
       ) : (
         <div className="pub-form">
           <label className="pub-caption">
-            <span className="small">Caption</span>
-            <textarea rows={3} value={caption} maxLength={MAX_CAPTION} placeholder="Write the caption and hashtags" onChange={(e) => setCaption(e.target.value)} />
+            <span className="small">{t('cut.pub.caption')}</span>
+            <textarea rows={3} value={caption} maxLength={MAX_CAPTION} placeholder={t('cut.pub.captionPlaceholder')} onChange={(e) => setCaption(e.target.value)} />
             <span className="muted small pub-count" aria-live="polite">
               {caption.length} / {MAX_CAPTION}
             </span>
           </label>
 
           <fieldset className="pub-platforms">
-            <legend className="small">Where to post</legend>
+            <legend className="small">{t('cut.pub.where')}</legend>
             <div className="pub-platform-list">
               {PUB_PLATFORMS.map((p) => (
                 <label key={p} className={`pub-platform${picked.includes(p) ? ' is-on' : ''}`}>
@@ -158,20 +159,20 @@ export function PublishPanel({ ideaId, status, shotCount }: Props) {
           </fieldset>
 
           <label className="pub-when">
-            <span className="small">Post at (optional)</span>
+            <span className="small">{t('cut.pub.at')}</span>
             <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-invalid={scheduleBad || undefined} />
             {scheduleBad && (
               <span className="pub-field-error small" role="alert">
-                Pick a time in the future, or leave it empty to post now.
+                {t('cut.pub.badTime')}
               </span>
             )}
           </label>
 
           <div className="pub-actions">
             <button type="button" className="btn btn-primary" disabled={!canPublish} onClick={() => void publish()}>
-              {busy ? 'Posting…' : simulated ? 'Publish (simulated)' : 'Publish'}
+              {busy ? t('cut.pub.posting') : simulated ? t('cut.pub.publishSim') : t('cut.pub.publish')}
             </button>
-            {picked.length === 0 && <span className="muted small">Pick at least one platform.</span>}
+            {picked.length === 0 && <span className="muted small">{t('cut.pub.pickOne')}</span>}
           </div>
         </div>
       )}
@@ -185,7 +186,7 @@ export function PublishPanel({ ideaId, status, shotCount }: Props) {
         <p className="error" role="alert">
           {loadError}{' '}
           <button type="button" className="link-btn" onClick={() => void reload()}>
-            Retry
+            {t('cut.common.retry')}
           </button>
         </p>
       )}

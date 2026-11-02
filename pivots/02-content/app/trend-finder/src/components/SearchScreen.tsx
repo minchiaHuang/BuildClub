@@ -7,6 +7,7 @@ import { SearchBox } from './SearchBox'
 import { AltitudeHero } from './themes/AltitudeHero'
 import { StartingPoints } from './find/StartingPoints'
 import { TopicResults } from './publish/TopicResults'
+import { t } from '../lib/i18n'
 
 interface Props {
   query: Query
@@ -61,10 +62,8 @@ export function SearchScreen(props: Props) {
           {props.planned > 0 && (
             <span className="progress-line">
               <span>
-                <strong>
-                  {props.planned} of {props.target}
-                </strong>{' '}
-                videos approved for {clientName} this month
+                <strong>{t('find.search.approvedCount', { planned: props.planned, target: props.target })}</strong>
+                {t('find.search.approvedFor', { client: clientName })}
               </span>
               <span className="progress-mini" aria-hidden="true">
                 <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
@@ -73,7 +72,7 @@ export function SearchScreen(props: Props) {
           )}
           {props.lastSearch && (
             <button type="button" className="link-btn" onClick={props.onBackToResults}>
-              ← Back to your results for "{props.lastSearch}"
+              {t('find.search.back', { q: props.lastSearch })}
             </button>
           )}
         </div>
@@ -101,8 +100,8 @@ export function SearchScreen(props: Props) {
 
       <p className="hint find-hint">
         {live
-          ? 'Each new search looks at real TikTok videos and costs a few cents. Running the same search again within 24 hours is free.'
-          : 'This demo only has sample videos about tofu for now.'}
+          ? t('find.search.hintLive')
+          : t('find.search.hintDemo')}
       </p>
     </section>
   )

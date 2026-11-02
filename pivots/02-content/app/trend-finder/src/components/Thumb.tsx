@@ -7,6 +7,7 @@ import {
   tiktokVideoId,
 } from '../lib/tiktokPlayer.ts'
 import { useTiktokFrame } from '../lib/useTiktokFrame.ts'
+import { t } from '../lib/i18n'
 
 const hues: Record<string, number> = {
   'crispy-asmr': 32,
@@ -80,7 +81,7 @@ function PreviewPlayer({ id, hovering }: { id: string; hovering: boolean }) {
         <ThumbControl
           role="button"
           className="thumb-sound"
-          label={muted ? 'Turn sound on' : 'Turn sound off'}
+          label={muted ? t('find.thumb.soundOn') : t('find.thumb.soundOff')}
           onActivate={() => {
             sendCommand(frame, muted ? 'unMute' : 'mute')
             setMuted(!muted)
@@ -145,8 +146,8 @@ export function Thumb({ video, large = false, preview = false }: { video: Video;
       )}
       {id && active && !failed && <PreviewPlayer id={id} hovering={hovering} />}
       {failed && video.url && (
-        <ThumbControl role="link" className="thumb-fail" label="Watch on TikTok" onActivate={() => window.open(video.url, '_blank', 'noopener,noreferrer')}>
-          Watch on TikTok ↗
+        <ThumbControl role="link" className="thumb-fail" label={t('find.watchOn', { platform: 'TikTok' })} onActivate={() => window.open(video.url, '_blank', 'noopener,noreferrer')}>
+          {t('find.watchOn', { platform: 'TikTok' })} ↗
         </ThumbControl>
       )}
       <span className={`plat plat-${video.platform}`} title={platformName[video.platform]}>

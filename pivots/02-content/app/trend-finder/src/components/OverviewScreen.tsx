@@ -7,7 +7,7 @@ import {
   sampleFormatById,
   sampleVideoById,
 } from '../lib/clientHome'
-import { plural } from '../lib/metrics'
+import { t, tp } from '../lib/i18n'
 import { ProgressRing } from './ProgressRing'
 import { Card, Empty, LaterSection, MonthCard } from './home/HomeCards'
 
@@ -27,16 +27,16 @@ function AgencySection() {
   return (
     <fieldset className="cannot agency-box">
       <legend>
-        <h3>Agency</h3>
-        <span className="small muted">The manager approves plans. Their name shows wherever a plan waits for review.</span>
+        <h3>{t('home.agency.title')}</h3>
+        <span className="small muted">{t('home.agency.desc')}</span>
       </legend>
       <div className="settings-grid">
         <label className="field">
-          <span className="field-label">Agency name</span>
-          <input id="agency-name" value={agency.agencyName} readOnly={!!account?.agency} title={account?.agency ? "Set by your account" : undefined} onChange={(e) => setAgency({ agencyName: e.target.value })} />
+          <span className="field-label">{t('home.agency.name')}</span>
+          <input id="agency-name" value={agency.agencyName} readOnly={!!account?.agency} title={account?.agency ? t('home.agency.setByAccount') : undefined} onChange={(e) => setAgency({ agencyName: e.target.value })} />
         </label>
         <label className="field">
-          <span className="field-label">Manager's name</span>
+          <span className="field-label">{t('home.agency.manager')}</span>
           <input id="manager-name" value={agency.managerName} onChange={(e) => setAgency({ managerName: e.target.value })} />
         </label>
       </div>
@@ -73,47 +73,45 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
     <section className="overview ch ch-wide">
       <header className="page-head-row">
         <div className="page-head">
-          <h1>Client dashboard</h1>
-          <p className="muted">
-            This month's video targets and what's waiting for you, across {plural(clients.length, 'client')}.
-          </p>
+          <h1>{t('home.overview.title')}</h1>
+          <p className="muted">{t('home.overview.sub', { clients: tp('home.count.client', clients.length) })}</p>
         </div>
         <button className="btn btn-primary" onClick={onAddClient}>
-          + Add client
+          {t('home.overview.add')}
         </button>
       </header>
 
       {clients.length === 0 ? (
         <div className="empty">
-          <h3>No clients yet</h3>
-          <p>Add your first client to start finding videos for them.</p>
+          <h3>{t('home.overview.noneTitle')}</h3>
+          <p>{t('home.overview.noneBody')}</p>
           <button className="btn btn-primary" onClick={onAddClient}>
-            + Add client
+            {t('home.overview.add')}
           </button>
         </div>
       ) : (
         <>
           <div className="ch-grid">
-            <MonthCard heading="Videos approved this month, all clients" approved={totals.approved} target={totals.target} waiting={totals.waiting} />
+            <MonthCard heading={t('home.overview.monthHeading')} approved={totals.approved} target={totals.target} waiting={totals.waiting} />
 
             <Card
               id="ov-waiting"
               className="ov-waiting"
               label="Needs your approval"
-              title="Waiting for approval"
+              title={t('home.overview.waitingTitle')}
             >
               {waitingRows.length === 0 ? (
-                <Empty>Nothing waiting right now. When someone sends a plan for approval, the client shows up here.</Empty>
+                <Empty>{t('home.overview.waitingEmpty')}</Empty>
               ) : (
                 <ul className="ch-rows">
                   {waitingRows.map((r) => (
                     <li key={r.c.id} className="ch-row">
                       <span className="ch-row-text">
                         <strong>{r.c.name}</strong>
-                        <span className="small muted">{plural(r.waiting, 'plan')} to approve</span>
+                        <span className="small muted">{t('home.overview.toApprove', { plans: tp('home.count.plan', r.waiting) })}</span>
                       </span>
-                      <button className="btn btn-ghost btn-sm" onClick={() => onOpen(r.c.id, 'review')} aria-label={`Open ${r.c.name}'s plans to approve`}>
-                        Open
+                      <button className="btn btn-ghost btn-sm" onClick={() => onOpen(r.c.id, 'review')} aria-label={t('home.overview.openAria', { name: r.c.name })}>
+                        {t('home.overview.open')}
                       </button>
                     </li>
                   ))}
@@ -127,13 +125,13 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
             <table className="client-table">
               <thead>
                 <tr>
-                  <th>Client</th>
-                  <th>Approved this month</th>
-                  <th className="num">Waiting for you</th>
-                  <th className="num">Sent back</th>
-                  <th>Your decisions</th>
-                  <th>Next to film</th>
-                  <th aria-label="Actions" />
+                  <th>{t('home.overview.colClient')}</th>
+                  <th>{t('home.overview.colApproved')}</th>
+                  <th className="num">{t('home.overview.colWaiting')}</th>
+                  <th className="num">{t('home.overview.colSentBack')}</th>
+                  <th>{t('home.overview.colDecisions')}</th>
+                  <th>{t('home.overview.colNext')}</th>
+                  <th aria-label={t('home.overview.colActions')} />
                 </tr>
               </thead>
               <tbody>
@@ -151,13 +149,13 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
                         <div className="progress">
                           <ProgressRing value={pct} tone={pct < 50 ? 'behind' : undefined} />
                           <span className="small">
-                            {approved} of {c.monthlyTarget}
+                            {t('home.overview.ofTarget', { approved, target: c.monthlyTarget })}
                           </span>
                         </div>
                       </td>
                       <td className="num">
                         {waiting ? (
-                          <button className="link-btn" onClick={() => onOpen(c.id, 'review')} aria-label={`${waiting} waiting for you for ${c.name}. Open`}>
+                          <button className="link-btn" onClick={() => onOpen(c.id, 'review')} aria-label={t('home.overview.waitingAria', { n: waiting, name: c.name })}>
                             {waiting}
                           </button>
                         ) : (
@@ -167,7 +165,7 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
                       <td className="num">{sentBack ? sentBack : <span className="muted">0</span>}</td>
                       <td>
                         <span className="small">
-                          {stats.decided ? `${stats.approved} of ${stats.decided} approved` : <span className="muted">None yet</span>}
+                          {stats.decided ? t('home.overview.decisionsOf', { approved: stats.approved, decided: stats.decided }) : <span className="muted">{t('home.overview.noneYet')}</span>}
                         </span>
                       </td>
                       <td>
@@ -177,12 +175,12 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
                             <span className="small muted">{dueText(next.dueDate)}</span>
                           </span>
                         ) : (
-                          <span className="muted small">Nothing approved yet</span>
+                          <span className="muted small">{t('home.overview.nothingApproved')}</span>
                         )}
                       </td>
                       <td className="num">
                         <button className="btn btn-ghost btn-sm" onClick={() => onOpen(c.id, 'home')}>
-                          Home
+                          {t('home.overview.home')}
                         </button>
                       </td>
                     </tr>
@@ -193,22 +191,22 @@ export function OverviewScreen({ clients, ideas, videoById = sampleVideoById, fo
           </div>
 
           <LaterSection
-            intro="These need numbers from each client's TikTok account after videos go live. Remake doesn't collect them yet, so nothing here is real data."
+            intro={t('home.overview.laterIntro')}
             cards={[
               {
-                title: 'How posted videos did, per client',
-                what: "For each client, views on the videos they posted this month, next to that client's usual views.",
-                needs: "Would need: access to every client's TikTok stats.",
+                title: t('home.overview.later1Title'),
+                what: t('home.overview.later1What'),
+                needs: t('home.overview.later1Needs'),
               },
               {
-                title: 'Which copied videos worked best',
-                what: 'Across all clients, which kinds of copied video got the best results once posted.',
-                needs: 'Would need: TikTok stats, plus a link from each posted video back to its plan.',
+                title: t('home.overview.later2Title'),
+                what: t('home.overview.later2What'),
+                needs: t('home.overview.later2Needs'),
               },
               {
-                title: 'Follower growth, per client',
-                what: "How each client's followers changed month by month.",
-                needs: "Would need: access to every client's TikTok stats.",
+                title: t('home.overview.later3Title'),
+                what: t('home.overview.later3What'),
+                needs: t('home.overview.later3Needs'),
               },
             ]}
           />

@@ -4,6 +4,7 @@ import { MAX_COMMENT_LENGTH, addComment, formatAt, listComments, parseAt, sortBy
 import type { Comment as BaseComment } from '../lib/comments.ts'
 import { LinkClosed } from '../lib/share.ts'
 import { me } from '../lib/auth'
+import { t } from '../lib/i18n'
 import type { PlayerControl } from './BestVideo'
 
 // The server says which door a comment came in by; older comments carry nothing and count as the link.
@@ -70,19 +71,19 @@ export function TimedComments({ ideaId, videoId, token, control, canSeek, onClos
   }, [token])
 
   const useNow = () => {
-    const t = control?.current?.time()
-    if (t == null) return setError("The player hasn't started yet. Press play first, or type the time.")
+    const now = control?.current?.time()
+    if (now == null) return setError(t('cut.tc.noPlayer'))
     setError('')
-    setAt(formatAt(t))
+    setAt(formatAt(now))
   }
 
   const post = (e: React.FormEvent) => {
     e.preventDefault()
     if (busy) return
     const atSec = parseAt(at)
-    if (atSec === null) return setError('Enter the time as m:ss, like 1:15.')
-    if (!text.trim()) return setError('Write your comment first.')
-    if (!name.trim()) return setError('Add your name first.')
+    if (atSec === null) return setError(t('cut.tc.badTime'))
+    if (!text.trim()) return setError(t('cut.tc.needText'))
+    if (!name.trim()) return setError(t('cut.tc.needName'))
     setBusy(true)
     setError('')
     addComment(ideaId, { videoId, atSec, text: text.trim(), author: name.trim() }, token)
@@ -106,20 +107,20 @@ export function TimedComments({ ideaId, videoId, token, control, canSeek, onClos
   }
 
   return (
-    <section className="timed-comments" aria-label="Comments on the video">
-      <h3 className="field-label">Comments on the video</h3>
+    <section className="timed-comments" aria-label={t('cut.tc.title')}>
+      <h3 className="field-label">{t('cut.tc.title')}</h3>
       {loadError && (
         <p className="error" role="alert">
           {loadError}
         </p>
       )}
-      {comments.length === 0 && !loadError && <p className="small muted">No comments yet. Pin one to a second of the video.</p>}
+      {comments.length === 0 && !loadError && <p className="small muted">{t('cut.tc.empty')}</p>}
       {comments.length > 0 && (
         <ul className="tc-list">
           {comments.map((c) => (
             <li key={c.id} className="tc-item">
               {canSeek ? (
-                <button type="button" className="tc-at tc-at-link" onClick={() => control?.current?.seek(c.atSec)} aria-label={`Jump to ${formatAt(c.atSec)}`}>
+                <button type="button" className="tc-at tc-at-link" onClick={() => control?.current?.seek(c.atSec)} aria-label={t('cut.tc.jump', { time: formatAt(c.atSec) })}>
                   {formatAt(c.atSec)}
                 </button>
               ) : (
@@ -128,7 +129,7 @@ export function TimedComments({ ideaId, videoId, token, control, canSeek, onClos
               <div className="tc-body">
                 <span className="small muted">
                   {c.author}
-                  {c.source === 'staff' ? ' · Team' : ' · via review link'}
+                  {` · ${c.source === 'staff' ? t('cut.tc.team') : t('cut.tc.viaLink')}`}
                 </span>
                 <p>{c.text}</p>
               </div>
@@ -139,28 +140,28 @@ export function TimedComments({ ideaId, videoId, token, control, canSeek, onClos
       <form className="tc-form" onSubmit={post}>
         {token && !storedName() && (
           <label className="field">
-            <span className="field-label">Your name</span>
+            <span className="field-label">{t('cut.tc.yourName')}</span>
             <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           </label>
         )}
         <div className="tc-row">
           <label className="field tc-time">
-            <span className="field-label">At</span>
+            <span className="field-label">{t('cut.tc.at')}</span>
             <input value={at} placeholder="1:15" inputMode="numeric" onChange={(e) => setAt(e.target.value)} />
           </label>
           {canSeek && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={useNow}>
-              Use player time
+              {t('cut.tc.useTime')}
             </button>
           )}
         </div>
         <label className="field">
-          <span className="field-label">Comment</span>
+          <span className="field-label">{t('cut.tc.comment')}</span>
           <textarea rows={2} value={text} maxLength={MAX_COMMENT_LENGTH} onChange={(e) => setText(e.target.value)} />
         </label>
         <div className="tc-actions">
           <button className="btn btn-primary btn-sm" type="submit" disabled={busy}>
-            Add comment
+            {t('cut.tc.add')}
           </button>
         </div>
         {error && (

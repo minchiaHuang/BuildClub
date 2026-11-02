@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { IdeaStatus, Shot } from '../types'
 import type { Take } from '../lib/takes'
+import { t } from '../lib/i18n'
 import { canEdit, checkFile, checklistProgress, chooseTake, deleteTake, formatSize, listTakes, takesByShot, uploadTake } from '../lib/takes'
 
 interface Props {
@@ -81,19 +82,19 @@ export function ShotChecklist({ ideaId, status, shots, onProgress }: Props) {
   return (
     <section className="block shot-checklist">
       <div className="shot-checklist-head">
-        <h3>Shot checklist</h3>
+        <h3>{t('plan.takes.title')}</h3>
         {takes && (
           <span className="muted small">
-            {done} of {total} shots have a take
+            {t('plan.takes.progress', { done, total })}
           </span>
         )}
       </div>
       {!editable && (
-        <p className="muted small">Reopened for edits. Takes are kept and can be changed again once the plan is approved.</p>
+        <p className="muted small">{t('plan.takes.reopened')}</p>
       )}
       {loadError && (
         <p className="error" role="alert">
-          Couldn't load the takes.
+          {t('plan.takes.err.load')}
         </p>
       )}
       {takes && (
@@ -104,46 +105,46 @@ export function ShotChecklist({ ideaId, status, shots, onProgress }: Props) {
                 <span className="shot-checklist-n">{i + 1}.</span>
                 <div>
                   {s.time && <span className="shot-time">[{s.time}]</span>} {s.shot}
-                  {s.text && <span className="shot-text">Text on screen: "{s.text}"</span>}
+                  {s.text && <span className="shot-text">{t('plan.takes.textOnScreen', { text: s.text })}</span>}
                 </div>
               </div>
               {grouped[i].length > 0 && (
                 <ul className="take-list">
-                  {grouped[i].map((t) => (
-                    <li key={t.id} className={t.chosen ? 'take is-chosen' : 'take'}>
-                      <video controls preload="metadata" playsInline src={t.url} />
-                      <span className="take-name" title={t.name}>
-                        {t.name}
+                  {grouped[i].map((tk) => (
+                    <li key={tk.id} className={tk.chosen ? 'take is-chosen' : 'take'}>
+                      <video controls preload="metadata" playsInline src={tk.url} />
+                      <span className="take-name" title={tk.name}>
+                        {tk.name}
                       </span>
-                      <span className="muted small">{formatSize(t.size)}</span>
-                      {t.chosen && <span className="take-chosen">Chosen</span>}
+                      <span className="muted small">{formatSize(tk.size)}</span>
+                      {tk.chosen && <span className="take-chosen">{t('plan.takes.chosen')}</span>}
                       {editable &&
-                        (confirmDelete === t.id ? (
+                        (confirmDelete === tk.id ? (
                           <span className="take-actions">
-                            <span className="small">Delete this take?</span>
+                            <span className="small">{t('plan.takes.deleteQ')}</span>
                             <button
                               type="button"
                               className="btn btn-ghost btn-sm"
                               onClick={() => {
                                 setConfirmDelete(null)
-                                void run(i, () => deleteTake(ideaId, t.id))
+                                void run(i, () => deleteTake(ideaId, tk.id))
                               }}
                             >
-                              Delete
+                              {t('plan.takes.delete')}
                             </button>
                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(null)}>
-                              Keep
+                              {t('plan.takes.keep')}
                             </button>
                           </span>
                         ) : (
                           <span className="take-actions">
-                            {!t.chosen && (
-                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void run(i, () => chooseTake(ideaId, t.id))}>
-                                Use this take
+                            {!tk.chosen && (
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void run(i, () => chooseTake(ideaId, tk.id))}>
+                                {t('plan.takes.use')}
                               </button>
                             )}
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(t.id)}>
-                              Delete
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(tk.id)}>
+                              {t('plan.takes.delete')}
                             </button>
                           </span>
                         ))}
@@ -153,7 +154,7 @@ export function ShotChecklist({ ideaId, status, shots, onProgress }: Props) {
               )}
               {editable && (
                 <label className={`btn btn-ghost btn-sm take-add${busy.has(i) ? ' is-busy' : ''}`} aria-disabled={busy.has(i)}>
-                  {busy.has(i) ? 'Uploading…' : 'Add take'}
+                  {busy.has(i) ? t('plan.takes.uploading') : t('plan.takes.add')}
                   <input
                     type="file"
                     hidden

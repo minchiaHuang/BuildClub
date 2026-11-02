@@ -1,18 +1,32 @@
 import type { SavedIdea, Shot } from '../types'
 import { moveTo } from './stage.ts'
+import { t, tp } from './i18n.ts'
 
 // The six steps of a video, in order. A card's step is worked out from its data every time (stepOf), never stored.
 export type Step = 'idea' | 'script' | 'storyboard' | 'filming' | 'editing' | 'posted'
 
 export const STEPS: Step[] = ['idea', 'script', 'storyboard', 'filming', 'editing', 'posted']
 
+// Getters, so the label follows the language on show.
 export const STEP_LABEL: Record<Step, string> = {
-  idea: 'Idea',
-  script: 'Script',
-  storyboard: 'Storyboard',
-  filming: 'Filming',
-  editing: 'Editing',
-  posted: 'Posted',
+  get idea() {
+    return t('home.step.idea')
+  },
+  get script() {
+    return t('home.step.script')
+  },
+  get storyboard() {
+    return t('home.step.storyboard')
+  },
+  get filming() {
+    return t('home.step.filming')
+  },
+  get editing() {
+    return t('home.step.editing')
+  },
+  get posted() {
+    return t('home.step.posted')
+  },
 }
 
 // What the idea's own record cannot say: a finished video, a post that went out, and when anything last happened
@@ -49,28 +63,26 @@ export function stepOf(idea: SavedIdea, shots: Shot[], signals: Signals = {}): S
   return shots.some(hasLine) ? 'script' : 'idea'
 }
 
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
-
 // What moves the card on, in a few words.
 export function nextAction(idea: SavedIdea, shots: Shot[], signals: Signals, who: { canDecide: boolean; manager: string }): string {
   const step = stepOf(idea, shots, signals)
   const need = shotNeeds(shots)
-  if (idea.status === 'rejected') return 'Fix it and send it again'
+  if (idea.status === 'rejected') return t('home.step.fixAndResend')
   switch (step) {
     case 'idea':
     case 'script':
-      if (need.shots === 0) return 'Add the shot list'
-      if (need.lines > 0) return `Write lines for ${plural(need.lines, 'shot')}`
-      return `Make frames for ${plural(need.frames, 'shot')}`
+      if (need.shots === 0) return t('home.step.addShotList')
+      if (need.lines > 0) return tp('home.step.writeLines', need.lines)
+      return tp('home.step.makeFrames', need.frames)
     case 'storyboard':
-      if (idea.status !== 'waiting') return 'Send for approval'
-      return who.canDecide ? 'Approve or send back' : `Waiting for ${who.manager}`
+      if (idea.status !== 'waiting') return t('home.step.sendForApproval')
+      return who.canDecide ? t('home.step.approveOrBack') : t('home.step.waitingFor', { name: who.manager })
     case 'filming':
-      return 'Film the shots'
+      return t('home.step.filmShots')
     case 'editing':
-      return signals.cut ? 'Get the video approved, then post it' : 'Make the video'
+      return signals.cut ? t('home.step.approveThenPost') : t('home.step.makeVideo')
     case 'posted':
-      return 'Posted'
+      return t('home.step.posted')
   }
 }
 
