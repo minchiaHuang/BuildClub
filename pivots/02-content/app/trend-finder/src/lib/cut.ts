@@ -1,4 +1,5 @@
 import type { IdeaStatus } from '../types'
+import type { AutoCut, CutOptions } from './grading'
 
 // The cut of an approved plan: its chosen takes joined into one publishable 9:16 MP4. Mirrors backend/renders.py.
 export interface CutReview {
@@ -22,6 +23,10 @@ export interface CutState {
   output?: { url: string; size: number; durationSec: number }
   // Where the video stands with the approver; null when it was never sent or was replaced since.
   review: CutReview | null
+  // The grade and subtitle options of the latest "Make the video" request.
+  options?: CutOptions
+  // What the auto-cut removed from the last video; absent for videos made before it was recorded.
+  autoCut?: AutoCut
 }
 
 // Same limits and copy as backend/renders.py.
@@ -89,11 +94,12 @@ export async function deleteMusic(ideaId: string): Promise<CutState> {
   return send(await fetch(`${base(ideaId)}/music`, { method: 'DELETE' }), "Couldn't remove the music.")
 }
 
-export async function startCut(ideaId: string, shotCount: number, speed: number): Promise<CutState> {
+// `extra` (grade, burnSubtitles, subtitleStyle) is added only when something was chosen.
+export async function startCut(ideaId: string, shotCount: number, speed: number, extra?: Record<string, unknown>): Promise<CutState> {
   const r = await fetch(base(ideaId), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ shotCount, speed }),
+    body: JSON.stringify({ shotCount, speed, ...extra }),
   })
   return send(r, "Couldn't start the cut.")
 }

@@ -72,6 +72,20 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .chip-group legend { margin-bottom: 6px; }
 .chip-group-title { font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
 .chip-row { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+/* PresetPicker: single-choice chips on real radio buttons */
+.preset-picker { min-width: 0; }
+.preset-chip {
+  position: relative; display: inline-flex; align-items: center; min-height: 40px;
+  border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-pill);
+  padding: 7px 14px; font-size: var(--text-ms); font-weight: 500; cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.preset-chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.preset-chip:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.preset-chip.is-on { border-color: var(--accent); background: var(--blue-soft); color: var(--accent-soft-fg, var(--fg)); }
+.preset-chip:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+.preset-picker:disabled .preset-chip { opacity: 0.55; cursor: default; }
+.preset-picker:disabled .preset-chip input { cursor: default; }
 .cchip {
   display: inline-flex; align-items: baseline; gap: var(--space-xs);
   border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-pill);

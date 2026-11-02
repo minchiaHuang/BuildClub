@@ -72,6 +72,17 @@
   --shadow: none;
   --focus-ring: 0 0 0 3px var(--blue-soft);
   --sky-tint: none;
+  /* Subtitle tokens: the burn-in's look (backend/subtitles.py, drawn on 1080x1920) and the live preview share
+     them. Sizes are the burn-in pixel sizes as a share of the frame width (44, 56, 72 of 1080), used with
+     container units; --sub-bottom is the 460 px under the text block. They sit on top of video, so they are the same in light and dark. */
+  --sub-fg: #ffffff;
+  --sub-bg: rgb(0 0 0 / 0.67);
+  --sub-stroke: #000000;
+  --sub-size-s: 4.07cqw;
+  --sub-size-m: 5.19cqw;
+  --sub-size-l: 6.67cqw;
+  --sub-bottom: 42.59cqw;
+  --sub-margin-x: 6.48%;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"])[data-ui="altitude"] {
@@ -92,6 +103,9 @@
     --line: #262a48;
     --line-strong: #454a78;
     --frost: rgb(11 13 28 / 0.88);
+    --sub-fg: #ffffff;
+    --sub-bg: rgb(0 0 0 / 0.67);
+    --sub-stroke: #000000;
     --scrim: rgb(0 0 0 / 0.6);
     --accent-fg: #ffffff;
     --hot-fg: #0b0d1c;
@@ -124,6 +138,9 @@
     --line: #262a48;
     --line-strong: #454a78;
     --frost: rgb(11 13 28 / 0.88);
+    --sub-fg: #ffffff;
+    --sub-bg: rgb(0 0 0 / 0.67);
+    --sub-stroke: #000000;
     --scrim: rgb(0 0 0 / 0.6);
     --accent-fg: #ffffff;
     --hot-fg: #0b0d1c;

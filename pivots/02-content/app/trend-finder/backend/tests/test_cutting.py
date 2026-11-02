@@ -219,3 +219,18 @@ def test_cut_graph_music_fades_stay_non_negative_for_a_short_output():
     graph = cutting.build_cut_graph([(0.0, 0.88)], 1.1, music=True, audio_only=False, loudnorm=None)
     assert "afade=t=out:st=0.4:d=0.4" in graph and "st=-" not in graph
     assert "afade=t=in:d=0.4" in graph
+
+
+def test_describe_trims_splits_per_take_and_names_fillers():
+    words = [(0.0, 0.5, "hello"), (1.5, 1.8, "um"), (1.9, 2.4, "there"), (5.0, 5.5, "bye")]
+    keeps = [(0.0, 0.62), (1.8, 3.0), (3.6, 6.0)]  # removed: 0.62-1.8 (has the filler), 3.0-3.6 (pause)
+    trims = cutting.describe_trims(keeps, words, [3.2, 2.8], 6.0)
+    assert trims == [
+        {"shot": 0, "kind": "filler", "start": 0.62, "end": 1.8},
+        {"shot": 0, "kind": "pause", "start": 3.0, "end": 3.2},
+        {"shot": 1, "kind": "pause", "start": 0.0, "end": 0.4},
+    ]
+
+
+def test_describe_trims_is_empty_when_nothing_was_cut():
+    assert cutting.describe_trims([(0.0, 4.0)], [], [4.0], 4.0) == []

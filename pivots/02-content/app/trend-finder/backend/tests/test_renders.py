@@ -584,3 +584,18 @@ def test_send_stale_shot_count_409(client, setup, fake_pipeline):
     r = send(client)
     assert r.status_code == 409
     assert r.json()["error"] == "The takes or music changed after this was made. Make it again before sending it."
+
+
+def test_auto_cut_summary_is_served_and_old_videos_have_none(client, setup, monkeypatch):
+    def run(takes, music, speed, work, out, step, **kw):
+        r = fake_render(takes, music, speed, work, out, step)
+        r["originalSec"] = 9.0
+        r["trims"] = [{"shot": 0, "kind": "pause", "start": 1.0, "end": 2.0}]
+        return r
+
+    monkeypatch.setattr(renders, "run_pipeline", run)
+    with_take(client)
+    assert "autoCut" not in client.get("/api/ideas/ia/cut").json()
+    assert start(client).status_code == 202 and wait_for(client)["status"] == "done"
+    got = client.get("/api/ideas/ia/cut").json()
+    assert got["autoCut"] == {"originalSec": 9.0, "trims": [{"shot": 0, "kind": "pause", "start": 1.0, "end": 2.0}]}
