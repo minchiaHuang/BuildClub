@@ -567,7 +567,7 @@ export function LandingAltitude({ onLogIn, onDemo }: { onLogIn: () => void; onDe
               <DemoButton onDemo={onDemo} big />
               <a className="rk-btn rk-btn-on-navy rk-btn-big" href="#tour">
                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 5.5v13l10-6.5z" fill="currentColor" /></svg>
-                Watch the 60-second tour
+                Watch the tour (under a minute)
               </a>
             </div>
             <p className="rk-note">No sign-up. A sample agency is ready to go.</p>
@@ -587,10 +587,20 @@ export function LandingAltitude({ onLogIn, onDemo }: { onLogIn: () => void; onDe
         </div>
       </section>
 
-      {/* Tour video: target of "Watch the 60-second tour" */}
-      <section id="tour" className="rk-tour" aria-label="60-second tour">
+      {/* Tour video: target of "Watch the tour" */}
+      <section id="tour" className="rk-tour" aria-label="Product tour, under a minute">
         <div className="rk-wrap">
-          <Media kind="video" label="60-second product tour" ratio="16 / 9" className="rk-tour-video" />
+          <video
+            className="rk-tour-video"
+            controls
+            preload="metadata"
+            playsInline
+            poster="/media/remake-tour-poster.jpg"
+            aria-label="Remake product tour, under a minute: find a trending video, check the client can film it, and plan the shoot"
+          >
+            <source src="/media/remake-tour.mp4" type="video/mp4" />
+            Your browser can’t play this video. <a href="/media/remake-tour.mp4">Download the tour (MP4)</a>.
+          </video>
         </div>
       </section>
 

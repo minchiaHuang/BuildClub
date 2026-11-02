@@ -181,13 +181,10 @@ body:has(.rk) { background: #ffffff; }
 .rk-ph-label { font-size: 13.5px; font-weight: 500; line-height: 1.35; }
 
 /* Tour video */
-.rk-tour { padding-top: 56px; scroll-margin-top: 64px; /* clears the sticky nav when "Watch the 60-second tour" jumps here */ }
+.rk-tour { padding-top: 56px; scroll-margin-top: 64px; /* clears the sticky nav when "Watch the tour" jumps here */ }
 /* Light, so the page doesn't show two navy blocks in a row under the hero */
 .rk-tour .rk-wrap { max-width: 1040px; }
-.rk-tour-video.rk-ph-video { border-radius: 20px; place-content: center; justify-items: center; text-align: center; background: var(--canvas-alt); color: var(--ink-muted); border-color: var(--line-strong); }
-.rk-tour-video .rk-ph-tag { padding: 12px 20px; font-size: 12px; }
-.rk-tour-video.rk-ph-video .rk-ph-tag { background: var(--navy); color: var(--on-navy); }
-.rk-tour-video .rk-ph-label { font-size: 15px; }
+.rk-tour-video { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 20px; background: var(--navy); border: 1px solid var(--line-strong); box-shadow: 0 18px 48px -24px rgb(11 16 48 / 0.35); object-fit: cover; }
 
 /* 3 · Problem */
 .rk-problems { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 48px; }
