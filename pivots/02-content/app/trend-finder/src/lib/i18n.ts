@@ -69,6 +69,18 @@ export const setActiveLang = (lang: Lang): void => {
 }
 export const getActiveLang = (): Lang => active
 
+// Run fn with another language active, then put the old one back. For text that is stored or shown on an
+// English-only screen (e.g. the note on the approver's review link), whatever the UI language is.
+export function inLang<T>(lang: Lang, fn: () => T): T {
+  const prev = active
+  active = lang
+  try {
+    return fn()
+  } finally {
+    active = prev
+  }
+}
+
 function lookup(lang: Lang, key: string): string {
   return (lang === 'zh-Hant' ? dictZh[key] : dictEn[key]) ?? dictEn[key] ?? key
 }
