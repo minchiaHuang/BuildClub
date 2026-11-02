@@ -1,7 +1,8 @@
 import type { Format, Video } from '../types'
 import type { MediaSource } from '../lib/parseQuery'
 import type { FormatTrend } from '../lib/metrics'
-import { meanScore, outlierScore, plural, platformName, stageText, times } from '../lib/metrics'
+import { byFollowers, meanScore, outlierScore, plural, platformName } from '../lib/metrics'
+import { beatUsualAverage, spreadSentence, spreadVerdict } from './find/words'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -13,19 +14,13 @@ interface Props {
   // True when the breakdown is the AI's reading of the real video.
   real?: boolean
   onPlan: (videoId: string) => void
+  // Videos already on this client's shortlist (or sent): the button then opens the plan instead.
+  savedIds: Set<string>
 }
 
-const verdicts = {
-  early: { label: 'Worth copying now', tone: 'early' },
-  rising: { label: 'Worth copying soon', tone: 'rising' },
-  everywhere: { label: 'Probably too late', tone: 'everywhere' },
-  'one-off': { label: 'Not proven yet', tone: 'one-off' },
-} as const
-
-export function LikeThisCard({ source, format, trend, matches, clientName, real, onPlan }: Props) {
+export function LikeThisCard({ source, format, trend, matches, clientName, real, onPlan, savedIds }: Props) {
   const best = [...matches].sort((a, b) => outlierScore(b) - outlierScore(a))[0]
   const avg = meanScore(matches)
-  const verdict = trend ? verdicts[trend.stage] : null
 
   return (
     <div className="like">
@@ -46,15 +41,13 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
           <span className="ai-tag">{real ? 'AI breakdown' : 'Match · mock'}</span>
         </div>
         <h2>This looks like: {format.name}</h2>
+        {!real && <span className="small muted">A sample match from the demo videos.</span>}
 
-        {verdict && trend && (
-          <div className={`verdict verdict-${verdict.tone}`}>
-            <strong>{verdict.label}</strong>
-            <span>
-              {stageText(trend)}. {plural(matches.length, 'similar video')} found, averaging {times(avg)} their
-              account's usual views.
-            </span>
-          </div>
+        {trend && (
+          <p className="like-verdict">
+            <strong>{spreadVerdict(trend)}</strong> {spreadSentence(trend)}. We found {plural(matches.length, 'similar video')}, with{' '}
+            {beatUsualAverage(avg, matches.some(byFollowers))} on average.
+          </p>
         )}
 
         {real && source.kind === 'image' ? (
@@ -62,7 +55,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
         ) : (
         <dl className="why why-compact">
           <div>
-            <dt>Hook</dt>
+            <dt>How it starts</dt>
             <dd>{format.why.hook}</dd>
           </div>
           <div>
@@ -70,7 +63,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
             <dd>{format.why.first3s}</dd>
           </div>
           <div>
-            <dt>Format</dt>
+            <dt>How it's made</dt>
             <dd>{format.why.format}</dd>
           </div>
         </dl>
@@ -79,9 +72,9 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
         {best && (
           <div className="like-actions">
             <button className="btn btn-primary" onClick={() => onPlan(best.id)}>
-              Add to shortlist for {clientName}
+              {savedIds.has(best.id) ? 'Open plan' : `Save for ${clientName}`}
             </button>
-            <span className="small muted">Uses the best match below as the reference.</span>
+            <span className="small muted">Uses the closest match below as the original.</span>
           </div>
         )}
       </div>

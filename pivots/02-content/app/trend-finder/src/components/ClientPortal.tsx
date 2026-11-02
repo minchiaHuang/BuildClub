@@ -1,4 +1,5 @@
 import type { Client, Format, SavedIdea, Video } from '../types'
+import { Logo } from './Logo'
 import { useApp, useManagerName } from '../lib/appContext'
 import { plural } from '../lib/metrics'
 import { ProgressRing } from './ProgressRing'
@@ -71,10 +72,7 @@ export function ClientPortal(p: Props) {
     <div className="portal">
       <header className="portal-bar">
         <div className="side-brand">
-          <span className="brand-mark" aria-hidden="true">
-            ↗
-          </span>
-          Remake
+          <Logo height={22} />
         </div>
         <div className="portal-user">
           <span className="small muted">

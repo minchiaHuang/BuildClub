@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
-import { useManagerName } from '../lib/appContext'
-import { clientFit, compact, hasScore, outlierScore, platformName, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { useApp, useManagerName } from '../lib/appContext'
+import { clientFit, compact, hasScore, scoreBase, outlierScore, platformName, tierOf, viewsWord } from '../lib/metrics'
 import { dueLabel, formatDay } from '../lib/dates'
+import type { Decision } from '../lib/memory'
 import { BestVideo } from './BestVideo'
 import type { PlayerControl } from './BestVideo'
+import { beatUsual } from './find/words'
 import { TimedComments } from './TimedComments'
 import { tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { lastSentBack } from '../lib/memory'
@@ -24,14 +26,16 @@ interface Props {
   onFindMore: () => void
   onGoApprovals: () => void
   onPlanAnother: () => void
+  // The signed-in user is the only approver, so a waiting plan is approved or sent back right here (App's decide).
+  onDecide: (d: Decision) => void
 }
 
-const statusLabel = (approver: string): Record<IdeaStatus, string> => ({
-  saved: 'Not sent yet',
-  waiting: `Waiting for ${approver}`,
+const statusLabel: Record<IdeaStatus, string> = {
+  saved: 'Still planning',
+  waiting: 'Waiting for approval',
   approved: 'Approved',
-  rejected: 'Not approved',
-})
+  rejected: 'Sent back',
+}
 
 const ago = (ts?: number) => {
   if (!ts) return ''
@@ -40,9 +44,11 @@ const ago = (ts?: number) => {
 }
 
 export function PlanScreen(p: Props) {
-  const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother } = p
-  // The person who approves plans, from the agency settings.
+  const { idea, video, format, client, onChange, onBack, onFindMore, onGoApprovals, onPlanAnother, onDecide } = p
+  // The person who approves plans, from the agency settings. Only a signed-in manager decides here;
+  // a team member's plan is decided by the manager (in the app or on the review link).
   const APPROVER = useManagerName()
+  const canDecide = useApp().role === 'manager'
   // Last removed shot, so an accidental ✕ can be undone.
   const [removed, setRemoved] = useState<{ shot: Shot; index: number } | null>(null)
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle')
@@ -62,6 +68,24 @@ export function PlanScreen(p: Props) {
     setShotsDone(done)
     setTakesRevision((r) => r + 1)
   }, [])
+  // Deciding on a waiting plan: approve with changes or send back both need a comment.
+  const [deciding, setDeciding] = useState<'changes' | 'back' | null>(null)
+  const [decisionText, setDecisionText] = useState('')
+  const startDeciding = (m: 'changes' | 'back') => {
+    setDeciding(m)
+    setDecisionText('')
+  }
+  const confirmDecision = () => {
+    const text = decisionText.trim()
+    if (!text || !deciding) return
+    onDecide({ kind: deciding === 'changes' ? 'approved-with-changes' : 'sent-back', comment: text })
+    setDeciding(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const approveNow = () => {
+    onDecide({ kind: 'approved' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const shots = idea.shots ?? format.shotList
   // Approved plans are locked: the team films what the manager approved. Sent-back plans can be fixed and sent again.
@@ -73,7 +97,7 @@ export function PlanScreen(p: Props) {
   const shotComment = (i: number) =>
     comments[i] && (
       <span className="shot-comment">
-        {APPROVER}: {comments[i]}
+        Comment: {comments[i]}
       </span>
     )
   const fit = clientFit(format, client)
@@ -93,14 +117,14 @@ export function PlanScreen(p: Props) {
   }
   const sendButton = (
     <button className="btn btn-primary" disabled={shots.length === 0} onClick={send}>
-      Send to {APPROVER} for approval
+      Send for approval
     </button>
   )
   // Everything the editor needs in one paste: reference, shots, props and notes.
   const brief = [
     `${format.name} for ${client.name}`,
     `Due: ${formatDay(idea.dueDate)}`,
-    `Reference: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
+    `Video to copy: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
     '',
     'Shots:',
     ...shots.map((s, i) => `${i + 1}. ${s.time ? `[${s.time}] ` : ''}${s.shot}${s.text ? ` (text on screen: "${s.text}")` : ''}`),
@@ -128,7 +152,7 @@ export function PlanScreen(p: Props) {
       <header className="plan-head">
         <div className="plan-head-row">
           <span className="eyebrow">Plan for {client.name}</span>
-          <span className={`status status-${idea.status}`}>{statusLabel(APPROVER)[idea.status]}</span>
+          <span className="small muted">{statusLabel[idea.status]}</span>
         </div>
         <h1>{format.name}</h1>
       </header>
@@ -139,12 +163,25 @@ export function PlanScreen(p: Props) {
             ✓
           </span>
           <div>
-            <strong>{reopened ? `Sent back to ${APPROVER} for approval` : `Sent to ${APPROVER} for approval`}</strong>
-            <span>
-              {reopened
-                ? `Sent ${ago(idea.sentAt)}. Keep editing: ${APPROVER} sees your changes when reviewing it again.`
-                : `Sent ${ago(idea.sentAt)}. ${APPROVER}'s answer will show up in the Shortlist. Meanwhile, plan the next video for ${client.name}.`}
-            </span>
+            {canDecide ? (
+              <>
+                <strong>{reopened ? 'Changed after approval, so it needs approving again' : 'Waiting for approval'}</strong>
+                <span>
+                  {reopened
+                    ? `Moved back ${ago(idea.sentAt)}. Keep editing, then approve it below.`
+                    : `Sent ${ago(idea.sentAt)}. Approve it below, or send it back with a reason. It's also in Plans under Waiting for approval.`}
+                </span>
+              </>
+            ) : (
+              <>
+                <strong>{reopened ? `Sent back to ${APPROVER} for approval` : `Sent to ${APPROVER} for approval`}</strong>
+                <span>
+                  {reopened
+                    ? `Sent ${ago(idea.sentAt)}. Keep editing: ${APPROVER} sees your changes when reviewing it again.`
+                    : `Sent ${ago(idea.sentAt)}. ${APPROVER}'s answer will show up in Plans. Meanwhile, plan the next video for ${client.name}.`}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -167,15 +204,13 @@ export function PlanScreen(p: Props) {
           {hasScore(video) ? (
             <>
               <div className="plan-ref-score">
-                <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
+                <span className="cmp-from">{compact(scoreBase(video))}</span>
                 <span className="cmp-arrow" aria-hidden="true">
                   →
                 </span>
                 <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
               </div>
-              <span className={`tier tier-${tier}`}>
-                {tierName[tier]} · {times(score)}
-              </span>
+              <span className="small">{beatUsual(video)}</span>
             </>
           ) : (
             <div className="plan-ref-score">
@@ -183,7 +218,7 @@ export function PlanScreen(p: Props) {
             </div>
           )}
           <span className="small muted">
-            Reference: {video.handle}
+            Video to copy: {video.handle}
             {video.url && (
               <>
                 {' · '}
@@ -208,12 +243,12 @@ export function PlanScreen(p: Props) {
             <h3>Shots</h3>
             <p className="small muted">
               {reopened
-                ? `You're changing an approved plan. ${APPROVER} will review it again.`
+                ? "You're changing an approved plan. It needs approving again before filming."
                 : editable
-                ? `Based on the reference video. Edit them for ${client.name}: what you'll film and any text on screen.`
+                ? `Based on the original video. Change them to suit ${client.name}: what you'll film and any text on screen.`
                 : idea.status === 'approved'
-                  ? `Approved by ${APPROVER}. Locked so you film what was approved.`
-                  : `Locked while ${APPROVER} reviews it. Withdraw it to make changes.`}
+                  ? 'Approved. Locked so you film what was approved.'
+                  : 'Locked while it waits for approval. Approve it, or take it back to make changes.'}
             </p>
             {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
             {shots.length === 0 && editable && format.shotList.length === 0 && !format.why.first3s.startsWith('Breaking down') && (
@@ -336,7 +371,7 @@ export function PlanScreen(p: Props) {
 
           <section className="block">
             <label htmlFor="note-to-approver">
-              <h3>Note to {APPROVER}</h3>
+              <h3>Why it fits {client.name}</h3>
             </label>
             {editable ? (
               <textarea
@@ -353,7 +388,7 @@ export function PlanScreen(p: Props) {
 
           {idea.status === 'approved' && idea.managerNote && (
             <section className="block manager-note">
-              <h3>Changes {APPROVER} asked for</h3>
+              <h3>Changes to make before filming</h3>
               <p className="quote">{idea.managerNote}</p>
             </section>
           )}
@@ -408,7 +443,7 @@ export function PlanScreen(p: Props) {
       <div className="plan-bar">
         {idea.status === 'saved' && (
           <>
-            <span className="plan-bar-text">Ready? {APPROVER} will see the video, your shot list and your note.</span>
+            <span className="plan-bar-text">Ready? Send it for approval with the video, your shot list and your note.</span>
             <button className="btn btn-ghost" onClick={onBack}>
               Save for later
             </button>
@@ -416,29 +451,75 @@ export function PlanScreen(p: Props) {
           </>
         )}
 
-        {idea.status === 'waiting' && (
+        {idea.status === 'waiting' && canDecide && deciding && (
+          <>
+            {/* Full width so the question stays visible on phones too (the bar hides button-less text there). */}
+            <label className="field" style={{ flexBasis: '100%' }}>
+              <span className="field-label">
+                {deciding === 'changes' ? 'What should change before filming?' : 'Why are you sending it back?'}
+              </span>
+              <textarea
+                id="plan-decision"
+                rows={2}
+                value={decisionText}
+                onChange={(e) => setDecisionText(e.target.value)}
+                autoFocus
+              />
+            </label>
+            <button className="btn btn-ghost" onClick={() => setDeciding(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={confirmDecision} disabled={!decisionText.trim()}>
+              {deciding === 'changes' ? 'Approve with changes' : 'Send back'}
+            </button>
+          </>
+        )}
+
+        {idea.status === 'waiting' && !canDecide && (
           <>
             <span className="plan-bar-text">
               Waiting for {APPROVER}.{' '}
               <button className="link-btn" onClick={() => onChange({ status: 'saved' })}>
-                Withdraw
+                Take it back
+              </button>
+              {' · '}
+              <button className="link-btn" onClick={onGoApprovals}>
+                Open Plans
               </button>
             </span>
-            <button className="btn btn-ghost" onClick={onGoApprovals}>
-              See sent ideas
-            </button>
-            <button className="btn btn-ghost" onClick={onBack}>
-              Back to {p.backLabel}
-            </button>
             <button className="btn btn-primary" onClick={onPlanAnother}>
               Plan another video
             </button>
           </>
         )}
 
+        {idea.status === 'waiting' && canDecide && !deciding && (
+          <>
+            <span className="plan-bar-text">
+              Waiting for approval.{' '}
+              <button className="link-btn" onClick={() => onChange({ status: 'saved' })}>
+                Take it back
+              </button>
+              {' · '}
+              <button className="link-btn" onClick={onGoApprovals}>
+                Open Plans
+              </button>
+            </span>
+            <button className="btn btn-ghost" onClick={() => startDeciding('back')}>
+              Send back
+            </button>
+            <button className="btn btn-ghost" onClick={() => startDeciding('changes')}>
+              Approve with changes
+            </button>
+            <button className="btn btn-primary" onClick={approveNow}>
+              Approve
+            </button>
+          </>
+        )}
+
         {idea.status === 'approved' && confirmEdit && (
           <>
-            <span className="plan-bar-text">This sends it back to {APPROVER} for approval. Continue?</span>
+            <span className="plan-bar-text">This moves it back to Waiting for approval. Continue?</span>
             <button className="btn btn-ghost" onClick={() => setConfirmEdit(false)}>
               Cancel
             </button>
@@ -489,7 +570,7 @@ export function PlanScreen(p: Props) {
 
         {idea.status === 'rejected' && (
           <>
-            <span className="plan-bar-text">{APPROVER} passed on this one. Edit the shots or note, then send it again.</span>
+            <span className="plan-bar-text">Sent back. Fix the shots or note, then send it for approval again.</span>
             <button className="btn btn-ghost" onClick={onFindMore}>
               Find another idea
             </button>

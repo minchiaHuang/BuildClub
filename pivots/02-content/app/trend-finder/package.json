@@ -11,6 +11,7 @@
     "api": "backend/.venv/bin/uvicorn server:app --app-dir backend --port 8787 --reload"
   },
   "dependencies": {
+    "@dnd-kit/core": "6.3.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

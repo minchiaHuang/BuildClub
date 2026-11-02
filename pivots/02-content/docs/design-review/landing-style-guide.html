@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Remake landing style guide</title>
+<!-- Visual specimen for docs/landing-page-design.md: "Classic + Night Shift" (ReadMe-style navy and blue, dots on some navy sections).
+     Same tokens as the Remake design system artifact. Open as-is to see everything, or add ?part=colors|use|type|components|rhythm for one block (used for the screenshots). -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" />
+<style>
+  :root {
+    --canvas: #ffffff; --canvas-alt: #f5f5f7; --surface: #ffffff; --line: #e8e8ee; --line-strong: #c9cad6;
+    --ink: #1a1a22; --ink-muted: #5d5f6e;
+    --navy: #060a47; --navy-deep: #070b24; --navy-dot: #2a3170; --on-navy: #f4f5ff; --on-navy-muted: #a9b0e0; --sky: #7ab8ff;
+    --blue: #1a33f2; --blue-soft: #e9ecff; --label: #1a33f2; --violet: #7b1fe0; --violet-soft: #f2e9ff; --mustard: #f2b705;
+    --early: #1a7a44; --early-soft: #e5f4ea; --rising: #8a5a06; --rising-soft: #fbf3e1; --no: #b42318; --no-soft: #fdeceb;
+    --serif: 'Newsreader', Georgia, serif; --sans: 'Inter', system-ui, sans-serif; --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  .part { width: 1200px; padding: 56px; }
+  .label { font: 500 12px/16px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--label); margin: 0 0 8px; }
+  .part > h2 { font-family: var(--serif); font-weight: 400; font-size: 40px; letter-spacing: -0.02em; margin: 0 0 32px; }
+  .sub { font: 500 11px/16px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); margin: 28px 0 12px; }
+  .note { font-size: 13px; color: var(--ink-muted); margin: 0; }
+  .grid-bg { background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 48px 48px; background-position: -1px -1px; }
+  .dot-bg { background-image: radial-gradient(circle at 1px 1px, var(--navy-dot) 1px, transparent 1.5px); background-size: 24px 24px; }
+
+  /* Colours */
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .sw { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+  .sw-chip { height: 92px; display: flex; align-items: flex-end; padding: 10px 12px; font-family: var(--serif); font-size: 26px; }
+  .sw-meta { padding: 10px 12px 12px; display: grid; gap: 2px; font-size: 12.5px; }
+  .sw-meta b { font-size: 13.5px; }
+  .sw-meta code { font: 400 11.5px var(--mono); color: var(--ink-muted); }
+  .sw-meta span { color: var(--ink-muted); }
+  .ratio { height: 22px; display: flex; margin-top: 4px; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+  .ratio i { display: block; height: 100%; }
+
+  /* Colour in use */
+  .use { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .tile { border-radius: 24px; padding: 32px; border: 1px solid var(--line); display: grid; gap: 14px; align-content: start; min-height: 260px; }
+  .tile h3 { font-family: var(--serif); font-weight: 400; font-size: 30px; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
+  .tile p { margin: 0; color: var(--ink-muted); font-size: 15px; line-height: 1.55; }
+  .tile.navy { background-color: var(--navy); border-color: var(--navy); color: var(--on-navy); }
+  .tile.night { background-color: var(--navy-deep); border-color: var(--navy-deep); color: var(--on-navy); }
+  .tile.navy p, .tile.night p { color: var(--on-navy-muted); }
+  .tile.navy .label, .tile.night .label { color: var(--sky); }
+  .tile em { font-style: italic; color: var(--sky); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: 500 15px/1 var(--sans); border-radius: 999px; padding: 14px 22px; border: 1px solid transparent; white-space: nowrap; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-secondary { background: #fff; color: var(--ink); border-color: var(--line-strong); }
+  .btn-on-navy { background: transparent; color: var(--on-navy); border-color: var(--on-navy-muted); }
+  .btn-ghost { background: transparent; color: var(--ink); }
+  .btn-sm { padding: 10px 16px; font-size: 14px; }
+  .badge { font: 500 12px/1 var(--sans); padding: 6px 10px; border-radius: 999px; }
+  .b-score { background: var(--blue-soft); color: var(--label); font-family: var(--mono); font-weight: 400; }
+  .b-early { background: var(--early-soft); color: var(--early); }
+  .b-rising { background: var(--rising-soft); color: var(--rising); }
+  .b-no { background: var(--no-soft); color: var(--no); }
+  .b-new { background: var(--mustard); color: var(--navy); }
+  .b-best { background: var(--mustard); color: var(--navy); }
+
+  /* Type */
+  .fonts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .font-card { border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+  .font-card .big { font-size: 84px; line-height: 1; margin: 6px 0 12px; }
+  .font-card .chars { font-size: 15px; color: var(--ink-muted); line-height: 1.5; }
+  .type-row { display: grid; grid-template-columns: 220px 1fr; gap: 32px; padding: 22px 0; border-top: 1px solid var(--line); align-items: baseline; }
+  .type-meta { font-size: 13px; color: var(--ink-muted); line-height: 1.6; }
+  .type-meta b { display: block; color: var(--ink); font-size: 14px; }
+  .t-h1 { font-family: var(--serif); font-size: 72px; line-height: 1.02; letter-spacing: -0.02em; }
+  .t-h1 em { font-style: italic; color: var(--blue); }
+  .t-h2 { font-family: var(--serif); font-size: 48px; line-height: 1.1; letter-spacing: -0.02em; }
+  .t-h3 { font-family: var(--serif); font-size: 24px; line-height: 1.3; letter-spacing: -0.01em; }
+  .t-title { font-family: var(--serif); font-size: 18px; }
+  .t-lede { font-size: 18px; line-height: 28px; color: var(--ink-muted); max-width: 560px; }
+  .t-body { font-size: 16px; line-height: 24px; color: var(--ink-muted); max-width: 560px; }
+  .t-label { font: 500 12px/16px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--label); }
+  .t-data { font: 400 13px/20px var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Components */
+  .comp { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+  .card { border: 1px solid var(--line); border-radius: 18px; padding: 24px; background: #fff; }
+  .cells { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .cell { padding: 18px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; gap: 6px; background: #fff; }
+  .cell svg { width: 20px; height: 20px; color: var(--violet); }
+  .cell h4 { margin: 0; font: 400 18px/1.3 var(--serif); }
+  .cell p { margin: 0; font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+  .cell span { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); text-align: right; font: 400 10.5px var(--mono); letter-spacing: 0.06em; color: var(--ink-muted); }
+  .video { display: grid; grid-template-columns: 52px 1fr; gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .video + .video { margin-top: 10px; }
+  .thumb { aspect-ratio: 9 / 16; border-radius: 8px; background: var(--navy); display: grid; place-items: center; color: var(--on-navy-muted); font: 400 9px var(--mono); }
+  .video .t { font-weight: 600; font-size: 15px; }
+  .video .w { font-size: 13px; color: var(--ink-muted); margin: 2px 0 6px; }
+  .video.blocked .t, .video.blocked .w, .video.blocked .thumb { opacity: 0.55; }
+  .ph { display: grid; align-content: space-between; justify-items: start; padding: 14px; border-radius: 14px; border: 1px dashed var(--line-strong); color: var(--ink-muted); background: var(--canvas-alt); }
+  .ph-video { background: var(--navy); border-color: var(--navy-dot); color: var(--on-navy-muted); }
+  .ph-tag { display: inline-flex; gap: 6px; padding: 5px 10px; border-radius: 999px; font: 500 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; background: #fff; color: var(--ink); }
+  .ph-video .ph-tag { background: rgba(255, 255, 255, 0.12); color: #fff; }
+  .ph-label { font-size: 13.5px; font-weight: 500; }
+
+  /* Page rhythm */
+  .rhythm { display: grid; grid-template-columns: 380px 1fr; gap: 40px; align-items: start; }
+  .strip { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: grid; }
+  .band { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 12.5px; border-top: 1px solid var(--line); }
+  .band:first-child { border-top: 0; }
+  .band b { font-weight: 500; }
+  .band small { font: 400 10.5px var(--mono); letter-spacing: 0.05em; text-transform: uppercase; }
+  .band.white { background-color: #fff; color: var(--ink); }
+  .band.white small { color: var(--ink-muted); }
+  .band.grid { background-color: #fff; color: var(--ink); }
+  .band.navy-panel { background-color: #fff; padding: 8px 16px; }
+  .band.navy-panel > div { flex: 1; display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 14px; border-radius: 14px; background-color: var(--navy); color: var(--on-navy); }
+  .band.navy-full { background-color: var(--navy-deep); color: var(--on-navy); border-top-color: var(--navy-deep); }
+  .band.navy-panel small, .band.navy-full small { color: var(--sky); }
+  .key { display: grid; gap: 14px; font-size: 14px; }
+  .key div { display: grid; grid-template-columns: 56px 1fr; gap: 14px; align-items: center; }
+  .key i { display: block; height: 36px; border-radius: 8px; border: 1px solid var(--line); }
+  .key p { margin: 0; color: var(--ink-muted); }
+  .key p b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<section class="part" data-part="colors">
+  <p class="label">Colour</p>
+  <h2>White and navy, blue for action, mustard and violet as accents.</h2>
+  <div class="swatches">
+    <div class="sw"><div class="sw-chip" style="background:#ffffff">Aa</div><div class="sw-meta"><b>Canvas</b><code>#FFFFFF · canvas</code><span>Light sections</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#f5f5f7">Aa</div><div class="sw-meta"><b>Canvas alt</b><code>#F5F5F7 · canvas-alt</code><span>Wells, placeholders</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#e8e8ee">Aa</div><div class="sw-meta"><b>Line</b><code>#E8E8EE · line</code><span>Hairlines, the grid</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#1a1a22;color:#fff">Aa</div><div class="sw-meta"><b>Ink</b><code>#1A1A22 · ink</code><span>Text on white · 17:1</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#5d5f6e;color:#fff">Aa</div><div class="sw-meta"><b>Ink muted</b><code>#5D5F6E · ink-muted</code><span>Body copy · 6.3:1</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#060a47;color:#f4f5ff">Aa</div><div class="sw-meta"><b>Navy</b><code>#060A47 · navy</code><span>Hero and CTA panels</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#070b24;color:#f4f5ff">Aa</div><div class="sw-meta"><b>Night</b><code>#070B24 · navy-deep</code><span>Full-width night bands</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#2a3170;color:#f4f5ff">Aa</div><div class="sw-meta"><b>Night dot</b><code>#2A3170 · navy-dot</code><span>Dot pattern on navy</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#f4f5ff;color:#060a47">Aa</div><div class="sw-meta"><b>On navy</b><code>#F4F5FF · on-navy</code><span>Text on navy · 17:1</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#7ab8ff;color:#060a47">Aa</div><div class="sw-meta"><b>Sky</b><code>#7AB8FF · sky</code><span>Labels, italic word on navy</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#1a33f2;color:#fff">Aa</div><div class="sw-meta"><b>Blue</b><code>#1A33F2 · blue</code><span>Try the demo · 7.5:1</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#e9ecff;color:#1a33f2">Aa</div><div class="sw-meta"><b>Blue soft</b><code>#E9ECFF · blue-soft</code><span>Score badges</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#7b1fe0;color:#fff">Aa</div><div class="sw-meta"><b>Violet</b><code>#7B1FE0 · violet</code><span>Icons, illustrations only</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#f2b705;color:#060a47">Aa</div><div class="sw-meta"><b>Mustard (accent)</b><code>#F2B705 · mustard</code><span>Winners, “New” · solid only</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#e5f4ea;color:#1a7a44">Aa</div><div class="sw-meta"><b>Early / Approved</b><code>#1A7A44 on #E5F4EA</code><span>Status only</span></div></div>
+    <div class="sw"><div class="sw-chip" style="background:#fdeceb;color:#b42318">Aa</div><div class="sw-meta"><b>Can’t film</b><code>#B42318 on #FDECEB</code><span>Status only</span></div></div>
+  </div>
+  <p class="sub">How much of each, across the page</p>
+  <div class="ratio" aria-hidden="true">
+    <i style="flex:52;background:#ffffff"></i>
+    <i style="flex:30;background:#060a47"></i>
+    <i style="flex:8;background:#1a1a22"></i>
+    <i style="flex:5;background:#e8e8ee"></i>
+    <i style="flex:3;background:#1a33f2"></i>
+    <i style="flex:2;background:#7ab8ff"></i>
+    <i style="flex:1;background:#f2b705"></i>
+    <i style="flex:1;background:#7b1fe0"></i>
+  </div>
+  <p class="note" style="margin-top:10px">Roughly: white 51% · navy 30% · ink text 8% · hairlines 5% · blue 3% · sky 1% · mustard 1% · violet 1%. Blue stays rare so “Try the demo” always stands out; mustard marks only what wins.</p>
+</section>
+
+<section class="part" data-part="use">
+  <p class="label">Colour in use</p>
+  <h2>Three surfaces. Dots only on some navy.</h2>
+  <div class="use">
+    <div class="tile navy dot-bg">
+      <p class="label">01. Navy panel + dots · hero, final CTA</p>
+      <div class="row"><span class="badge b-new">New</span><span style="font-size:13px;color:var(--on-navy-muted)">Instagram search is coming soon</span></div>
+      <h3>Know what each client should <em>film</em> this week.</h3>
+      <p>Inset panel with big rounded corners. Dots behind, faded at the edges.</p>
+      <div class="row"><span class="btn btn-primary">Try the demo →</span><span class="btn btn-on-navy">Watch the tour</span></div>
+    </div>
+    <div class="tile night">
+      <p class="label">05. Night band · comparison table</p>
+      <h3>Trend tools show what’s popular.</h3>
+      <p>Full-width navy. No dots here, because a table needs a quiet ground. The short stance line may take dots.</p>
+      <div class="row"><span class="badge b-new">New</span><span class="badge" style="background:rgba(122,184,255,0.14);color:var(--sky)">✓ Picks for each client</span><span class="badge" style="background:transparent;color:var(--mustard);border:1px solid var(--mustard)">★ Best to copy</span></div>
+    </div>
+    <div class="tile grid-bg">
+      <p class="label">04. White + grid · how it works</p>
+      <h3>From a topic to an approved shot list.</h3>
+      <p>Hairline squares where content sits in cells.</p>
+      <div class="row"><span class="badge b-best">★ Best to copy · 42×</span><span class="badge b-score">18× usual views</span><span class="badge b-early">Approved</span></div>
+    </div>
+    <div class="tile">
+      <p class="label">03. Plain white · problem, close-ups, FAQ</p>
+      <h3>Finding ideas shouldn’t take all week.</h3>
+      <p>No pattern. Most of the reading happens here.</p>
+      <div class="row"><span class="btn btn-primary">Try the demo →</span><span class="btn btn-secondary">Watch the tour</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="part" data-part="type">
+  <p class="label">Typography</p>
+  <h2>A serif to lead, a sans to read, a mono to label.</h2>
+  <div class="fonts">
+    <div class="font-card"><b>Newsreader</b> <span class="note">· headlines · 400 + italic</span><div class="big" style="font-family:var(--serif)">Aa<em style="color:var(--blue)">a</em></div><div class="chars" style="font-family:var(--serif)">ABCDEFGHIJ abcdefghij 0123456789</div></div>
+    <div class="font-card"><b>Inter</b> <span class="note">· body, buttons · 400 / 500 / 600</span><div class="big" style="font-weight:500">Aa</div><div class="chars">ABCDEFGHIJ abcdefghij 0123456789</div></div>
+    <div class="font-card"><b>Geist Mono</b> <span class="note">· labels, scores · 400 / 500</span><div class="big" style="font-family:var(--mono);font-size:70px">Aa</div><div class="chars" style="font-family:var(--mono)">01. LABEL 42× 4k→610k</div></div>
+  </div>
+  <div class="type-row"><div class="type-meta"><b>Hero headline</b>Newsreader 400 · 72 / 1.02<br />Phone 40px · one italic word</div><div class="t-h1">Know what each client should <em>film</em> this week.</div></div>
+  <div class="type-row"><div class="type-meta"><b>Section headline</b>Newsreader 400 · 48 / 1.1<br />Phone 32px</div><div class="t-h2">Finding ideas shouldn’t take all week.</div></div>
+  <div class="type-row"><div class="type-meta"><b>Card heading</b>Newsreader 400 · 24 / 1.3</div><div class="t-h3">Ten clients. Ideas in ten chats.</div></div>
+  <div class="type-row"><div class="type-meta"><b>Cell / step title</b>Newsreader 400 · 18</div><div class="t-title">Shortlist</div></div>
+  <div class="type-row"><div class="type-meta"><b>Lede</b>Inter 400 · 18 / 28 · muted</div><div class="t-lede">Remake finds the trending videos worth copying for each client, plans the shots, and gets your manager’s OK.</div></div>
+  <div class="type-row"><div class="type-meta"><b>Body</b>Inter 400 · 16 / 24 · muted</div><div class="t-body">Your manager sees the reference video and the shot list. They approve, or send it back with a reason.</div></div>
+  <div class="type-row"><div class="type-meta"><b>Section label</b>Geist Mono 500 · 12 · caps<br />blue on white, sky on navy</div><div class="t-label">02. How it works</div></div>
+  <div class="type-row"><div class="type-meta"><b>Data</b>Geist Mono 400 · 13 · tabular</div><div class="t-data">4k → 610k · 153× usual views · STEP [03]</div></div>
+</section>
+
+<section class="part" data-part="components">
+  <p class="label">Components</p>
+  <h2>Buttons, badges, cells, video cards, placeholders.</h2>
+  <div class="comp">
+    <div class="card">
+      <p class="sub" style="margin-top:0">Buttons</p>
+      <div class="row"><span class="btn btn-primary">Try the demo →</span><span class="btn btn-secondary">Watch the tour</span><span class="btn btn-ghost btn-sm">Log in</span></div>
+      <p class="sub">Badges</p>
+      <div class="row"><span class="badge b-best">★ Best to copy</span><span class="badge b-score">42× usual views</span><span class="badge b-early">Approved</span><span class="badge b-rising">Waiting for manager</span><span class="badge b-no">Can’t film: no kitchen</span></div>
+      <p class="sub">Feature cells (on the grid)</p>
+      <div class="cells">
+        <div class="cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><h4>Search</h4><p>See the videos beating their usual views.</p><span>STEP [02]</span></div>
+        <div class="cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4l2.4 5 5.6.8-4 3.9.9 5.5L12 16.6 7.1 19.2l.9-5.5-4-3.9 5.6-.8z"/></svg><h4>Shortlist</h4><p>Pick the ones worth copying.</p><span>STEP [03]</span></div>
+        <div class="cell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><h4>Shot list</h4><p>A plan your team can film.</p><span>STEP [04]</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="sub" style="margin-top:0">Video cards (mini demo)</p>
+      <div class="video"><div class="thumb">9:16</div><div><div class="t">Crispy tofu, three ways</div><div class="w">Easy to film in their kitchen.</div><span class="badge b-best">★ Best to copy · 42×</span></div></div>
+      <div class="video blocked"><div class="thumb">9:16</div><div><div class="t">Crispy tofu, three ways</div><div class="w">Needs a stove and prep space.</div><span class="badge b-no">Can’t film: no kitchen</span></div></div>
+      <p class="sub">Placeholders</p>
+      <div class="row" style="flex-wrap:nowrap;align-items:stretch">
+        <div class="ph" style="aspect-ratio:4/3;flex:1"><span class="ph-tag">▣ Photo</span><span class="ph-label">Shortlist board</span></div>
+        <div class="ph ph-video" style="aspect-ratio:4/3;flex:1"><span class="ph-tag">▶ Video</span><span class="ph-label">60-second tour</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="part" data-part="rhythm">
+  <p class="label">Page rhythm</p>
+  <h2>Which sections get navy, grid or dots.</h2>
+  <div class="rhythm">
+    <div class="strip" aria-label="Landing page sections, top to bottom">
+      <div class="band white" style="height:34px"><b>0 · Nav</b><small>white</small></div>
+      <div class="band navy-panel" style="height:150px"><div class="dot-bg"><b>1 · Hero + mini demo</b><small>navy panel · dots</small></div></div>
+      <div class="band white" style="height:34px"><b>2 · Proof</b><small>white</small></div>
+      <div class="band white" style="height:70px"><b>Tour video</b><small>white</small></div>
+      <div class="band white" style="height:70px"><b>3 · Problem</b><small>white</small></div>
+      <div class="band grid grid-bg" style="height:90px"><b>4 · How it works</b><small>white · grid</small></div>
+      <div class="band navy-full" style="height:90px"><b>5 · Why not a trend tool?</b><small>night · no dots</small></div>
+      <div class="band white" style="height:110px"><b>6 · Close-ups</b><small>white</small></div>
+      <div class="band navy-full dot-bg" style="height:60px"><b>7 · Stance</b><small>night · dots</small></div>
+      <div class="band white" style="height:80px"><b>8 · FAQ</b><small>white</small></div>
+      <div class="band navy-panel" style="height:90px"><div class="dot-bg"><b>9 · Final CTA</b><small>navy panel · dots</small></div></div>
+      <div class="band white" style="height:34px"><b>10 · Footer</b><small>white</small></div>
+    </div>
+    <div class="key">
+      <div><i style="background:#060a47" class="dot-bg"></i><p><b>Navy panel + dots.</b> The two moments that ask for the click: hero and final CTA. Rounded, inset from the page edge.</p></div>
+      <div><i style="background:#070b24"></i><p><b>Night band.</b> Full width. Dots only where the text is short (the stance). Never behind a table.</p></div>
+      <div><i class="grid-bg" style="background-color:#fff"></i><p><b>White + grid.</b> Only where content sits in cells (How it works).</p></div>
+      <div><i style="background:#fff"></i><p><b>Plain white.</b> Everything people read closely: problem, close-ups, FAQ.</p></div>
+      <p class="note">Rule of thumb: about a third of sections carry a pattern. Never two patterned sections in a row, and never a pattern behind long text.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // ?part=colors shows only that block, for screenshots.
+  const part = new URLSearchParams(location.search).get('part')
+  if (part) document.querySelectorAll('.part').forEach((s) => { if (s.dataset.part !== part) s.remove() })
+</script>
+</body>
+</html>

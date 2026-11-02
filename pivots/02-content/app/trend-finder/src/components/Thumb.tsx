@@ -151,7 +151,6 @@ export function Thumb({ video, large = false, preview = false }: { video: Video;
       )}
       <span className={`plat plat-${video.platform}`} title={platformName[video.platform]}>
         <PlatformLogo platform={video.platform} size={large ? 16 : 14} />
-        {large && platformName[video.platform]}
       </span>
       {!showImage && <span className="thumb-hook">{video.hook}</span>}
       {video.lengthSec > 0 && (

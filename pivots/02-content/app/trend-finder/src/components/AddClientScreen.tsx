@@ -78,7 +78,7 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
       <header className="page-head">
         <span className="eyebrow">Add client</span>
         <h1>Add a client</h1>
-        <p className="muted">Only the name is needed now. You can change everything later in client settings.</p>
+        <p className="muted">Only the name is needed now. You can change everything later in the Brief.</p>
       </header>
 
       <div className="settings-grid">
@@ -120,7 +120,7 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
             placeholder="e.g. sourdough, bakery tour"
             onChange={(e) => setTopics(e.target.value)}
           />
-          <span className="small muted">The first topic is checked on TikTok once a day for the "Trending now" chips.</span>
+          <span className="small muted">We check the first topic on TikTok once a day to fill "Trending now".</span>
         </label>
         <label className="field field-wide">
           <span className="field-label">Starter searches (comma-separated)</span>
@@ -147,7 +147,7 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
       <fieldset className="cannot">
         <legend>
           <h3>What this client can't do</h3>
-          <span className="small muted">Ticked items flag videos as hard to film for this client.</span>
+          <span className="small muted">Videos that need a ticked item get marked as hard to film.</span>
         </legend>
         <div className="cannot-list">
           {allNeeds.map((need) => (

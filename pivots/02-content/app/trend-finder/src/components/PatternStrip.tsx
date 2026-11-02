@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import type { Pattern } from '../lib/live'
 import { COPY, followerBand, times as multipleText, type Cohort } from '../lib/evidence'
-import { times } from '../lib/metrics'
-import { PlatformLogo } from './PlatformToggles'
+import { beatUsualAverage } from './find/words'
 
 interface Props {
   patterns: Pattern[]
@@ -21,7 +20,7 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
         <div className="section-title">
           <h2>Sounds and hashtags many accounts are using</h2>
           <p className="section-sub">
-            When several accounts use the same sound or hashtag, it's a trend, not luck. Tap one to see those videos.
+            When several accounts use the same sound or hashtag, it's catching on, not luck. Tap one to see only those videos.
           </p>
         </div>
         {active && (
@@ -45,16 +44,12 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
                   aria-pressed={on}
                   onClick={() => onPick(on ? null : p.label)}
                 >
-                  <span className="pattern-kind">
-                    <PlatformLogo platform="tiktok" size={12} />
-                    <span className={`stage-pill ${p.kind === 'sound' ? 'stage-pill-early' : 'stage-pill-rising'}`}>
-                      {p.kind === 'sound' ? 'Sound' : 'Hashtag'}
-                    </span>
-                  </span>
+                  <span className="field-label">{p.kind === 'sound' ? 'Sound' : 'Hashtag'}</span>
                   <strong className="pattern-label">{p.label}</strong>
                   <span className="trend-text">
-                    {p.accounts} accounts{p.avgScore > 0 && ` · avg ${times(p.avgScore)}`}
+                    Used by {p.accounts} accounts. Their videos got {beatUsualAverage(p.avgScore, true)} on average.
                   </span>
+                  <span className="trend-count">{p.videoIds.length === 1 ? '1 video' : `${p.videoIds.length} videos`} in these results</span>
                 </button>
                 {cohort && (
                   <button

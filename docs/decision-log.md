@@ -2,6 +2,31 @@
 
 Newest first. Dates are when the decision was made (from the Miro board), except sync entries.
 
+## 2 Nov 2026
+
+### Decision: Remake landing rules: log-in reopens the last client on Find ideas; picking a client opens Find ideas
+- **Log-in:** the first log-in in a browser (or when the remembered client no longer exists) opens **All clients → Home**. A returning log-in opens the **last client worked on, on Find ideas**.
+- **Picking a client** (switcher, client name on All clients Home, a newly added client) opens **Find ideas**. The client's Home (analytics, no search bar) is one click away. On All clients Home, each row's "Home" button opens that client's Home, and "N waiting" opens that client's Review.
+- The All-clients sidebar item is called **Home** (was Overview). A client's tabs stay Home · Find ideas · Plans · Brief.
+- **Single approver:** the signed-in user is the manager. A plan waiting for approval can be approved, approved with changes or sent back from its own page, as well as from Home and Review. Review's "All done" offers "Next client with plans waiting" and "Back to Plans".
+- A **refresh** keeps the same client and tab. The **last search is kept per client**. **Sign out** returns to the log-in form, not the landing page. The progress number everywhere is **videos approved** this month.
+- Later, not built: page addresses (browser Back and shareable links).
+
+**Why:** Founder decisions, 2 Nov 2026, answering the questions in `pivots/02-content/docs/app-flow.md` section 5. Search is the main daily job, so it comes first; returning users shouldn't lose their place.
+
+**Status:** Current. Built on `feature/client-dashboard` (not committed yet). Replaces the "a client opens on Home" line of the 1 Nov entry below, and the earlier "after log-in, land on the all-clients overview" rule (`remake-flow-plan.md`, stream A).
+
+## 1 Nov 2026
+
+### Decision: Remake client workspace = Home · Find ideas · Plans · Brief; a client opens on Home; one approver
+- The sidebar for one client is now **Home** (new card dashboard: what to film next, needs action, pipeline, trending, brief and memory, recent activity), **Find ideas** (was Search + results), **Plans** (was Shortlist; the board, Review and each plan in one place, with Review as a batch mode started from Plans or Home, not a tab) and **Brief** (was Client settings; client memory sits beside the can't-film list). The All-clients sidebar (Overview) is unchanged.
+- ~~Picking a client (switcher, overview client name, new client) lands on **Home**, not Search.~~ **Replaced 2 Nov 2026:** picking a client opens Find ideas (see the 2 Nov entry above).
+- For the demo there is a **single approver**: the signed-in user is always the manager, so Home shows plans waiting for approval with Approve and Review right there. Pipeline stages are Shortlisted → Waiting for approval → Approved, plus Sent back. No "sent to client" stage.
+
+**Why:** Founder decision, 1 Nov 2026, from `pivots/02-content/docs/client-workspace-nav.md` and `pivots/02-content/research/client-dashboard-ui-patterns.md`. Landing on Search hid where a client stands; the agency's top pain is losing track of how many videos each client still needs (one agency, Mercif; directional evidence only).
+
+**Status:** Partly replaced on 2 Nov 2026 (where a client opens, and log-in). The tabs and the single approver still stand. A "Client view" tab and a "sent to client" stage stay out until sending plans to clients exists.
+
 ## 4 Oct 2026
 
 ### Decision
