@@ -113,3 +113,10 @@ def test_demo_rows_hidden_when_demo_off(client, monkeypatch):
     monkeypatch.delenv("REMAKE_DEMO")
     assert client.get("/api/ideas/demo-ab/publications").json() == []
     assert client.get("/api/ideas/demo-ab/compare").json() == {"variants": []}
+
+
+def test_mode_endpoint_says_simulated_for_fake(client, monkeypatch):
+    monkeypatch.delenv("PUBLISHER", raising=False)
+    assert client.get("/api/publishing/mode").json() == {"mode": "fake", "simulated": True}
+    monkeypatch.setenv("PUBLISHER", "ayrshare")
+    assert client.get("/api/publishing/mode").json() == {"mode": "ayrshare", "simulated": False}

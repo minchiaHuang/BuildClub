@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { TopicResults } from './publish/TopicResults'
 import { useCountUp } from '../lib/motion'
 import { resultsShortcuts, useResultsShortcuts } from '../lib/useShortcuts'
 import type { Format, IdeaStatus, Platform, Video } from '../types'
@@ -268,6 +269,7 @@ export function ResultsScreen(p: Props) {
               ) : null,
             )}
           </p>
+          <TopicResults text={queryLabel ?? ''} />
 
           {best && (
             <div className="best-head">

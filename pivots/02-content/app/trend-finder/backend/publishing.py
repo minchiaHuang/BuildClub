@@ -252,6 +252,12 @@ def make_router(db, load, media_dir) -> APIRouter:
                          "VALUES (?, ?, ?, ?, ?, ?, ?, 'api')", (pid, *(got.get(k) for k in COUNTS), int(time.time())))
         return {"ok": True, "metrics": got}
 
+    @router.get("/api/publishing/mode")
+    def publishing_mode():
+        """Tells the UI whether posts are simulated (the fake publisher), so it never calls one "published"."""
+        mode = publishers.mode()
+        return {"mode": mode, "simulated": mode == "fake"}
+
     @router.get("/api/publishing/summary")
     def summary():
         videos = {v.get("id"): v for v in (load("library") or {}).get("videos", [])}
@@ -270,9 +276,10 @@ def make_router(db, load, media_dir) -> APIRouter:
                                 (idea_id,)).fetchall()
             variants = []
             for pid, variant, platform in pubs:
-                snap = conn.execute("SELECT views, likes, comments, shares, fetched_at, source FROM publication_metrics "
+                snap = conn.execute("SELECT views, likes, comments, shares, fetched_at, source, saves, followers FROM publication_metrics "
                                     f"WHERE publication_id = ?{metric_filter()} ORDER BY fetched_at DESC, rowid DESC LIMIT 1", (pid,)).fetchone()
-                latest = None if snap is None else {**dict(zip(COUNTS, snap[:4])), "fetchedAt": snap[4], "source": snap[5]}
+                latest = None if snap is None else {**dict(zip(COUNTS, snap[:4])), "fetchedAt": snap[4], "source": snap[5],
+                                                    "saves": snap[6], "followers": snap[7]}
                 variants.append({"variant": variant, "publicationId": pid, "platform": platform, "latest": latest,
                                  "viewsVsBest": None})
         views = [v["latest"]["views"] for v in variants if v["latest"] and v["latest"]["views"] is not None]

@@ -6,6 +6,7 @@ import { SearchBox } from './SearchBox'
 // The Altitude hero holds the search box.
 import { AltitudeHero } from './themes/AltitudeHero'
 import { StartingPoints } from './find/StartingPoints'
+import { TopicResults } from './publish/TopicResults'
 
 interface Props {
   query: Query
@@ -83,6 +84,8 @@ export function SearchScreen(props: Props) {
           <ErrorText text={error} onSearch={props.onSearch} />
         </p>
       )}
+
+      <TopicResults text={query.keyword} />
 
       <StartingPoints
         clientName={clientName}
