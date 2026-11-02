@@ -13,6 +13,7 @@ import { lastSentBack } from '../lib/memory'
 import { StageSelect } from './StageSelect'
 import { ShotChecklist } from './ShotChecklist'
 import { CutPanel } from './CutPanel'
+import { PublishPanel } from './publish/PublishPanel'
 import { StoryboardSection } from './storyboard/StoryboardSection'
 
 interface Props {
@@ -358,6 +359,7 @@ export function PlanScreen(p: Props) {
 
           <ShotChecklist key={idea.id} ideaId={idea.id} status={idea.status} shots={shots} onProgress={onTakesProgress} />
           <CutPanel key={idea.id} ideaId={idea.id} status={idea.status} shotCount={shots.length} shotsDone={shotsDone} takesRevision={takesRevision} />
+          <PublishPanel key={`pub-${idea.id}`} ideaId={idea.id} status={idea.status} shotCount={shots.length} />
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">

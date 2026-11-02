@@ -76,3 +76,11 @@ def test_demo_source_metrics_ignored_outside_demo(client, monkeypatch):
     metrics(client, ids["A"], 100, 1000)
     client.post(f"/api/publications/{ids['A']}/metrics", json={"views": 999, "fetchedAt": 2000, "source": "demo"})
     assert by_variant(client)["A"]["latest"]["views"] == 100
+
+
+def test_compare_latest_carries_saves_and_followers(client):
+    ids = setup_variants(client)
+    r = client.post(f"/api/publications/{ids['A']}/metrics", json={"views": 10, "saves": 3, "followers": 500})
+    assert r.status_code == 200
+    latest = by_variant(client)["A"]["latest"]
+    assert latest["saves"] == 3 and latest["followers"] == 500

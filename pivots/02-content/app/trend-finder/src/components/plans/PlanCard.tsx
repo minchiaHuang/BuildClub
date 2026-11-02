@@ -4,6 +4,7 @@ import { STEP_LABEL } from "../../lib/steps.ts";
 import type { Flags, Step } from "../../lib/steps.ts";
 import { FlagBadge } from "../FlagBadge";
 import { StepProgress } from "../StepProgress";
+import { PostedResult } from "../publish/PostedResult";
 import { compact, plural } from "../../lib/metrics";
 import { beatUsual } from "../find/words";
 import { Thumb } from "../Thumb";
@@ -66,6 +67,7 @@ export function PlanCardBody({
             {flags.stuckDays !== undefined && <FlagBadge kind="stuck" days={flags.stuckDays} />}
           </div>
         )}
+        {step === "posted" && <PostedResult ideaId={idea.id} />}
         <p className="pb-next small">
           <span className="pb-next-label">Next</span> {next}
         </p>
