@@ -1,6 +1,8 @@
 # STATUS
 
-Remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (2026-10-31). Phase 2b (shot checklist and real-footage takes) is merged (PR #6, 4277192, 2026-10-31). Phase 2c (edit to a publishable MP4, then Annie's approval) is split into 2c-1 and 2c-2. 2c-1 ("Make the video") is merged (PR #7, 359791c, 2026-11-01). 2c-2 (Annie approves the finished video on the no-login review link) is merged (PR #8, 27496cb, 2026-11-01) after an e2e re-run at 1440 and 390 (35/35 each). Phase 2 (2a-2c) is done. `bash bin/verify.sh` GREEN on the merged tree (2026-11-01).
+Current (2026-11-02 AEDT): fork main is at 6fe1772 with PRs #19-#25 merged (storyboard, publish, grade and subtitles UI, Settings, Chinese UI); `bash bin/verify.sh` GREEN at #25 head 7166ca5; client demo for Mercif is up (details in the private handoff).
+
+Earlier: remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (2026-10-31). Phase 2b (shot checklist and real-footage takes) is merged (PR #6, 4277192, 2026-10-31). Phase 2c (edit to a publishable MP4, then Annie's approval) is split into 2c-1 and 2c-2. 2c-1 ("Make the video") is merged (PR #7, 359791c, 2026-11-01). 2c-2 (Annie approves the finished video on the no-login review link) is merged (PR #8, 27496cb, 2026-11-01) after an e2e re-run at 1440 and 390 (35/35 each). Phase 2 (2a-2c) is done. `bash bin/verify.sh` GREEN on the merged tree (2026-11-01).
 
 ## Teammate UI integration (2026-11-02 AEDT, branch feat/integrate-teammate-ui-1102)
 - Merged origin/main (b3f8737: design system, client Home, Find ideas, drag Plans board, copy) and fix/instagram-followers (PR #11). Look and copy from the teammate; login, persistence, review link, stages, takes and cuts kept on our backend.
@@ -8,6 +10,24 @@ Remake phase 1 (PR #4) and 2a stage board (PR #5) are merged into fork main (202
 - Only a signed-in manager approves in the app (plan page, Home, board drag); team members send to the manager, who answers on the review link.
 - New dependency from the teammate's lockfile: @dnd-kit/core 6.3.1 (Plans board drag).
 - `bash bin/verify.sh` GREEN (unit 88). E2E on 8811 (`--demo-data --user`), real sign-in as team member: client, tofu search (TikTok + Instagram pins), ranking order, shortlist, shots, send, signed-out review link, approve, board and Home: 19/19 at 1440 and 19/19 at 390.
+
+## 2026-11-02 (AEDT): Settings, Chinese UI, client demo
+- Merged into fork main today:
+  - #19 storyboard UI, #20 publish UI, #21 grade + subtitles UI, #22 landing product tour video.
+  - #23 Settings screen: gear at the sidebar bottom; Appearance (System / Light / Dark) moved there; signed-in name and agency come from /api/auth/me; approver name "Annie" kept.
+  - #24 Language setting, English / 繁體中文: hand-written dictionary `src/lib/i18n.ts` plus `src/lib/strings/*`, no new dependencies. Landing, login and the client review link stay English. The 390px sidebar shadow is fixed.
+  - #25 i18n follow-ups: zh label 「開啟」 on the Home client table; the default "why it fits" note is always saved in English so the review link has no Chinese; existing Chinese notes are not migrated.
+- Last verification (2026-11-02): at PR #25 head 7166ca5, `bash bin/verify.sh` GREEN (pytest 547 passed, 1 skipped; unit 166); `tsc -b`, `npm run lint`, `npm run build` exit 0. Each PR was verified independently at its head sha before merge.
+- Client demo for Mercif (Daphne): port 8850 behind a Cloudflare quick tunnel, serving fork main (6fe1772 or later), `--demo-data`, two seeded clients. Demo URL and accounts are in the private handoff.
+- Known problems / not verified:
+  - Storyboard generation, take upload, video cut and subtitle burn-in were checked only in idle states in zh-Hant.
+  - Backend-generated text (shot descriptions, AI breakdowns, server errors) stays English.
+  - Home "after publishing" cards read like dev notes ("decide before building"); the copy belongs to Veralyn.
+  - The approver name still defaults to "Annie".
+- Next steps:
+  1. Align the UI redesign with Veralyn (a separate discussion session is comparing Editing and Storyboard against real products; nothing implemented).
+  2. Send the demo to Daphne.
+  3. Worktree cleanup.
 
 ## Last verification (2026-11-01)
 - feat/remake-rough-cut @ 678b5a5: `bash bin/verify.sh` GREEN (backend 410 passed, 1 skipped; unit 78); `npm run build` and `npm run lint` exit 0. Final Opus review: With fixes, all fixed and re-reviewed clean.
