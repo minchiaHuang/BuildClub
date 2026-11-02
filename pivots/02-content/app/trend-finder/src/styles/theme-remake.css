@@ -59,6 +59,10 @@
   --late-soft: var(--canvas-alt);
   --no: #b42318;
   --no-soft: #fdeceb;
+  /* Storyboard (src/styles/storyboard.css): frame box shape, swatch size, and the ring that keeps a near-white swatch visible */
+  --frame-ratio: 9 / 16;
+  --swatch-size: 18px;
+  --swatch-ring: rgb(10 12 40 / 0.28);
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: var(--font-serif);
   --tracking-tight: -0.02em;
@@ -101,6 +105,7 @@
     --rising-soft: #33260a;
     --no: #ff8a7a;
     --no-soft: #3a1512;
+    --swatch-ring: rgb(255 255 255 / 0.4);
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
     --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
   }
@@ -133,6 +138,7 @@
     --rising-soft: #33260a;
     --no: #ff8a7a;
     --no-soft: #3a1512;
+    --swatch-ring: rgb(255 255 255 / 0.4);
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
     --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
   }

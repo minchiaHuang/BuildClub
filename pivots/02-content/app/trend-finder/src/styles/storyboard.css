@@ -1,0 +1,91 @@
+/* Script and storyboard on the plan page. Tokens only (frame-ratio, swatch-size and swatch-ring live in
+   theme-remake.css, with their dark values). Cards by default; the table view is the same shots in two columns. */
+.sb-section { min-width: 0; }
+.sb-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-sm) var(--space-lg); }
+.sb-bar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm) var(--space-lg); }
+.sb-error { margin: 0; color: var(--no); font-size: var(--text-sm); overflow-wrap: anywhere; }
+
+/* Cards | Script table */
+.sb-toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); padding: 2px; background: var(--surface); }
+.sb-toggle-btn { border: 0; background: transparent; color: var(--muted); border-radius: var(--radius-pill); padding: 5px 14px; min-height: 32px; font-size: var(--text-ms); font-weight: 500; }
+.sb-toggle-btn:hover { color: var(--fg); }
+.sb-toggle-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-soft-fg); }
+
+/* Card list */
+.sb-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-lg); }
+.sb-card {
+  display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--space-lg) 20px; align-items: start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px;
+}
+.sb-card-frame { min-width: 0; }
+.sb-card-body { display: grid; gap: var(--space-md); min-width: 0; }
+.sb-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.sb-no {
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: var(--radius-pill);
+  background: var(--navy); color: var(--on-navy); font-family: var(--font-mono); font-size: var(--text-sm); font-variant-numeric: tabular-nums;
+}
+.sb-time { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.sb-purpose, .sb-edited { font-size: var(--text-sm); font-weight: 600; padding: 3px 10px; border-radius: var(--radius-pill); }
+.sb-purpose.is-hook { background: var(--blue-soft); color: var(--accent-soft-fg); }
+.sb-purpose.is-body { background: var(--surface-2); color: var(--fg); }
+.sb-purpose.is-cta { background: var(--mustard); color: var(--on-mustard); }
+.sb-edited { background: var(--surface-2); color: var(--muted); font-weight: 500; border: 1px solid var(--line-strong); }
+.sb-shot { margin: 0; overflow-wrap: anywhere; }
+.sb-line-field { display: grid; gap: var(--space-xs); min-width: 0; }
+.sb-line { margin: 0; overflow-wrap: anywhere; }
+.sb-options { display: grid; gap: var(--space-xs); }
+.sb-option { white-space: normal; border-radius: var(--radius); min-height: 40px; align-items: center; overflow-wrap: anywhere; }
+.sb-option[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-soft-fg); }
+.sb-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.sb-confirm {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm) var(--space-md);
+  background: var(--rising-soft); color: var(--rising); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--text-ms);
+}
+.sb-confirm > span { flex: 1 1 200px; }
+
+/* Frame: fixed 9:16 box on a quiet surface, so both themes read whatever the picture is */
+.sb-frame {
+  position: relative; display: grid; place-items: center; align-content: center; gap: var(--space-sm);
+  aspect-ratio: var(--frame-ratio); width: 100%; overflow: hidden; text-align: center; padding: var(--space-md);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.sb-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.sb-frame-msg { font-size: var(--text-sm); color: var(--muted); }
+.sb-frame.is-loading { animation: pulse var(--duration-pulse) var(--ease) infinite; }
+.sb-frame.is-error { background: var(--no-soft); border-color: transparent; }
+.sb-frame.is-error .sb-frame-msg { color: var(--no); font-weight: 500; }
+.sb-frame.is-ready { background: var(--surface-2); }
+
+/* Colours from the frame */
+.sb-swatches { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.sb-swatch {
+  display: inline-flex; align-items: center; gap: var(--space-sm); min-height: 40px; padding: 4px 12px 4px 8px;
+  border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--surface); color: var(--fg);
+}
+.sb-swatch:hover { background: var(--surface-2); border-color: var(--line-strong); }
+.sb-swatch-dot { flex: none; width: var(--swatch-size); height: var(--swatch-size); border-radius: 50%; background: var(--sw); box-shadow: 0 0 0 1px var(--swatch-ring); }
+.sb-swatch-hex { font-family: var(--font-mono); font-size: var(--text-sm); font-variant-numeric: tabular-nums; min-width: 7ch; }
+
+/* Script table: frame and shot on the left, the line on the right */
+.sb-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.sb-table th { text-align: left; padding: 0 12px 8px; }
+.sb-table td { vertical-align: top; padding: 14px 12px; border-top: 1px solid var(--line); }
+.sb-cell-shot { width: 46%; }
+.sb-cell-shot { display: table-cell; }
+.sb-row-frame { width: 96px; float: left; margin-right: 14px; }
+.sb-row-text { display: grid; gap: var(--space-sm); overflow: hidden; }
+.sb-cell-line { display: table-cell; }
+.sb-cell-line > * + * { margin-top: var(--space-md); }
+
+/* Touch targets and stacking on phones: frame above the text, chips wrap, 40px minimum */
+@media (max-width: 560px) {
+  .sb-card { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+  .sb-card-frame { width: min(100%, 180px); }
+  :root[data-ui="altitude"] .sb-section :is(.btn-sm, .btn) { min-height: 40px; }
+  .sb-toggle-btn { min-height: 40px; }
+  .sb-toggle { width: 100%; }
+  .sb-toggle-btn { flex: 1; }
+  .sb-table td, .sb-table th { padding-inline: 6px; }
+  .sb-cell-shot { width: 38%; }
+  .sb-row-frame { float: none; width: min(100%, 96px); margin: 0 0 var(--space-sm); }
+}
