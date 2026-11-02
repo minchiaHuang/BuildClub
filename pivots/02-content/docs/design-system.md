@@ -297,3 +297,9 @@ Task 1 只處理 `login.css`、`drawer-plan.css`、`approvals.css`、`layout.css
 ## 5. 間距 token 的剩餘寫死值（2026-10-31）
 
 `src/styles/channel.css` 與 `src/styles/shared-review.css` 的 gap、padding 已改用 `--space-*`。沒有同值 token 的保留原值：`.channel` 的 `gap: 22px`（`src/styles/channel.css:2`）、`.shared-review` 底部 `56px`（`src/styles/shared-review.css:2`），以及尺寸類（`.step-mark` 22px、`.bar` 高 6px、`.chan-video` 縮圖欄 96px、`minmax(260px/320px)`、`.tc-time` 96px、`outline: 2px`）；它們不是間距，也沒有對應 token。
+
+## 6. 腳本與分鏡（sb-*，2026-11-02）
+
+- 新 token 在 `src/styles/theme-remake.css`：`--frame-ratio`（分鏡畫面框 `9 / 16`）、`--swatch-size`（色票圓點 18px）、`--swatch-ring`（色票外圈，淺色與兩個深色區塊各有值，讓近白色的色票在白卡上看得見）。
+- 樣式在 `src/styles/storyboard.css`，class 一律 `.sb-` 開頭；共用元件 `FrameImage`（空、載入、錯誤加重試、完成四種狀態，每種都有文字）與 `SwatchRow` / `SwatchChip`（點擊複製 hex）在 `src/components/`。
+- 用途徽章只用既有 token：hook = `--blue-soft`，body = `--surface-2`，CTA = `--mustard` + `--on-mustard`。色票的顏色是圖片資料，用 CSS 變數 `--sw` 傳入，不寫死在元件裡。
