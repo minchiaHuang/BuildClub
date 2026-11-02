@@ -1,9 +1,15 @@
 import type { Client, Format, Platform, Video } from '../types'
 
-// Views over the account's usual views, or over its followers when the usual is unknown. With neither (an account
-// with 0 or unknown followers and no usual views) there is nothing to compare against, so the score is 0 and the
-// screens show views only, no × score. A Reddit post whose subreddit has no usual upvotes yet likewise has no score.
-export const outlierScore = (v: Video) => (hasScore(v) ? v.views / Math.max(v.medianViews || v.followers, 1) : 0)
+// The client's rule: views over followers, on every platform. Only when the follower count is unknown or 0
+// (e.g. Reddit, which has no followers) does it fall back to the account's usual views (subreddit's usual upvotes).
+// With neither there is nothing to compare against, so the score is 0 and the screens show views only, no × score.
+export const byFollowers = (v: Video) => v.platform !== 'reddit' && v.followers > 0
+export const outlierScore = (v: Video) =>
+  !hasScore(v) ? 0 : byFollowers(v) ? v.views / v.followers : v.views / Math.max(v.medianViews ?? 0, 1)
+// What the score was divided by: the followers, or the usual views when followers are unknown.
+export const scoreBase = (v: Video) => (byFollowers(v) ? v.followers : (v.medianViews ?? 0))
+// Secondary: views over the account's usual views, when known (shown in the breakdown next to the main score).
+export const usualMultiple = (v: Video) => ((v.medianViews ?? 0) > 0 ? v.views / (v.medianViews as number) : null)
 // Reddit shows no views, so its posts are compared by upvotes (stored in `views`).
 export const viewsWord = (v: Video) => (v.platform === 'reddit' ? 'upvotes' : 'views')
 // Live Instagram results have neither the account's usual views nor its followers, and some accounts report 0
@@ -29,10 +35,10 @@ export function scoreLine(v: Video): string {
   }
   if (!hasScore(v)) return `${compact(v.views)} views. No follower count to compare with`
   const score = outlierScore(v)
-  const byFollowers = v.medianViews === null
-  if (score < 1.5) return byFollowers ? 'About as many views as followers' : 'About its usual views'
+  const followers = byFollowers(v)
+  if (score < 1.5) return followers ? 'About as many views as followers' : 'About its usual views'
   const n = score >= 10 ? Math.round(score).toLocaleString() : score.toFixed(1).replace(/\.0$/, '')
-  return byFollowers ? `${n} times more views than followers` : `${n} times its usual views`
+  return followers ? `${n}× more views than followers` : `${n} times its usual views`
 }
 
 export const viewsPerFollower = (v: Video) => v.views / Math.max(v.followers, 1)

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { useApp, useManagerName } from '../lib/appContext'
-import { clientFit, compact, hasScore, outlierScore, platformName, tierOf, viewsWord } from '../lib/metrics'
+import { clientFit, compact, hasScore, scoreBase, outlierScore, platformName, tierOf, viewsWord } from '../lib/metrics'
 import { dueLabel, formatDay } from '../lib/dates'
 import type { Decision } from '../lib/memory'
 import { BestVideo } from './BestVideo'
@@ -204,7 +204,7 @@ export function PlanScreen(p: Props) {
           {hasScore(video) ? (
             <>
               <div className="plan-ref-score">
-                <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
+                <span className="cmp-from">{compact(scoreBase(video))}</span>
                 <span className="cmp-arrow" aria-hidden="true">
                   →
                 </span>

@@ -5,7 +5,10 @@ import {
   clientFit,
   compact,
   hasDate,
+  byFollowers,
   hasScore,
+  scoreBase,
+  usualMultiple,
   outlierScore,
   scoreLine,
   platformName,
@@ -171,14 +174,19 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
           <section className="stats" aria-label="Video numbers">
             {hasScore(video) ? (
               <div className="stat-card stat-score">
-                <span className="stat-label">{video.medianViews === null ? 'Views compared with followers' : "Views compared with the account's usual"}</span>
+                <span className="stat-label">{byFollowers(video) ? 'Views compared with followers' : "Views compared with the account's usual"}</span>
                 <div className="stat-score-row">
-                  <span className="stat-big">{timesNumber(shownScore)} times</span>
+                  <span className="stat-big">{timesNumber(shownScore)}×</span>
                 </div>
                 <span className="stat-note">{beatUsual(video)}</span>
                 <span className="stat-compare">
-                  {compact(video.medianViews ?? video.followers)} → <strong>{compact(shownViews)}</strong>
+                  {compact(scoreBase(video))} → <strong>{compact(shownViews)}</strong>
                 </span>
+                {byFollowers(video) && usualMultiple(video) !== null && (
+                  <span className="stat-note small muted">
+                    {timesNumber(usualMultiple(video) as number)} times the account's usual views
+                  </span>
+                )}
               </div>
             ) : (
               <div className="stat-card stat-score">

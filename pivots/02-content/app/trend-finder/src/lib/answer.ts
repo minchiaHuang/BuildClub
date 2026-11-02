@@ -1,7 +1,7 @@
 import type { Video } from '../types'
 import type { Interpretation } from './parseQuery'
 import type { FormatTrend } from './metrics'
-import { meanScore, plural } from './metrics'
+import { byFollowers, meanScore, plural } from './metrics'
 import { beatUsualAverage, spreadSentence } from '../components/find/words'
 
 // Lowercase the first letter only, so platform names keep their capitals mid-sentence.
@@ -33,7 +33,7 @@ export function buildAnswer(interp: Interpretation, results: Video[], trends: Fo
 
   if (q.startsWith('why')) {
     lines.push(
-      `Mostly the idea behind the video. ${lead.vids.length} of the ${results.length} matching videos copy "${lead.t.format.name}", and on average they got ${beatUsualAverage(lead.avg, lead.vids.some((v) => v.medianViews === null))}.`,
+      `Mostly the idea behind the video. ${lead.vids.length} of the ${results.length} matching videos copy "${lead.t.format.name}", and on average they got ${beatUsualAverage(lead.avg, lead.vids.some(byFollowers))}.`,
       `${lead.t.format.why.hook} ${lead.t.format.why.first3s}`,
       `Is it still catching on? ${spreadSentence(lead.t)}.`,
     )
@@ -46,7 +46,7 @@ export function buildAnswer(interp: Interpretation, results: Video[], trends: Fo
   } else {
     lines.push(`What's working${forWho} right now:`)
     ranked.slice(0, 3).forEach((r, i) => {
-      lines.push(`${i + 1}. ${r.t.format.name}: ${lowerFirst(spreadSentence(r.t))} (${plural(r.vids.length, 'video')} here, on average ${beatUsualAverage(r.avg, r.vids.some((v) => v.medianViews === null))}).`)
+      lines.push(`${i + 1}. ${r.t.format.name}: ${lowerFirst(spreadSentence(r.t))} (${plural(r.vids.length, 'video')} here, on average ${beatUsualAverage(r.avg, r.vids.some(byFollowers))}).`)
     })
   }
 

@@ -1,6 +1,6 @@
 import type { Video } from '../../types'
 import type { FormatTrend } from '../../lib/metrics'
-import { compact, outlierScore } from '../../lib/metrics'
+import { byFollowers, compact, outlierScore } from '../../lib/metrics'
 
 // Plain-English sentences for the Find ideas pages. No tags or badges: every number says what it is,
 // so an agency owner who has never seen the app can read it straight away.
@@ -12,17 +12,17 @@ export const timesNumber = (n: number) => (n >= 10 ? Math.round(n).toLocaleStrin
 // "62 times more views than this account usually gets".
 export function beatUsual(v: Video): string {
   const score = outlierScore(v)
-  const byFollowers = v.medianViews === null
-  if (score < 1.5) return byFollowers ? 'About as many views as the account has followers' : 'About the views this account usually gets'
-  return byFollowers
-    ? `${timesNumber(score)} times more views than the account has followers`
+  const followers = byFollowers(v)
+  if (score < 1.5) return followers ? 'About as many views as the account has followers' : 'About the views this account usually gets'
+  return followers
+    ? `${timesNumber(score)}× more views than followers`
     : `${timesNumber(score)} times more views than this account usually gets`
 }
 
 // The same idea for a group of videos (an average score), e.g. for a sound many accounts used.
 export function beatUsualAverage(score: number, byFollowers: boolean): string {
   if (score < 1.5) return byFollowers ? 'about as many views as followers' : 'about their usual views'
-  return byFollowers ? `${timesNumber(score)} times more views than followers` : `${timesNumber(score)} times their usual views`
+  return byFollowers ? `${timesNumber(score)}× more views than followers` : `${timesNumber(score)} times their usual views`
 }
 
 // "today", "5 days ago", "3 weeks ago", "4 months ago".

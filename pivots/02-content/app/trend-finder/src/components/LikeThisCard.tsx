@@ -1,7 +1,7 @@
 import type { Format, Video } from '../types'
 import type { MediaSource } from '../lib/parseQuery'
 import type { FormatTrend } from '../lib/metrics'
-import { meanScore, outlierScore, plural, platformName } from '../lib/metrics'
+import { byFollowers, meanScore, outlierScore, plural, platformName } from '../lib/metrics'
 import { beatUsualAverage, spreadSentence, spreadVerdict } from './find/words'
 import { Thumb } from './Thumb'
 
@@ -46,7 +46,7 @@ export function LikeThisCard({ source, format, trend, matches, clientName, real,
         {trend && (
           <p className="like-verdict">
             <strong>{spreadVerdict(trend)}</strong> {spreadSentence(trend)}. We found {plural(matches.length, 'similar video')}, with{' '}
-            {beatUsualAverage(avg, false)} on average.
+            {beatUsualAverage(avg, matches.some(byFollowers))} on average.
           </p>
         )}
 

@@ -6,7 +6,7 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, tierOf, viewsWord } from '../lib/metrics'
+import { byFollowers, compact, hasDate, scoreBase, groupFailures, hasScore, outlierScore, platformList, platformName, tierOf, viewsWord } from '../lib/metrics'
 import { beatUsual, daysAgoWords, spreadSentence } from './find/words'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
@@ -425,9 +425,9 @@ function ShortcutsHint({ open, setOpen }: { open: boolean; setOpen: (open: boole
 // Usual → this video for the Best to copy card. The big number counts up and the bar grows in
 // when the card first appears (or a new video takes the spot), not on every render.
 function BestCompare({ video }: { video: Video }) {
-  const usual = video.medianViews ?? video.followers
+  const usual = scoreBase(video)
   const tier = tierOf(outlierScore(video))
-  const byFollowers = video.medianViews === null
+  const followers = byFollowers(video)
   const shownViews = useCountUp(video.views)
   // How big the usual is next to this video, as a share of the bar (kept visible even when tiny).
   const usualShare = Math.min(Math.max(usual / Math.max(video.views, 1), 0.02), 1)
@@ -436,7 +436,7 @@ function BestCompare({ video }: { video: Video }) {
       <span className="cmp-num cmp-from">{compact(usual)}</span>
       <span className="cmp-arrow" aria-hidden="true">→</span>
       <span className="cmp-num cmp-to">{compact(shownViews)}</span>
-      <span className="cmp-cap">{byFollowers ? 'followers' : 'views it usually gets'}</span>
+      <span className="cmp-cap">{followers ? 'followers' : 'views it usually gets'}</span>
       <span />
       <span className="cmp-cap">views on this video</span>
       <span className="cmp-bar" aria-hidden="true" style={{ '--usual': usualShare } as React.CSSProperties}>
