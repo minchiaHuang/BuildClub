@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { IdeaStatus, Video } from '../types'
-import { agoShort, compact, hasDate, hasScore, outlierScore, scoreLine, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { compact, hasDate, viewsWord } from '../lib/metrics'
+import { beatUsual, daysAgoWords } from './find/words'
 import { Thumb } from './Thumb'
 import { useManagerName } from '../lib/appContext'
 import { EvidenceChip } from './EvidenceChip'
@@ -17,19 +18,18 @@ interface Props {
   cohort?: Cohort
 }
 
-const statusBadge = (manager: string): Record<IdeaStatus, string> => ({
-  saved: 'Shortlisted',
-  waiting: `Sent to ${manager}`,
-  approved: 'Approved',
-  rejected: 'Sent back',
+// Where the plan stands, as a plain line under the video (no coloured badge on the cover).
+const statusLine = (manager: string): Record<IdeaStatus, string> => ({
+  saved: 'Saved, shots not planned yet',
+  waiting: `Plan sent to ${manager} for approval`,
+  approved: `${manager} approved the plan`,
+  rejected: `${manager} sent the plan back`,
 })
 
-// One video in the results grid: cover, usual → this video's views, a plain label, the hook and who posted it.
+// One video in the results grid: cover, views, one sentence comparing them with usual, what it says and who posted it.
 export function VideoTile({ video, onOpen, onToggleSave, status, cohort }: Props) {
   const manager = useManagerName()
-  const score = outlierScore(video)
-  const tier = tierOf(score)
-  const byFollowers = video.medianViews === null
+  const compare = beatUsual(video)
   // The button pops only when it's clicked, not when a tile shows up already shortlisted.
   const [pop, setPop] = useState(false)
   const saved = status === 'saved'
@@ -43,38 +43,22 @@ export function VideoTile({ video, onOpen, onToggleSave, status, cohort }: Props
         : COPY.noPlatform
   return (
     <article className="tile">
-      <button className="tile-main" data-video-id={video.id} onClick={onOpen} aria-label={`Open breakdown: ${video.hook}. ${scoreLine(video)}${spoken ? `. ${spoken}` : ''}`}>
+      <button className="tile-main" data-video-id={video.id} onClick={onOpen} aria-label={`See why it worked: ${video.hook}. ${compare}${spoken ? `. ${spoken}` : ''}`}>
         <Thumb video={video} preview />
-        {status && status !== 'saved' && <span className={`tile-status tile-status-${status}`}>{statusBadge(manager)[status]}</span>}
         <div className="tile-body">
-          {hasScore(video) ? (
-            <>
-              <div className="tile-compare">
-                <span className="cmp-from">{compact(video.medianViews ?? video.followers)}</span>
-                <span className="cmp-arrow" aria-hidden="true">→</span>
-                <span className={`cmp-to score-${tier}`}>{compact(video.views)}</span>
-              </div>
-              <span className="tile-cap">{byFollowers ? 'followers → views' : `usual ${viewsWord(video)} → this video`}</span>
-              <span className={`tier tier-${tier} tile-tier`}>
-                {tierName[tier]} · {times(score)}
-              </span>
-            </>
-          ) : (
-            <>
-              <div className="tile-compare">
-                <span className="cmp-to">{compact(video.views)}</span>
-              </div>
-              <span className="tile-cap">{viewsWord(video)}</span>
-            </>
-          )}
+          <span className="tile-views">
+            <span className="tile-compare">{compact(video.views)}</span> {viewsWord(video)}
+          </span>
+          <span className="tile-cap">{compare}</span>
           <EvidenceChip video={video} cohort={cohort} compact />
           <span className="tile-hook">{video.hook}</span>
           <span className="tile-meta">
             {video.handle}
-            {hasDate(video) && ` · ${agoShort(video.daysAgo)}`}
+            {hasDate(video) && ` · ${daysAgoWords(video.daysAgo)}`}
             {video.comments !== undefined && ` · ${compact(video.comments)} comments`}
             {video.live && video.fromCache && ` · ${cachedLabel(video.fetchedAt ?? 0, Date.now())}`}
           </span>
+          {status && status !== 'saved' && <span className="tile-plan">{statusLine(manager)[status]}</span>}
         </div>
       </button>
       {/* Once it's sent, the badge shows where it stands and the shortlist button goes away. */}
@@ -82,15 +66,15 @@ export function VideoTile({ video, onOpen, onToggleSave, status, cohort }: Props
         <button
           className={`tile-save ${saved ? 'tile-save-on' : ''} ${pop ? 'tile-save-pop' : ''}`}
           aria-pressed={saved}
-          aria-label={saved ? 'Shortlisted. Click to remove' : 'Add to shortlist'}
-          title={saved ? 'Shortlisted' : 'Add to shortlist'}
+          aria-label={saved ? 'Saved. Click to unsave' : 'Save this idea'}
+          title={saved ? 'Saved' : 'Save this idea'}
           onClick={() => {
             setPop(true)
             onToggleSave()
           }}
           onAnimationEnd={() => setPop(false)}
         >
-          {saved ? '✓ Shortlisted' : '+ Shortlist'}
+          {saved ? '✓ Saved' : '+ Save'}
         </button>
       )}
     </article>

@@ -6,7 +6,8 @@ import type { Query, Sort } from '../state'
 import type { FormatTrend } from '../lib/metrics'
 import type { Interpretation } from '../lib/parseQuery'
 import type { Answer } from '../lib/answer'
-import { agoShort, compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, plural, scoreLine, stageText, tierName, tierOf, times, viewsWord } from '../lib/metrics'
+import { compact, hasDate, groupFailures, hasScore, outlierScore, platformList, platformName, tierOf, viewsWord } from '../lib/metrics'
+import { beatUsual, daysAgoWords, spreadSentence } from './find/words'
 import { VideoTile } from './VideoTile'
 import { BestVideo } from './BestVideo'
 import { EvidenceChip } from './EvidenceChip'
@@ -72,19 +73,14 @@ interface Props {
   onRefreshPulse: () => void
 }
 
-const stageLabel = {
-  early: 'Early',
-  rising: 'Rising',
-  everywhere: 'Peaked',
-  'one-off': 'One-off',
-}
-
 export function ResultsScreen(p: Props) {
   const manager = useManagerName()
   const shown = p.formatFilter ? p.results.filter((v) => v.formatId === p.formatFilter) : p.results
   const activeTrend = p.trends.find((t) => t.format.id === p.formatFilter)
   const [draft, setDraft] = useState(p.interp.text)
   const [helpOpen, setHelpOpen] = useState(false)
+  // Only show "Saved. You'll find it in Plans." right after the Save button is pressed here, not for ideas saved earlier.
+  const [justSaved, setJustSaved] = useState<string | null>(null)
   useResultsShortcuts({
     onToggleSave: p.onToggleSave,
     onPlan: p.onPlan,
@@ -113,22 +109,24 @@ export function ResultsScreen(p: Props) {
       return { pl, n: vs.length, cache: cached.length ? cachedLabel(fetchedAt, Date.now()) : null }
     })
     .filter((x) => x.n > 0)
+  const platformNames = platformList(platformCounts.map((x) => x.pl))
   const shortlisted = [...p.ideaStatus.values()].filter((s) => s === 'saved').length
   const i = p.interp
   const queryLabel = i.source ? '' : i.text.trim()
 
-  const chips: { chip: Chip; label: string; tone?: string }[] = [
-    ...(i.source ? [{ chip: { kind: 'source' } as Chip, label: `like: ${i.source.label}`, tone: 'topic' }] : []),
+  // What we understood from the search, as plain removable words (no coloured tags).
+  const chips: { chip: Chip; label: string }[] = [
+    ...(i.source ? [{ chip: { kind: 'source' } as Chip, label: `Like ${i.source.label}` }] : []),
     ...i.keywords.map((k) => ({ chip: { kind: 'keyword', value: k } as Chip, label: k })),
     ...(i.source ? [] : i.topics).map((t) => ({
       chip: { kind: 'topic', formatId: t.formatId } as Chip,
       // Show the word she typed ("crispy"), not the internal format name.
       label: t.word,
     })),
-    ...(i.audience ? [{ chip: { kind: 'audience' } as Chip, label: `audience: ${i.audience}`, tone: 'audience' }] : []),
-    ...(i.days ? [{ chip: { kind: 'days' } as Chip, label: `last ${i.days} days` }] : []),
+    ...(i.audience ? [{ chip: { kind: 'audience' } as Chip, label: `For ${i.audience}` }] : []),
+    ...(i.days ? [{ chip: { kind: 'days' } as Chip, label: `Posted in the last ${i.days} days` }] : []),
     ...(i.platforms ? [{ chip: { kind: 'platforms' } as Chip, label: i.platforms.map((x) => platformName[x]).join(' + ') }] : []),
-    ...(i.maxLength ? [{ chip: { kind: 'length' } as Chip, label: `under ${i.maxLength} sec` }] : []),
+    ...(i.maxLength ? [{ chip: { kind: 'length' } as Chip, label: `Under ${i.maxLength} seconds` }] : []),
   ]
 
   const filterControls = (
@@ -158,23 +156,12 @@ export function ResultsScreen(p: Props) {
       <label className="sort">
         <span>Sort by</span>
         <select id="toolbar-sort" value={p.sort} onChange={(e) => p.setSort(e.target.value as Sort)}>
-          <option value="outlier">Outlier score</option>
-          <option value="ratio">Views ÷ followers</option>
+          <option value="outlier">Most views compared with usual</option>
+          <option value="ratio">Most views per follower</option>
           <option value="newest">Newest</option>
-          <option value="fastest">Fastest growing</option>
+          <option value="fastest">Most views a day</option>
         </select>
       </label>
-      <span
-        className="info"
-        tabIndex={0}
-        title={
-          p.live
-            ? 'The score compares views with the account’s followers. 77× means 77 times more views than followers, so the idea travelled far beyond the account’s own audience. Breakout = 100× or more, Strong = 10× or more, Normal = under 10×.'
-            : 'The score compares views with what the account usually gets. 77× means 77 times its usual views, so the idea did the work, not the account’s size. Breakout = 100× or more, Strong = 10× or more, Normal = under 10×.'
-        }
-      >
-        ⓘ What the × score means
-      </span>
     </>
   )
 
@@ -194,13 +181,14 @@ export function ResultsScreen(p: Props) {
         chipGroups={p.chipGroups}
         pulse={p.pulse}
         onRefreshPulse={p.onRefreshPulse}
+        hideChips
       />
 
       <div className="understood">
         <span className="field-label">Searching for</span>
-        {chips.length === 0 && <span className="muted small">Nothing yet. Type a niche like "tofu".</span>}
-        {chips.map(({ chip, label, tone }) => (
-          <span key={label} className={`q-chip ${tone ? `q-chip-${tone}` : ''}`}>
+        {chips.length === 0 && <span className="muted small">Nothing yet. Try a topic like "tofu".</span>}
+        {chips.map(({ chip, label }) => (
+          <span key={label} className="q-chip">
             {label}
             <button
               type="button"
@@ -238,12 +226,13 @@ export function ResultsScreen(p: Props) {
         <div className="answer" role="note">
           <div className="answer-head">
             <strong>{i.text.trim()}</strong>
-            <span className="ai-tag">{p.live ? 'Answer · from these results' : 'Answer · sample'}</span>
           </div>
           {p.answer.lines.map((line) => (
             <p key={line}>{line}</p>
           ))}
-          <span className="small muted">{p.answer.basis}</span>
+          <span className="small muted">
+            {p.answer.basis} This is a sample answer from the demo videos.
+          </span>
         </div>
       )}
 
@@ -255,21 +244,22 @@ export function ResultsScreen(p: Props) {
             <p>
               {p.live
                 ? 'Try a broader search, or widen the date and length filters. TikTok search often returns older videos.'
-                : 'Try removing a chip above, or widen the date and length filters. The sample data only covers tofu for now.'}
+                : 'Try removing a word above, or widen the date and length filters. The sample only has tofu videos for now.'}
             </p>
           </div>
         </>
       ) : (
         <>
           <p className="summary">
-            <strong>{plural(shown.length, 'video')}</strong>
-            {queryLabel && <> for "{queryLabel}"</>}
-            {platformCounts.map(({ pl, n }) => (
-              <span key={pl} className="summary-platform" title={platformName[pl]}>
-                <PlatformLogo platform={pl} size={16} />
-                {n}
-              </span>
-            ))}
+            We found <strong>{shown.length}</strong> {platformNames} {shown.length === 1 ? 'video' : 'videos'}
+            {queryLabel && <> for "{queryLabel}"</>}.
+            {platformCounts.length > 1 &&
+              platformCounts.map(({ pl, n }) => (
+                <span key={pl} className="summary-platform" title={platformName[pl]}>
+                  <PlatformLogo platform={pl} size={16} />
+                  {n}
+                </span>
+              ))}
             {platformCounts.map(({ pl, cache }) =>
               cache ? (
                 <span key={`cache-${pl}`} className="summary-cached">
@@ -279,88 +269,76 @@ export function ResultsScreen(p: Props) {
             )}
           </p>
 
-          {best && <h1 className="best-title">Best to copy</h1>}
+          {best && (
+            <div className="best-head">
+              <h1 className="best-title">Best to copy for {p.clientName}</h1>
+              <p className="best-why">
+                {bestTrend && ['early', 'rising'].includes(bestTrend.stage)
+                  ? 'It got far more views than usual, and other accounts are starting to post the same idea.'
+                  : 'Of these videos, this one beat its usual views by the most.'}
+              </p>
+            </div>
+          )}
           {best && (
             <div className="best">
               <BestVideo key={best.id} video={best} onOpen={() => p.onOpen(best.id)} />
               <div className="best-body">
-                {bestTrend && (
-                  <span className="best-trend">
-                    <span className={`stage-pill stage-pill-${bestTrend.stage}`}>{stageLabel[bestTrend.stage]}</span>
-                    {stageText(bestTrend)}
-                  </span>
-                )}
+                {bestTrend && <p className="best-trend">{spreadSentence(bestTrend)}.</p>}
                 <strong className="best-hook">"{best.hook}"</strong>
                 <EvidenceChip video={best} cohort={p.cohorts.get(best.id)} />
                 <span className="small muted">
                   {hasScore(best) && best.platform !== 'reddit'
-                    ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers`
-                    : `${compact(best.views)} ${viewsWord(best)}`}
-                  {best.comments !== undefined && ` · ${compact(best.comments)} comments`}{' '}
-                  ·{' '}
-                  {best.handle}
-                  {hasDate(best) && ` · ${agoShort(best.daysAgo)} ago`}
+                    ? `${compact(best.views)} views from an account with ${compact(best.followers)} followers.`
+                    : `${compact(best.views)} ${viewsWord(best)}.`}
+                  {best.comments !== undefined && ` ${compact(best.comments)} comments.`} Posted by {best.handle}
+                  {hasDate(best) && ` ${daysAgoWords(best.daysAgo)}`}.
                 </span>
                 {/* Usual → this video, so the jump reads without decoding the × score. Keyed so it animates once per pick. */}
                 {hasScore(best) && <BestCompare key={best.id} video={best} />}
                 <div className="best-actions">
                   {bestStatus === 'saved' ? (
-                    <button className="btn btn-primary" aria-pressed="true" onClick={() => p.onToggleSave(best.id)}>
-                      ✓ Shortlisted for {p.clientName}
+                    <button className="btn btn-primary" aria-pressed="true" onClick={() => { setJustSaved(null); p.onToggleSave(best.id) }}>
+                      ✓ Saved for {p.clientName}
                     </button>
                   ) : bestStatus ? (
                     <button className="btn btn-primary" onClick={() => p.onPlan(best.id)}>
                       Open plan · {bestStatus === 'waiting' ? `Waiting for ${manager}` : bestStatus === 'approved' ? 'Approved' : 'Sent back'}
                     </button>
                   ) : (
-                    <button className="btn btn-primary" onClick={() => p.onToggleSave(best.id)}>
-                      Add to shortlist for {p.clientName}
+                    <button className="btn btn-primary" onClick={() => { setJustSaved(best.id); p.onToggleSave(best.id) }}>
+                      Save for {p.clientName}
                     </button>
                   )}
                   <button className="btn btn-ghost" onClick={() => p.onOpen(best.id)}>
                     See why it worked
                   </button>
                 </div>
+                {bestStatus === 'saved' && justSaved === best.id && (
+                  <p className="saved-where small" role="status">
+                    <span>
+                      Saved. You'll find it in <strong>Plans</strong>.
+                    </span>
+                    <button className="link-btn" onClick={p.onGoShortlist}>
+                      Go to Plans →
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
           )}
 
-          {p.patterns ??
-            (p.trends.length > 1 && (
-              <div className="format-filter" role="group" aria-label="Filter by format">
-                <span className="field-label">Formats in these results</span>
-                <div className="chip-row">
-                  {p.trends.map((t) => {
-                    const active = p.formatFilter === t.format.id
-                    return (
-                      <button
-                        key={t.format.id}
-                        type="button"
-                        className={`fchip ${active ? 'fchip-on' : ''}`}
-                        aria-pressed={active}
-                        title={stageText(t)}
-                        onClick={() => p.setFormatFilter(active ? null : t.format.id)}
-                      >
-                        <span className={`stage-pill stage-pill-${t.stage}`}>{stageLabel[t.stage]}</span>
-                        {t.format.name}
-                        <span className="fchip-count">{plural(t.accounts, 'account')}</span>
-                      </button>
-                    )
-                  })}
-                  {p.formatFilter && (
-                    <button type="button" className="link-btn" onClick={() => p.setFormatFilter(null)}>
-                      Show all
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
           <div className="grid-head">
-            <h2>
-              {p.live ? 'All videos' : activeTrend ? activeTrend.format.name : 'All videos'}{' '}
-              <span className="muted">· {shown.length}</span>
-            </h2>
+            <div className="grid-title">
+              <h2>
+                {p.live ? 'All videos' : activeTrend ? activeTrend.format.name : 'All videos'}{' '}
+                <span className="muted">· {shown.length}</span>
+              </h2>
+              <p className="section-sub">
+                {p.live
+                  ? 'Ranked by views compared with the account’s followers. A small account with huge views means the idea worked, not the account’s size.'
+                  : 'Ranked by views compared with what each account usually gets. A big jump means the idea worked, not the account’s size.'}
+              </p>
+            </div>
             <div className="filters">
               {filterControls}
               <ShortcutsHint open={helpOpen} setOpen={setHelpOpen} />
@@ -385,10 +363,10 @@ export function ResultsScreen(p: Props) {
       {shortlisted > 0 && (
         <div className="shortlist-tray" role="status">
           <span>
-            <strong>{shortlisted}</strong> shortlisted for {p.clientName}
+            <strong>{shortlisted}</strong> saved for {p.clientName}. Find {shortlisted === 1 ? 'it' : 'them'} in Plans, under "Still planning"
           </span>
           <button className="btn btn-primary btn-sm" onClick={p.onGoShortlist}>
-            Go to shortlist
+            Plan the shots
           </button>
         </div>
       )}
@@ -449,24 +427,23 @@ function ShortcutsHint({ open, setOpen }: { open: boolean; setOpen: (open: boole
 function BestCompare({ video }: { video: Video }) {
   const usual = video.medianViews ?? video.followers
   const tier = tierOf(outlierScore(video))
+  const byFollowers = video.medianViews === null
   const shownViews = useCountUp(video.views)
   // How big the usual is next to this video, as a share of the bar (kept visible even when tiny).
   const usualShare = Math.min(Math.max(usual / Math.max(video.views, 1), 0.02), 1)
   return (
-    <div className="best-compare" aria-label={scoreLine(video)}>
+    <div className="best-compare" aria-label={beatUsual(video)}>
       <span className="cmp-num cmp-from">{compact(usual)}</span>
       <span className="cmp-arrow" aria-hidden="true">→</span>
-      <span className={`cmp-num cmp-to score-${tier}`}>{compact(shownViews)}</span>
-      <span className="cmp-cap">{video.medianViews === null ? 'followers' : 'usual views'}</span>
+      <span className="cmp-num cmp-to">{compact(shownViews)}</span>
+      <span className="cmp-cap">{byFollowers ? 'followers' : 'views it usually gets'}</span>
       <span />
-      <span className="cmp-cap">this video</span>
+      <span className="cmp-cap">views on this video</span>
       <span className="cmp-bar" aria-hidden="true" style={{ '--usual': usualShare } as React.CSSProperties}>
         <span className={`cmp-bar-this score-${tier}`} />
         <span className="cmp-bar-usual" />
       </span>
-      <span className={`tier tier-${tier} cmp-tier`}>
-        {tierName[tier]} · {times(outlierScore(video))}
-      </span>
+      <span className="cmp-say">{beatUsual(video)}</span>
     </div>
   )
 }

@@ -20,7 +20,7 @@ export function ClientMemory({ client, ideas, videoById, formatById }: Props) {
         {events.length > 0 && <span className="small muted">{memorySummary(events)}</span>}
       </header>
       {events.length === 0 ? (
-        <p className="small muted">No decisions yet. Every approval and rejection will be remembered here.</p>
+        <p className="small muted">Nothing yet. Every approval and send-back gets saved here.</p>
       ) : (
         <ul className="memory-list">
           {events.map((e) => {
@@ -28,7 +28,7 @@ export function ClientMemory({ client, ideas, videoById, formatById }: Props) {
             return (
               <li key={`${e.ideaId}-${e.at}`} className="memory-item">
                 <div className="memory-row">
-                  <span className={`status memory-${e.kind}`}>{decisionLabel[e.kind]}</span>
+                  <strong className="small">{decisionLabel[e.kind]}</strong>
                   <span className="small muted">{day(e.at)}</span>
                 </div>
                 <strong>{plan.title}</strong>

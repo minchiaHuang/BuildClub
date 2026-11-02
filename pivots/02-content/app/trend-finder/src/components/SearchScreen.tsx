@@ -5,6 +5,7 @@ import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 // The Altitude hero holds the search box.
 import { AltitudeHero } from './themes/AltitudeHero'
+import { StartingPoints } from './find/StartingPoints'
 
 interface Props {
   query: Query
@@ -16,7 +17,7 @@ interface Props {
   live: boolean
   clientExamples: string[]
   error: string | null
-  // Client-specific chips: trending now, fits the audience, more like saved ideas.
+  // Client-specific starting points: catching on now, fits the audience, more like saved ideas.
   chipGroups: ChipGroup[]
   pulse: PulseInfo
   onRefreshPulse: () => void
@@ -28,9 +29,13 @@ interface Props {
   onBackToResults: () => void
 }
 
+// Find ideas, before searching. The first thing staff see after picking a client:
+// the search card on top, then a few searches worth trying for this client.
 export function SearchScreen(props: Props) {
   const { query, setQuery, onSearch, clientName, live, error } = props
-  const searchBox = (
+  return (
+    <section className="search-screen find-page">
+      <AltitudeHero clientName={clientName}>
         <SearchBox
           inputId="keyword"
           value={query.keyword}
@@ -46,36 +51,31 @@ export function SearchScreen(props: Props) {
           pulse={props.pulse}
           onRefreshPulse={props.onRefreshPulse}
           autoFocus
+          hideChips
         />
-  )
-  return (
-    <section className="search-screen">
-      <AltitudeHero clientName={clientName}>{searchBox}</AltitudeHero>
-      <div className="search-intro">
-        <span className="eyebrow">{clientName} · Search</span>
-        {props.planned > 0 && (
-          <span className="progress-line">
-            <strong>
-              {props.planned} of {props.target}
-            </strong>{' '}
-            videos planned for {clientName} this month
-            <span className="progress-mini" aria-hidden="true">
-              <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
-            </span>
-          </span>
-        )}
-        <h1>Find videos that are working right now</h1>
-        <p className="lede">
-          {live
-            ? 'Type what this client is about. We search TikTok live, rank videos by how far they beat the account’s size, and show which sounds and hashtags keep coming up.'
-            : 'Type a niche or ask a question in plain words. We search TikTok, rank videos from small accounts with big views, and show which formats are spreading.'}
-        </p>
-      </div>
+      </AltitudeHero>
 
-      {props.lastSearch && (
-        <button type="button" className="link-btn back-results" onClick={props.onBackToResults}>
-          ← Back to results for "{props.lastSearch}"
-        </button>
+      {(props.planned > 0 || props.lastSearch) && (
+        <div className="find-status">
+          {props.planned > 0 && (
+            <span className="progress-line">
+              <span>
+                <strong>
+                  {props.planned} of {props.target}
+                </strong>{' '}
+                videos approved for {clientName} this month
+              </span>
+              <span className="progress-mini" aria-hidden="true">
+                <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
+              </span>
+            </span>
+          )}
+          {props.lastSearch && (
+            <button type="button" className="link-btn" onClick={props.onBackToResults}>
+              ← Back to your results for "{props.lastSearch}"
+            </button>
+          )}
+        </div>
       )}
 
       {error && (
@@ -83,10 +83,23 @@ export function SearchScreen(props: Props) {
           <ErrorText text={error} onSearch={props.onSearch} />
         </p>
       )}
-      <p className="hint">
+
+      <StartingPoints
+        clientName={clientName}
+        groups={props.chipGroups}
+        clientExamples={props.clientExamples}
+        pulse={props.pulse}
+        onPick={(value) => {
+          setQuery({ ...query, keyword: value })
+          onSearch(value)
+        }}
+        onRefresh={props.onRefreshPulse}
+      />
+
+      <p className="hint find-hint">
         {live
-          ? 'Live TikTok search. Each new search costs a few cents of Apify credit; repeats within 24 hours are free.'
-          : 'Sample data covers one niche for now: tofu.'}
+          ? 'Each new search looks at real TikTok videos and costs a few cents. Running the same search again within 24 hours is free.'
+          : 'This demo only has sample videos about tofu for now.'}
       </p>
     </section>
   )

@@ -146,7 +146,7 @@ const v = (
   keywords: ['tofu'],
 })
 
-// Instagram rows are kept for when we bring Instagram back; the app only uses TikTok for now.
+// Sample videos for TikTok, Instagram and YouTube (all made up, handles end in .sample).
 const allVideos: Video[] = [
   // Crispy ASMR: big on TikTok, barely on Instagram yet
   v('t1', 'tiktok', '@smallkitchen.sample', 'Crispy tofu in 5 min', 2_400_000, 3_100, 9_000, 9, 13, 41_000, 120_000, 'crispy-asmr'),
@@ -183,9 +183,16 @@ const allVideos: Video[] = [
   // Press hack: one-off
   v('t14', 'tiktok', '@kitchen.tricks.sample', 'No tofu press? Do this', 380_000, 140_000, 160_000, 15, 15, 3_000, 22_000, 'press-hack'),
   v('i12', 'instagram', '@tidy.kitchen.sample', 'Tofu press hack', 95_000, 31_000, 40_000, 11, 16, 900, null, 'press-hack'),
+
+  // YouTube Shorts: sample rows so the YouTube toggle has something to show
+  v('y1', 'youtube', '@crunchlab.sample', 'Crispiest tofu ever (Shorts)', 1_800_000, 24_000, 40_000, 5, 34, 14_000, null, 'crispy-asmr'),
+  v('y2', 'youtube', '@quick.plates.sample', 'Tofu, 3 ways, 30 seconds', 520_000, 9_000, 15_000, 8, 30, 4_800, null, 'crispy-asmr'),
+  v('y3', 'youtube', '@taste.or.not.sample', 'Chicken or tofu? Blind test', 2_300_000, 150_000, 120_000, 10, 45, 21_000, null, 'blind-taste-test'),
+  v('y4', 'youtube', '@sweet.shorts.sample', 'Tofu chocolate mousse', 1_100_000, 60_000, 70_000, 27, 40, 9_500, null, 'three-ingredient-dessert'),
+  v('y5', 'youtube', '@grocery.101.sample', 'Silken vs firm tofu', 430_000, 18_000, 22_000, 4, 50, 3_300, null, 'buying-wrong'),
 ]
 
-export const videos = allVideos.filter((v) => v.platform === 'tiktok')
+export const videos = allVideos
 
 export const clients: Client[] = [
   {
@@ -230,12 +237,8 @@ const idea = (clientId: string, videoId: string, status: SavedIdea['status'], du
 }
 
 export const sampleIdeas: SavedIdea[] = [
-  idea('evergreen', 't1', 'approved', 2),
-  idea('evergreen', 't9', 'approved', 5),
-  idea('evergreen', 't7', 'approved', 8),
-  idea('evergreen', 't6', 'approved', 12),
-  idea('evergreen', 't10', 'approved', 15),
-  idea('evergreen', 't2', 'waiting', 14),
+  // One sample plan per Plans column, so the board is easy to read.
+  idea('evergreen', 't6', 'approved', 5),
   idea('evergreen', 't11', 'waiting', 14),
-  idea('evergreen', 't3', 'saved', 14),
+  idea('evergreen', 't14', 'saved', 14),
 ]

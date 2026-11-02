@@ -17,3 +17,6 @@
 @import './styles/login.css'; /* stream A */
 @import './styles/portal.css';
 @import './styles/channel.css';
+@import './styles/theme-remake.css'; /* design system for the whole app: keep last */
+@import './styles/client-home.css'; /* client Home + Brief, on the theme-remake tokens */
+@import './styles/plans-board.css'; /* Plans board (drag between columns), on the theme-remake tokens */

@@ -7,15 +7,13 @@ import {
   hasDate,
   hasScore,
   outlierScore,
-  platformName,
   scoreLine,
+  platformName,
   shareSaveRate,
-  tierName,
-  tierOf,
-  times,
   viewsPerDay,
   viewsWord,
 } from '../lib/metrics'
+import { beatUsual, timesNumber } from './find/words'
 import { useCountUp } from '../lib/motion'
 import { Thumb } from './Thumb'
 import { useManagerName } from '../lib/appContext'
@@ -98,7 +96,6 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
   const shownScore = useCountUp(score)
   const shownViews = useCountUp(video.views)
   const fit = clientFit(format, client)
-  const tier = tierOf(score)
   const formatAccounts = video.live ? (cohort?.accounts ?? 1) : sampleAccounts
   const source = sourceLine(video)
   const formula = formulaLine(video)
@@ -130,10 +127,10 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
       ? { label: 'Growth', value: compact(viewsPerDay(video)), unit: `${viewsWord(video)} a day`, note: `Posted ${ago(video.daysAgo)}` }
       : { label: 'Growth', value: '–', unit: '', note: 'Posting date unknown' },
     {
-      label: 'Format used by',
+      label: 'Accounts posting this idea',
       value: String(formatAccounts),
       unit: formatAccounts === 1 ? 'account' : 'accounts',
-      note: formatAccounts >= 3 ? 'A pattern, not luck' : 'Too few to be sure',
+      note: formatAccounts >= 3 ? 'Enough accounts to show it is catching on, not luck' : 'Too few accounts to be sure it works',
     },
   ]
 
@@ -171,22 +168,21 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
             <Thumb video={video} large />
           </div>
 
-          <section className="stats" aria-label="Video analytics">
+          <section className="stats" aria-label="Video numbers">
             {hasScore(video) ? (
-              <div className={`stat-card stat-score stat-${tier}`}>
-                <span className="stat-label">Score</span>
+              <div className="stat-card stat-score">
+                <span className="stat-label">{video.medianViews === null ? 'Views compared with followers' : "Views compared with the account's usual"}</span>
                 <div className="stat-score-row">
-                  <span className="stat-big">{times(shownScore)}</span>
-                  <span className={`tier tier-${tier}`}>{tierName[tier]}</span>
+                  <span className="stat-big">{timesNumber(shownScore)} times</span>
                 </div>
-                <span className="stat-note">{scoreLine(video)}</span>
+                <span className="stat-note">{beatUsual(video)}</span>
                 <span className="stat-compare">
                   {compact(video.medianViews ?? video.followers)} → <strong>{compact(shownViews)}</strong>
                 </span>
               </div>
             ) : (
               <div className="stat-card stat-score">
-                <span className="stat-label">Score</span>
+                <span className="stat-label">Views compared with usual</span>
                 <span className="stat-big">–</span>
                 <span className="stat-note">{scoreLine(video)}</span>
               </div>
@@ -239,13 +235,13 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
           </section>
 
           <section className="block">
-            <h3>
-              {video.live ? 'What we know' : 'Why it worked'}{' '}
-              <span className="ai-tag">{video.live ? `From ${platformName[video.platform]} data` : 'Sample · written by hand'}</span>
-            </h3>
+            <h3>{video.live ? 'What we know' : 'Why it worked'}</h3>
+            <p className="small muted">
+              {video.live ? `From ${platformName[video.platform]}.` : 'A sample, written by hand for the demo.'}
+            </p>
             <dl className="why">
               <div>
-                <dt>Hook</dt>
+                <dt>How it starts</dt>
                 <dd>{format.why.hook}</dd>
               </div>
               <div>
@@ -257,7 +253,7 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
                 <dd>{format.why.length}</dd>
               </div>
               <div>
-                <dt>Format</dt>
+                <dt>How it's made</dt>
                 <dd>{format.why.format}</dd>
               </div>
               <div>
@@ -285,13 +281,13 @@ export function BreakdownPanel({ video, format, cohort, formatAccounts: sampleAc
         <footer className="drawer-foot">
           {!status && (
             <button className="btn btn-primary" onClick={onSave}>
-              Add to shortlist for {client.name}
+              Save for {client.name}
             </button>
           )}
           {status === 'saved' && (
             <>
               <button className="btn btn-ghost" aria-pressed="true" onClick={onSave}>
-                ✓ Shortlisted
+                ✓ Saved
               </button>
               <button className="btn btn-primary" onClick={onPlan}>
                 Open plan

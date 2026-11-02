@@ -1,5 +1,6 @@
 import type { ChipGroup } from '../lib/clientChips'
 import { PlatformLogo } from './PlatformToggles'
+import { checkedWhen } from './find/checked'
 
 export interface PulseInfo {
   live: boolean
@@ -18,16 +19,10 @@ interface Props {
   extra?: React.ReactNode
 }
 
-function updated(ts: number) {
-  const mins = Math.round((Date.now() - ts) / 60_000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins} min ago`
-  const hrs = Math.round(mins / 60)
-  return hrs < 24 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`
-}
 
-// Client-specific search ideas under the search box: what's trending for them, what fits their audience,
-// and more like what they've already saved.
+// Client-specific search ideas as one compact row inside the search card (used when a screen doesn't
+// hide them). Each is a plain search button; why it's suggested shows on hover. Find ideas shows the
+// fuller version, with a sentence per search, in find/StartingPoints.
 export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extra }: Props) {
   return (
     <div className="client-chips">
@@ -36,24 +31,21 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
           <PlatformLogo platform="tiktok" size={14} />
           {pulse.loading ? (
             <span>
-              Checking what's trending for {clientName}… <span className="muted">(about 30 seconds, once a day)</span>
+              Checking what's catching on for {clientName} on TikTok. <span className="muted">This takes about 30 seconds and runs once a day.</span>
             </span>
           ) : pulse.error ? (
-            <span className="pulse-error">Couldn't check trends: {pulse.error}</span>
+            <span className="pulse-error">We couldn't check TikTok just now: {pulse.error}</span>
           ) : !pulse.topic ? (
             // Nothing to look up: a refresh would only be refused.
-            <span className="muted">Add a topic to watch in Client settings to check what's trending for {clientName}.</span>
+            <span className="muted">Add a topic to watch in the Brief to check what's trending for {clientName}.</span>
           ) : pulse.fetchedAt ? (
-            <span className="muted">
-              "Trending now" is from TikTok for "{pulse.topic}", whichever platforms you search · updated{' '}
-              {updated(pulse.fetchedAt)}
-            </span>
+            <span className="muted">We checked TikTok for "{pulse.topic}" {checkedWhen(pulse.fetchedAt)}.</span>
           ) : (
-            <span className="muted">Trends for {clientName} haven't been checked yet.</span>
+            <span className="muted">We haven't checked TikTok for {clientName} yet.</span>
           )}
           {!pulse.loading && pulse.topic && (
             <button type="button" className="link-btn" onClick={onRefresh}>
-              ↻ Refresh
+              Check again
             </button>
           )}
         </div>
@@ -61,7 +53,7 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
 
       {pulse.loading && !groups.some((g) => g.id === 'trending') && (
         <div className="chip-group" aria-hidden="true">
-          <span className="chip-group-title">Trending now</span>
+          <span className="chip-group-title">Catching on now</span>
           <div className="chip-row">
             {[90, 120, 80].map((w) => (
               <span key={w} className="cchip cchip-skeleton" style={{ width: w }} />
@@ -78,7 +70,8 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
               <button
                 key={`${g.id}-${c.label}`}
                 type="button"
-                className={`cchip cchip-${g.id} ${c.hot ? 'cchip-hot' : ''}`}
+                className={`cchip cchip-${g.id}`}
+                title={c.hint}
                 onClick={() => onPick(c.value)}
               >
                 {g.id === 'trending' && (
@@ -87,7 +80,6 @@ export function ClientChips({ clientName, groups, pulse, onPick, onRefresh, extr
                   </svg>
                 )}
                 <span className="cchip-label">{c.label}</span>
-                {c.hint && <span className="cchip-hint">{c.hint}</span>}
               </button>
             ))}
           </div>

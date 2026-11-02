@@ -1,7 +1,8 @@
 import type { Video } from '../types'
 import type { Interpretation } from './parseQuery'
 import type { FormatTrend } from './metrics'
-import { meanScore, plural, stageText, times } from './metrics'
+import { meanScore, plural } from './metrics'
+import { beatUsualAverage, spreadSentence } from '../components/find/words'
 
 // Lowercase the first letter only, so platform names keep their capitals mid-sentence.
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
@@ -32,22 +33,22 @@ export function buildAnswer(interp: Interpretation, results: Video[], trends: Fo
 
   if (q.startsWith('why')) {
     lines.push(
-      `Mostly the format. ${lead.vids.length} of the ${results.length} matching videos use "${lead.t.format.name}", averaging ${times(lead.avg)} their account's usual views.`,
+      `Mostly the idea behind the video. ${lead.vids.length} of the ${results.length} matching videos copy "${lead.t.format.name}", and on average they got ${beatUsualAverage(lead.avg, lead.vids.some((v) => v.medianViews === null))}.`,
       `${lead.t.format.why.hook} ${lead.t.format.why.first3s}`,
-      `Where it stands: ${lowerFirst(stageText(lead.t))}.`,
+      `Is it still catching on? ${spreadSentence(lead.t)}.`,
     )
   } else if (/^(is|are|does|do|should|can|could|will)\b/.test(q)) {
     const early = lead.t.stage === 'early' || lead.t.stage === 'rising'
     lines.push(
-      `${early ? 'Yes, there is still room.' : 'Probably late.'} "${lead.t.format.name}" is ${{ early: 'early', rising: 'rising', everywhere: 'peaked', 'one-off': 'a one-off' }[lead.t.stage]}: ${lowerFirst(stageText(lead.t))}.`,
+      `${early ? 'Yes, there is still time to copy it.' : 'Probably not.'} "${lead.t.format.name}": ${lowerFirst(spreadSentence(lead.t))}.`,
       `The newest matching video was posted ${lead.t.newestDays} days ago.`,
     )
   } else {
     lines.push(`What's working${forWho} right now:`)
     ranked.slice(0, 3).forEach((r, i) => {
-      lines.push(`${i + 1}. ${r.t.format.name}: ${lowerFirst(stageText(r.t))} (${plural(r.vids.length, 'video')}, about ${times(r.avg)} usual views).`)
+      lines.push(`${i + 1}. ${r.t.format.name}: ${lowerFirst(spreadSentence(r.t))} (${plural(r.vids.length, 'video')} here, on average ${beatUsualAverage(r.avg, r.vids.some((v) => v.medianViews === null))}).`)
     })
   }
 
-  return { lines, basis: `Written from the ${results.length} sample videos below` }
+  return { lines, basis: `Based only on the ${results.length} videos below` }
 }
