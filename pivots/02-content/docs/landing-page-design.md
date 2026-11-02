@@ -145,7 +145,7 @@ All are in the design system artifact as `rm-` classes with live previews.
 | 0 | Sticky nav | White, frosted | — | — |
 | 1 | Hero + mini demo | **Navy panel** | **Dots** | VIDEO thumbs in the mini demo (9:16) |
 | 2 | Proof | White | — | Agency quote (waiting on permission) |
-| — | Tour video | White; the video overlaps the bottom of the hero panel | — | VIDEO: 60-second tour (16:9) |
+| — | Tour video | White; the video overlaps the bottom of the hero panel | — | VIDEO: product tour, under a minute (16:9) |
 | 3 | Problem | White | — | — |
 | 4 | How it works | White | **Grid** | PHOTO per step (4:3) |
 | 5 | Why not a trend tool? | **Night band** | none (table) | — |
@@ -179,7 +179,7 @@ Section details carried over from the earlier spec:
 
 ## Content to supply
 
-- [ ] 60-second product tour video (16:9)
+- [x] Product tour video, under a minute (16:9), `public/media/remake-tour.mp4`
 - [ ] Trend clips for the mini demo (9:16), or keep generic thumbnails
 - [ ] 5 step screenshots (4:3)
 - [ ] 3 close-up screenshots (4:3), one showing the manager review on a phone
