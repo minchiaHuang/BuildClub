@@ -51,6 +51,13 @@ export interface Shot {
   // Script and storyboard (set once the shot is written and drawn; old plans have neither).
   line?: string
   frameImage?: string
+  purpose?: 'hook' | 'body' | 'cta'
+  // Up to 3 other lines the writer offered for this shot.
+  options?: string[]
+  // The user changed (or picked) the line, so a rewrite asks first.
+  edited?: boolean
+  // Hex colours read from the frame in the browser.
+  palette?: string[]
 }
 
 export interface Format {
