@@ -696,6 +696,7 @@ def db() -> sqlite3.Connection:
     for statement in auth.SCHEMA + publishing.SCHEMA + takes.SCHEMA + renders.SCHEMA:
         conn.execute(statement)
     auth.migrate(conn)
+    publishing.migrate(conn)
     return conn
 
 
@@ -829,7 +830,7 @@ def auth_me(request: Request):
 app.include_router(share.make_router(db, load, save, lambda c, t: cut_review.waiting_cuts(db, load, lambda: MEDIA_DIR, c, t)))
 app.include_router(comments.make_router(load, save))
 app.include_router(google_auth.make_router(db, session_cookie_secure))
-app.include_router(publishing.make_router(db, load))
+app.include_router(publishing.make_router(db, load, lambda: MEDIA_DIR))
 app.include_router(takes.make_router(db, load, lambda: MEDIA_DIR))
 def storyboard_budget(wallet: str, usd: float):
     """None when the paid call may go ahead, else the 429 to return."""
