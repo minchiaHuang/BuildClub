@@ -16,7 +16,8 @@ def test_clients_round_trip(client):
 
 def test_ideas_round_trip(client):
     assert client.put("/api/ideas", json=[IDEA]).status_code == 200
-    assert client.get("/api/ideas").json() == [IDEA]
+    got = client.get("/api/ideas").json()
+    assert [{k: v for k, v in i.items() if k != "updatedAt"} for i in got] == [IDEA]  # the server adds updatedAt
 
 
 def test_bad_idea_status_is_rejected(client):

@@ -18,15 +18,17 @@ import type {
   DragEndEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
-import type { Client, Format, IdeaStatus, SavedIdea, Stage, Video } from "../types";
+import type { Client, Format, IdeaStatus, SavedIdea, Video } from "../types";
 import type { Decision } from "../lib/memory";
 import { useApp, useManagerName } from "../lib/appContext";
 import { plural } from "../lib/metrics";
 import { inTwoWeeks } from "../state";
 import { createShareLink, revokeClientLinks } from "../lib/share";
-import { postedThisMonth, stageOf } from "../lib/stage";
+import { postedThisMonth } from "../lib/stage";
+import { STEPS, flagsOf, nextAction, patchFor, stepOf, targetsOf } from "../lib/steps.ts";
+import type { Step } from "../lib/steps.ts";
+import { useProduction } from "../lib/production.ts";
 import { ProgressRing } from "./ProgressRing";
-import { StageSelect } from "./StageSelect";
 import { PlanCard, PlanCardBody } from "./plans/PlanCard";
 import { PlanColumn } from "./plans/PlanColumn";
 import {
@@ -35,8 +37,15 @@ import {
   columnTitle,
   planName,
   shotsOf,
-  targetsFrom,
 } from "./plans/moves";
+
+// A Home pipeline chip names an idea status; the board's columns are steps.
+const stepForStatus: Record<IdeaStatus, Step> = {
+  saved: "idea",
+  waiting: "storyboard",
+  approved: "filming",
+  rejected: "idea",
+};
 
 interface Props {
   client: Client;
@@ -66,9 +75,10 @@ const instructions =
   "To move a plan, press space or enter. Use the left and right arrow keys to choose a column, " +
   "then press space or enter to drop it there, or escape to cancel.";
 
-// One client's plans as a Kanban board (the Plans tab): Still planning → Waiting for approval →
-// Approved, ready to film. Drag a plan to send, approve or take it back. Plans sent back (from Review or the plan page)
-// return to Still planning with your reason, ready to fix and send again. Any card can move to any column, both ways.
+// One client's plans as a production board (the Plans tab): every video is a card in one of six steps,
+// Idea → Script → Storyboard → Filming → Editing → Posted. The step is worked out from the plan's data (lib/steps.ts),
+// so a drag only does what the plan can really do: send it for approval, approve it (manager only), or set the stage
+// of an approved plan. Each card says what it needs to move on.
 export function ShortlistBoard(p: Props) {
   const [dragId, setDragId] = useState<string | null>(null);
   // A plan dropped on Waiting without shots: it stays put and says why.
@@ -85,42 +95,49 @@ export function ShortlistBoard(p: Props) {
   const [copied, setCopied] = useState(false);
 
   const mine = p.ideas.filter((i) => i.clientId === p.client.id);
-  // Sent-back plans sit in Still planning, showing your reason, until they're fixed and sent again.
-  const shownIn = (i: SavedIdea): IdeaStatus =>
-    i.status === "rejected" ? "saved" : i.status;
-  const by = (s: IdeaStatus) => mine.filter((i) => shownIn(i) === s);
+  const signalsById = useProduction(p.client.id);
   const formatOf = (i: SavedIdea) =>
     p.formatById.get(p.videoById.get(i.videoId)?.formatId ?? "");
   const nameOf = (i?: SavedIdea) => {
     const v = i && p.videoById.get(i.videoId);
     return v ? planName(v, formatOf(i)) : "The plan";
   };
-  const lists: Record<IdeaStatus, SavedIdea[]> = {
-    saved: by("saved"),
-    waiting: by("waiting").sort((a, b) => (a.sentAt ?? 0) - (b.sentAt ?? 0)),
-    approved: by("approved").sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    rejected: by("rejected"),
+  const now = Date.now();
+  // Everything a card needs, worked out once per render.
+  const infoOf = (i: SavedIdea) => {
+    const shots = shotsOf(i, formatOf(i));
+    const sig = signalsById[i.id] ?? {};
+    const step = stepOf(i, shots, sig);
+    return {
+      step,
+      flags: flagsOf(i, step, sig, now),
+      next: nextAction(i, shots, sig, { canDecide, manager }),
+      targets: targetsOf(i, shots, sig, canDecide),
+    };
   };
-  // Approved plans move on to production (Filming → Editing → Posted) in the row below the board.
-  const inStage = (st: Stage) => lists.approved.filter((i) => stageOf(i) === st);
-  const toFilm = inStage("approved");
-  const filming = inStage("filming");
-  const editing = inStage("editing");
+  const lists = Object.fromEntries(STEPS.map((st) => [st, [] as SavedIdea[]])) as Record<Step, SavedIdea[]>;
+  for (const i of mine) lists[infoOf(i).step].push(i);
+  for (const st of STEPS)
+    lists[st].sort((a, b) =>
+      st === "storyboard"
+        ? (a.sentAt ?? 0) - (b.sentAt ?? 0) || a.dueDate.localeCompare(b.dueDate)
+        : a.dueDate.localeCompare(b.dueDate),
+    );
   const postedNow = new Date();
-  const posted = inStage("posted");
-  const postedCount = postedThisMonth(mine, postedNow);
-  const postedRecent = posted
-    .filter((i) => postedThisMonth([i], postedNow) === 1)
+  const postedRecent = lists.posted
+    .filter((i) => !i.postedAt || postedThisMonth([i], postedNow) === 1)
     .sort((a, b) => (b.postedAt ?? 0) - (a.postedAt ?? 0));
-  const postedEarlier = posted.length - postedRecent.length;
-  const approvedCount = lists.approved.length;
+  const postedEarlier = lists.posted.length - postedRecent.length;
+  const postedCount = postedThisMonth(mine, postedNow);
+  const approvedCount = mine.filter((i) => i.status === "approved").length;
   const progress = Math.min(approvedCount / Math.max(p.client.monthlyTarget, 1), 1) * 100;
   const shownLink = link?.clientId === p.client.id ? link.url : null;
-  const shortlisted = lists.saved;
+  // Plans still being written (saved or sent back) that can be sent now, and those with no shots at all.
+  const shortlisted = mine.filter((i) => i.status === "saved" || i.status === "rejected");
   const ready = shortlisted.filter((i) => shotsOf(i, formatOf(i)).length > 0);
   const needShots = shortlisted.filter((i) => shotsOf(i, formatOf(i)).length === 0);
   const dragging = mine.find((i) => i.id === dragId);
-  const dragTargets = dragging ? targetsFrom(dragging.status, canDecide) : null;
+  const dragTargets = dragging ? infoOf(dragging).targets : null;
 
   // Opened from a pipeline chip: bring that stage into view (after App's scroll-to-top on screen change).
   const { focus, onFocusDone } = p;
@@ -128,7 +145,7 @@ export function ShortlistBoard(p: Props) {
     if (!focus) return;
     const frame = requestAnimationFrame(() => {
       document
-        .getElementById(`board-${focus}`)
+        .getElementById(`board-${stepForStatus[focus]}`)
         ?.scrollIntoView({ block: "start", inline: "start" });
       onFocusDone?.();
     });
@@ -213,37 +230,31 @@ export function ShortlistBoard(p: Props) {
   const remove = (id: string) =>
     p.onChangeIdeas((prev) => prev.filter((i) => i.id !== id));
 
-  // Every move (mouse, touch or keyboard drag) comes through here.
-  const move = (idea: SavedIdea, to: IdeaStatus) => {
-    if (!targetsFrom(idea.status, canDecide).includes(to)) return;
+  // Every move (mouse, touch, keyboard drag or the Move to menu) comes through here. A move only does what the
+  // plan can really do (send, approve, stage); the card then lands in the step its data says.
+  const move = (idea: SavedIdea, to: Step) => {
+    if (!infoOf(idea).targets.includes(to)) return;
     const name = nameOf(idea);
-    // Cards move freely, with or without shots. A card leaving Still planning with no shots keeps an
-    // empty list, so it still reads "No shots yet" instead of borrowing the original video's shots.
-    const shots = shotsOf(idea, formatOf(idea));
-    if (idea.status === "saved" && !idea.shots)
-      update(new Set([idea.id]), () => ({ shots: [] }));
-    // Moving back out of Approved undoes the approval.
-    const unapprove = { approvedAt: undefined, managerNote: undefined, shotComments: undefined };
-    if (to === "waiting" && idea.status === "saved") send(new Set([idea.id]));
-    else if (to === "waiting")
-      update(new Set([idea.id]), () => ({
-        status: "waiting",
-        sentAt: Date.now(),
-        rejectReason: undefined,
-        ...unapprove,
-      }));
-    else if (to === "approved") p.onDecide(idea.id, { kind: "approved" });
-    else
-      // Back to Still planning keeps the shots written so far, so it can be sent again.
-      update(new Set([idea.id]), () => ({
-        status: "saved",
-        sentAt: undefined,
-        rejectReason: undefined,
-        shots,
-        ...unapprove,
-      }));
+    const patch = patchFor(idea, to, signalsById[idea.id] ?? {}, canDecide);
+    if (!patch) return;
+    if (to === "storyboard" && idea.status !== "approved") send(new Set([idea.id]));
+    else if (to === "filming" && idea.status === "waiting")
+      p.onDecide(idea.id, { kind: "approved" });
+    else update(new Set([idea.id]), () => patch);
     focusAfter.current = idea.id;
     setSaid(`Moved ${name} to ${columnTitle[to]}.`);
+  };
+
+  // Take a plan back from waiting: it returns to the team's list with the shots written so far.
+  const withdraw = (idea: SavedIdea) => {
+    update(new Set([idea.id]), () => ({
+      status: "saved",
+      sentAt: undefined,
+      rejectReason: undefined,
+      shots: shotsOf(idea, formatOf(idea)),
+    }));
+    focusAfter.current = idea.id;
+    setSaid(`Took ${nameOf(idea)} back from waiting.`);
   };
 
   const ideaOf = (id: string | number) => mine.find((i) => i.id === id);
@@ -251,7 +262,7 @@ export function ShortlistBoard(p: Props) {
     onDragStart: ({ active }) => `Picked up ${nameOf(ideaOf(active.id))}.`,
     onDragOver: ({ active, over }) =>
       over
-        ? `${nameOf(ideaOf(active.id))} is over ${columnTitle[over.id as IdeaStatus]}.`
+        ? `${nameOf(ideaOf(active.id))} is over ${columnTitle[over.id as Step]}.`
         : `${nameOf(ideaOf(active.id))} is not over a column it can move to.`,
     // The board's own status line says what the drop did.
     onDragEnd: () => undefined,
@@ -266,30 +277,35 @@ export function ShortlistBoard(p: Props) {
     setDragId(null);
     const idea = ideaOf(active.id);
     if (!idea) return;
-    if (over && over.id !== idea.status) move(idea, over.id as IdeaStatus);
-    else setSaid(`${nameOf(idea)} stayed in ${columnTitle[idea.status]}.`);
+    const here = infoOf(idea).step;
+    if (over && over.id !== here) move(idea, over.id as Step);
+    else setSaid(`${nameOf(idea)} stayed in ${columnTitle[here]}.`);
   };
 
-  const card = (idea: SavedIdea, column: IdeaStatus) => {
+  const card = (idea: SavedIdea) => {
     const v = p.videoById.get(idea.videoId);
     if (!v) return null;
+    const info = infoOf(idea);
     return (
       <li key={idea.id}>
         <PlanCard
           idea={idea}
           video={v}
           format={p.formatById.get(v.formatId)}
-          column={column}
-          targets={targetsFrom(idea.status, canDecide)}
+          clientName={p.client.name}
+          step={info.step}
+          flags={info.flags}
+          next={info.next}
+          targets={info.targets}
+          onMove={(to) => move(idea, to)}
           onOpenPlan={() => p.onOpenPlan(idea.id)}
           onRemove={() => remove(idea.id)}
+          onDueChange={(dueDate) => update(new Set([idea.id]), () => ({ dueDate }))}
           actions={
-            idea.status === "approved" && (
-              <StageSelect
-                idea={idea}
-                name={planName(v, formatOf(idea))}
-                onChange={(patch) => update(new Set([idea.id]), () => patch)}
-              />
+            idea.status === "waiting" && (
+              <button className="link-btn" onClick={() => withdraw(idea)}>
+                Take back
+              </button>
             )
           }
         />
@@ -297,16 +313,17 @@ export function ShortlistBoard(p: Props) {
     );
   };
 
-  const empty: Record<IdeaStatus, string> = {
-    saved:
-      "Save videos from Find ideas. They show up here so you can plan the shots.",
-    waiting: canDecide ? "Nothing waiting for you to approve." : `Nothing waiting for ${manager}.`,
-    approved: canDecide ? "Plans you approve show up here." : `Plans ${manager} approves show up here.`,
-    rejected: "",
+  const empty: Record<Step, string> = {
+    idea: "Save videos from Find ideas. They show up here so you can plan the shots.",
+    script: "Plans with written lines show up here.",
+    storyboard: canDecide ? "Nothing waiting for you to approve." : `Nothing waiting for ${manager}.`,
+    filming: canDecide ? "Plans you approve show up here." : `Plans ${manager} approves show up here.`,
+    editing: "Nothing being edited.",
+    posted: "Nothing posted yet.",
   };
 
-  const extra: Partial<Record<IdeaStatus, React.ReactNode>> = {
-    saved: shortlisted.length > 0 && (
+  const extra: Partial<Record<Step, React.ReactNode>> = {
+    idea: shortlisted.length > 0 && (
       <div className="board-batch">
         <div className="board-batch-row">
           <span className="small muted">
@@ -339,7 +356,7 @@ export function ShortlistBoard(p: Props) {
         )}
       </div>
     ),
-    waiting: lists.waiting.length > 0 && (
+    storyboard: lists.storyboard.some((i) => i.status === "waiting") && (
       <div className="board-link">
         {shownLink ? (
           <>
@@ -367,28 +384,12 @@ export function ShortlistBoard(p: Props) {
           </p>
         )}
         <button className="btn btn-ghost btn-sm board-review" onClick={p.onReview}>
-          {canDecide ? `Review ${lists.waiting.length}` : `Preview as ${manager}`}
+          {canDecide ? `Review ${lists.storyboard.filter((i) => i.status === "waiting").length}` : `Preview as ${manager}`}
         </button>
       </div>
     ),
   };
-  // The Approved column shows plans not yet in production; the rest are in the production row.
-  const shownList = (st: IdeaStatus) => (st === "approved" ? toFilm : lists[st]);
-  const productionCol = (title: string, list: SavedIdea[], emptyText: string, tone: string, more?: React.ReactNode) => (
-    <section className={`board-col board-col-${tone}`} aria-label={title}>
-      <header className="board-col-head">
-        <h2>{title}</h2>
-        <span className="board-count">{list.length}</span>
-      </header>
-      {more}
-      {list.length ? (
-        <ul className="board-list">{list.map((i) => card(i, "approved"))}</ul>
-      ) : (
-        <p className="board-empty small muted">{emptyText}</p>
-      )}
-    </section>
-  );
-
+  const dragInfo = dragging && infoOf(dragging);
   const dragVideo = dragging && p.videoById.get(dragging.videoId);
   const motion = !reducedMotion();
 
@@ -399,8 +400,8 @@ export function ShortlistBoard(p: Props) {
           <span className="eyebrow">{p.client.name} · Plans</span>
           <h1>Plans</h1>
           <p className="muted">
-            Pick videos, write the shot lists, then send them for approval. Drag
-            a plan to move it.
+            Every video moves through six steps, from idea to posted. Each card
+            says what it needs next. Drag a card where it can go, or use Move to.
           </p>
         </div>
         <div className="target">
@@ -438,40 +439,32 @@ export function ShortlistBoard(p: Props) {
           onDragEnd={onDragEnd}
           onDragCancel={() => setDragId(null)}
         >
-          <div className={`plans-board${dragging ? " is-dragging" : ""}`}>
-            {COLUMNS.map((s) => (
-              <PlanColumn
-                key={s}
-                status={s}
-                count={shownList(s).length}
-                canDrop={dragTargets ? dragTargets.includes(s) : null}
-                empty={empty[s]}
-                extra={extra[s]}
-              >
-                {shownList(s).length ? (
-                  <ul className="board-list">
-                    {shownList(s).map((i) => card(i, s))}
-                  </ul>
-                ) : undefined}
-              </PlanColumn>
-            ))}
+          <div className={`plans-board pb-board${dragging ? " is-dragging" : ""}`}>
+            {COLUMNS.map((st) => {
+              const list = st === "posted" ? postedRecent : lists[st];
+              return (
+                <PlanColumn
+                  key={st}
+                  step={st}
+                  count={list.length}
+                  canDrop={dragTargets ? dragTargets.includes(st) : null}
+                  empty={empty[st]}
+                  extra={
+                    <>
+                      {extra[st]}
+                      {st === "posted" && postedEarlier > 0 && (
+                        <span className="small muted">{plural(postedEarlier, "video")} posted earlier</span>
+                      )}
+                    </>
+                  }
+                >
+                  {list.length ? (
+                    <ul className="board-list">{list.map((i) => card(i))}</ul>
+                  ) : undefined}
+                </PlanColumn>
+              );
+            })}
           </div>
-          {approvedCount > 0 ? (
-            <>
-              <h2 className="board-row-title">In production</h2>
-              <div className="board-cols board-cols-production">
-                {productionCol("Filming", filming, "Nothing being filmed.", "filming")}
-                {productionCol("Editing", editing, "Nothing being edited.", "editing")}
-                {productionCol(
-                  "Posted this month",
-                  postedRecent,
-                  "Nothing posted this month.",
-                  "posted",
-                  postedEarlier > 0 && <span className="small muted">{plural(postedEarlier, "video")} posted earlier</span>,
-                )}
-              </div>
-            </>
-          ) : null}
           <p className="sr-only" role="status" aria-live="polite">
             {said}
           </p>
@@ -483,12 +476,16 @@ export function ShortlistBoard(p: Props) {
                   : null
               }
             >
-              {dragging && dragVideo ? (
+              {dragging && dragVideo && dragInfo ? (
                 <div className="board-card plans-card plans-card-lifted">
                   <PlanCardBody
                     idea={dragging}
                     video={dragVideo}
                     format={formatOf(dragging)}
+                    clientName={p.client.name}
+                    step={dragInfo.step}
+                    flags={dragInfo.flags}
+                    next={dragInfo.next}
                   />
                 </div>
               ) : null}

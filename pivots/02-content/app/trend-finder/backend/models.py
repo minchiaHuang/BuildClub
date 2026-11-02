@@ -125,6 +125,8 @@ class SavedIdea(BaseModel):
     shotComments: Optional[dict[int, str]] = None
     # Every approver answer so far, oldest first. Only the review link appends to it.
     history: Optional[list[Decision]] = None
+    # When the idea last changed, set by the server on save (never by the client); the board's "Stuck" flag reads it.
+    updatedAt: Optional[int] = None
 
 
 class NewComment(BaseModel):

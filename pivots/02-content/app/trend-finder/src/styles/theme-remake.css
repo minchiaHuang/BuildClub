@@ -385,3 +385,16 @@
   /* No movement: keep the strong blue glow, still. */
   :root[data-ui="altitude"] .platform-on { animation: none; }
 }
+
+/* Production board tokens (StepProgress, FlagBadge). They point at tokens that already have dark values, so
+   light and dark both follow without a second block here. A flag is always printed with a word. */
+:root[data-ui="altitude"] {
+  --step-done: var(--early);
+  --step-current: var(--blue);
+  --step-todo: var(--line-strong);
+  --step-gap: 3px;
+  --flag-stuck: var(--rising);
+  --flag-stuck-soft: var(--rising-soft);
+  --flag-overdue: var(--no);
+  --flag-overdue-soft: var(--no-soft);
+}

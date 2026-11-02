@@ -43,6 +43,7 @@ import youtube
 import analyze
 import auth
 import google_auth
+import production
 import publishing
 import cut_review
 import grading
@@ -751,7 +752,7 @@ def put_ideas(ideas: list[SavedIdea], response: Response, if_match: Optional[str
                                 status_code=409, headers={"ETag": etag(rev)})
         # Annie may have decided since this tab last loaded; keep her newer answer.
         merged = share.merge_ideas(load("ideas"), [i.model_dump(exclude_none=True) for i in ideas])
-        ideas = [SavedIdea(**i) for i in merged]
+        ideas = [SavedIdea(**i) for i in production.stamp_updated(load("ideas"), merged, int(time.time() * 1000))]
         save("ideas", ideas)
         response.headers["ETag"] = etag(share.bump_ideas_rev(db, load))
     return ideas
@@ -834,6 +835,7 @@ app.include_router(comments.make_router(load, save))
 app.include_router(google_auth.make_router(db, session_cookie_secure))
 app.include_router(publishing.make_router(db, load, lambda: MEDIA_DIR))
 app.include_router(takes.make_router(db, load, lambda: MEDIA_DIR))
+app.include_router(production.make_router(db))
 def storyboard_budget(wallet: str, usd: float):
     """None when the paid call may go ahead, else the 429 to return."""
     cap, env = (DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD") if wallet == "claude" else (DAILY_IMAGE_USD, "DAILY_IMAGE_USD")

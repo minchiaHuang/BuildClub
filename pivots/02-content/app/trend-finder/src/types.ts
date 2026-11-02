@@ -48,6 +48,9 @@ export interface Shot {
   time: string
   shot: string
   text?: string
+  // Script and storyboard (set once the shot is written and drawn; old plans have neither).
+  line?: string
+  frameImage?: string
 }
 
 export interface Format {
@@ -163,4 +166,6 @@ export interface SavedIdea {
   managerNote?: string
   // The manager's comment per shot, keyed by shot index.
   shotComments?: Record<number, string>
+  // When the plan last changed. The API sets it on save; the board's "Stuck" flag reads it. Old plans have none.
+  updatedAt?: number
 }
