@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { formats } from '../data/sample'
 import { useApp } from '../lib/appContext'
+import { t } from '../lib/i18n'
+import { needLabel } from '../lib/needs'
 
 interface Props {
   // Ids already in use, so the new client's id is unique.
@@ -76,18 +78,18 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
   return (
     <form className="settings add-client" onSubmit={save} noValidate>
       <header className="page-head">
-        <span className="eyebrow">Add client</span>
-        <h1>Add a client</h1>
-        <p className="muted">Only the name is needed now. You can change everything later in the Brief.</p>
+        <span className="eyebrow">{t('home.addClient.eyebrow')}</span>
+        <h1>{t('home.addClient.title')}</h1>
+        <p className="muted">{t('home.addClient.intro')}</p>
       </header>
 
       <div className="settings-grid">
         <label className="field">
-          <span className="field-label">Client name</span>
+          <span className="field-label">{t('home.client.fieldName')}</span>
           <input
             id="new-client-name"
             value={name}
-            placeholder="e.g. Mia's Bakery"
+            placeholder={t('home.addClient.namePlaceholder')}
             aria-invalid={tried && nameMissing}
             aria-describedby={tried && nameMissing ? 'new-client-name-error' : undefined}
             onChange={(e) => setName(e.target.value)}
@@ -95,16 +97,16 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
           />
           {tried && nameMissing && (
             <span id="new-client-name-error" className="field-error">
-              Add the client's name.
+              {t('home.addClient.nameError')}
             </span>
           )}
         </label>
         <label className="field">
-          <span className="field-label">What they sell</span>
-          <input id="new-client-niche" value={niche} placeholder="e.g. sourdough and cakes" onChange={(e) => setNiche(e.target.value)} />
+          <span className="field-label">{t('home.client.fieldNiche')}</span>
+          <input id="new-client-niche" value={niche} placeholder={t('home.addClient.nichePlaceholder')} onChange={(e) => setNiche(e.target.value)} />
         </label>
         <label className="field">
-          <span className="field-label">Main audience</span>
+          <span className="field-label">{t('home.client.fieldAudience')}</span>
           <input id="new-client-audience" list="new-audience-options" value={audience} onChange={(e) => setAudience(e.target.value)} />
           <datalist id="new-audience-options">
             {allAudiences.map((a) => (
@@ -113,26 +115,26 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
           </datalist>
         </label>
         <label className="field field-wide">
-          <span className="field-label">Topics to watch (comma-separated)</span>
+          <span className="field-label">{t('home.client.fieldTopics')}</span>
           <input
             id="new-client-topics"
             value={topics}
-            placeholder="e.g. sourdough, bakery tour"
+            placeholder={t('home.addClient.topicsPlaceholder')}
             onChange={(e) => setTopics(e.target.value)}
           />
-          <span className="small muted">We check the first topic on TikTok once a day to fill "Trending now".</span>
+          <span className="small muted">{t('home.client.topicsHelp')}</span>
         </label>
         <label className="field field-wide">
-          <span className="field-label">Starter searches (comma-separated)</span>
+          <span className="field-label">{t('home.client.fieldExamples')}</span>
           <input
             id="new-client-examples"
             value={examples}
-            placeholder="e.g. bread making asmr, cake decorating"
+            placeholder={t('home.addClient.examplesPlaceholder')}
             onChange={(e) => setExamples(e.target.value)}
           />
         </label>
         <label className="field">
-          <span className="field-label">Videos per month</span>
+          <span className="field-label">{t('home.client.fieldTarget')}</span>
           <input
             id="new-client-target"
             type="number"
@@ -146,14 +148,14 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
 
       <fieldset className="cannot">
         <legend>
-          <h3>What this client can't do</h3>
-          <span className="small muted">Videos that need a ticked item get marked as hard to film.</span>
+          <h3>{t('home.client.cannotTitle')}</h3>
+          <span className="small muted">{t('home.client.cannotHelp')}</span>
         </legend>
         <div className="cannot-list">
           {allNeeds.map((need) => (
             <label key={need} className="check">
               <input type="checkbox" checked={cannot.includes(need)} onChange={() => toggleCannot(need)} />
-              {need}
+              {needLabel(need)}
             </label>
           ))}
         </div>
@@ -161,10 +163,10 @@ export function AddClientScreen({ takenIds, onCreated, onCancel }: Props) {
 
       <div className="form-actions">
         <button type="submit" className="btn btn-primary">
-          Save and find ideas
+          {t('home.addClient.save')}
         </button>
         <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Cancel
+          {t('home.addClient.cancel')}
         </button>
       </div>
     </form>

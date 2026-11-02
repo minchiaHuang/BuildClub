@@ -21,7 +21,7 @@ import type {
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from "../types";
 import type { Decision } from "../lib/memory";
 import { useApp, useManagerName } from "../lib/appContext";
-import { plural } from "../lib/metrics";
+import { t, tp } from "../lib/i18n";
 import { inTwoWeeks } from "../state";
 import { createShareLink, revokeClientLinks } from "../lib/share";
 import { postedThisMonth } from "../lib/stage";
@@ -71,10 +71,6 @@ const collision: CollisionDetection = (args) =>
 const reducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-const instructions =
-  "To move a plan, press space or enter. Use the left and right arrow keys to choose a column, " +
-  "then press space or enter to drop it there, or escape to cancel.";
-
 // One client's plans as a production board (the Plans tab): every video is a card in one of six steps,
 // Idea → Script → Storyboard → Filming → Editing → Posted. The step is worked out from the plan's data (lib/steps.ts),
 // so a drag only does what the plan can really do: send it for approval, approve it (manager only), or set the stage
@@ -102,7 +98,7 @@ export function ShortlistBoard(p: Props) {
     p.formatById.get(p.videoById.get(i.videoId)?.formatId ?? "");
   const nameOf = (i?: SavedIdea) => {
     const v = i && p.videoById.get(i.videoId);
-    return v ? planName(v, formatOf(i)) : "The plan";
+    return v ? planName(v, formatOf(i)) : t("plan.board.thePlan");
   };
   const now = Date.now();
   // Everything a card needs, worked out once per render.
@@ -200,7 +196,7 @@ export function ShortlistBoard(p: Props) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      setLinkError("Couldn't copy. Select the link and copy it by hand.");
+      setLinkError(t("plan.board.copyFailed"));
     }
   };
 
@@ -239,7 +235,7 @@ export function ShortlistBoard(p: Props) {
     // Taking an approval back asks first; nothing changes until "Continue".
     if (needsConfirm(idea, to)) {
       setConfirm(idea.id);
-      setSaid(`Moving ${nameOf(idea)} back to Waiting for approval needs confirming. Continue or cancel.`);
+      setSaid(t("plan.board.said.confirm", { name: nameOf(idea) }));
       return;
     }
     apply(idea, to);
@@ -253,7 +249,7 @@ export function ShortlistBoard(p: Props) {
       p.onDecide(idea.id, { kind: "approved" });
     else update(new Set([idea.id]), () => patch);
     focusAfter.current = idea.id;
-    setSaid(`Moved ${name} to ${columnTitle[to]}.`);
+    setSaid(t("plan.board.said.moved", { name, step: columnTitle(to) }));
   };
 
   // Take a plan back from waiting: it returns to the team's list with the shots written so far.
@@ -265,20 +261,20 @@ export function ShortlistBoard(p: Props) {
       shots: shotsOf(idea, formatOf(idea)),
     }));
     focusAfter.current = idea.id;
-    setSaid(`Took ${nameOf(idea)} back from waiting.`);
+    setSaid(t("plan.board.said.tookBack", { name: nameOf(idea) }));
   };
 
   const ideaOf = (id: string | number) => mine.find((i) => i.id === id);
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${nameOf(ideaOf(active.id))}.`,
+    onDragStart: ({ active }) => t("plan.board.ann.pickedUp", { name: nameOf(ideaOf(active.id)) }),
     onDragOver: ({ active, over }) =>
       over
-        ? `${nameOf(ideaOf(active.id))} is over ${columnTitle[over.id as Step]}.`
-        : `${nameOf(ideaOf(active.id))} is not over a column it can move to.`,
+        ? t("plan.board.ann.over", { name: nameOf(ideaOf(active.id)), step: columnTitle(over.id as Step) })
+        : t("plan.board.ann.notOver", { name: nameOf(ideaOf(active.id)) }),
     // The board's own status line says what the drop did.
     onDragEnd: () => undefined,
     onDragCancel: ({ active }) =>
-      `Cancelled. ${nameOf(ideaOf(active.id))} stayed where it was.`,
+      t("plan.board.ann.cancel", { name: nameOf(ideaOf(active.id)) }),
   };
 
   const onDragStart = ({ active }: DragStartEvent) => {
@@ -290,7 +286,7 @@ export function ShortlistBoard(p: Props) {
     if (!idea) return;
     const here = infoOf(idea).step;
     if (over && over.id !== here) move(idea, over.id as Step);
-    else setSaid(`${nameOf(idea)} stayed in ${columnTitle[here]}.`);
+    else setSaid(t("plan.board.said.stayed", { name: nameOf(idea), step: columnTitle(here) }));
   };
 
   const card = (idea: SavedIdea) => {
@@ -315,7 +311,7 @@ export function ShortlistBoard(p: Props) {
           actions={
             idea.status === "waiting" && (
               <button className="link-btn" onClick={() => withdraw(idea)}>
-                Take back
+                {t("plan.board.takeBack")}
               </button>
             )
           }
@@ -325,12 +321,12 @@ export function ShortlistBoard(p: Props) {
   };
 
   const empty: Record<Step, string> = {
-    idea: "Save videos from Find ideas. They show up here so you can plan the shots.",
-    script: "Plans with written lines show up here.",
-    storyboard: canDecide ? "Nothing waiting for you to approve." : `Nothing waiting for ${manager}.`,
-    filming: canDecide ? "Plans you approve show up here." : `Plans ${manager} approves show up here.`,
-    editing: "Nothing being edited.",
-    posted: "Nothing posted yet.",
+    idea: t("plan.board.empty.idea"),
+    script: t("plan.board.empty.script"),
+    storyboard: canDecide ? t("plan.board.empty.storyboardManager") : t("plan.board.empty.storyboardTeam", { manager }),
+    filming: canDecide ? t("plan.board.empty.filmingManager") : t("plan.board.empty.filmingTeam", { manager }),
+    editing: t("plan.board.empty.editing"),
+    posted: t("plan.board.empty.posted"),
   };
 
   const extra: Partial<Record<Step, React.ReactNode>> = {
@@ -339,31 +335,31 @@ export function ShortlistBoard(p: Props) {
         <div className="board-batch-row">
           <span className="small muted">
             {needShots.length
-              ? `${plural(needShots.length, "video")} without a shot list.`
-              : "Every video has a shot list."}
+              ? tp("plan.board.needShots", needShots.length)
+              : t("plan.board.allHaveShots")}
           </span>
           <button className="btn btn-ghost btn-sm" disabled={!needShots.length} onClick={generate}>
-            Add suggested shots
+            {t("plan.board.addSuggested")}
           </button>
         </div>
         <label className="field">
-          <span className="field-label">Due date</span>
+          <span className="field-label">{t("plan.board.dueDate")}</span>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value || inTwoWeeks())} />
         </label>
         <label className="field">
-          <span className="field-label">Note to {manager}</span>
+          <span className="field-label">{t("plan.board.noteTo", { manager })}</span>
           <textarea
             rows={2}
             value={note}
-            placeholder={`Why these fit ${p.client.name}`}
+            placeholder={t("plan.board.notePlaceholder", { client: p.client.name })}
             onChange={(e) => setNote(e.target.value)}
           />
         </label>
         <button className="btn btn-primary" disabled={!ready.length} onClick={sendReady}>
-          {ready.length ? `Send ${ready.length} for approval` : "Send for approval"}
+          {ready.length ? t("plan.board.sendN", { n: ready.length }) : t("plan.common.sendForApproval")}
         </button>
         {ready.length > 0 && needShots.length > 0 && (
-          <span className="small muted">Videos without shots stay here.</span>
+          <span className="small muted">{t("plan.board.staysHere")}</span>
         )}
       </div>
     ),
@@ -372,21 +368,21 @@ export function ShortlistBoard(p: Props) {
         {shownLink ? (
           <>
             <label className="field">
-              <span className="field-label">Link for {manager} (no sign-in needed)</span>
+              <span className="field-label">{t("plan.board.linkFor", { manager })}</span>
               <input readOnly value={shownLink} onFocus={(e) => e.currentTarget.select()} />
             </label>
             <div className="board-link-row">
               <button className="btn btn-primary btn-sm" onClick={copyLink}>
-                {copied ? "Copied" : "Copy link"}
+                {copied ? t("plan.common.copied") : t("plan.board.copyLink")}
               </button>
               <button className="btn btn-ghost btn-sm" onClick={turnOff}>
-                Turn off link
+                {t("plan.board.turnOff")}
               </button>
             </div>
           </>
         ) : (
           <button className="btn btn-primary btn-sm" onClick={makeLink}>
-            {link?.clientId === p.client.id ? "Make a new link" : "Get review link"}
+            {link?.clientId === p.client.id ? t("plan.board.newLink") : t("plan.board.getLink")}
           </button>
         )}
         {linkError && (
@@ -395,7 +391,7 @@ export function ShortlistBoard(p: Props) {
           </p>
         )}
         <button className="btn btn-ghost btn-sm board-review" onClick={p.onReview}>
-          {canDecide ? `Review ${lists.storyboard.filter((i) => i.status === "waiting").length}` : `Preview as ${manager}`}
+          {canDecide ? t("plan.board.review", { n: lists.storyboard.filter((i) => i.status === "waiting").length }) : t("plan.board.preview", { manager })}
         </button>
       </div>
     ),
@@ -409,34 +405,28 @@ export function ShortlistBoard(p: Props) {
     <section className="client board">
       <header className="client-head">
         <div>
-          <span className="eyebrow">{p.client.name} · Plans</span>
-          <h1>Plans</h1>
-          <p className="muted">
-            Every video moves through six steps, from idea to posted. Each card
-            says what it needs next. Drag a card where it can go, or use Move to.
-          </p>
+          <span className="eyebrow">{t("plan.board.eyebrow", { client: p.client.name })}</span>
+          <h1>{t("plan.board.title")}</h1>
+          <p className="muted">{t("plan.board.intro")}</p>
         </div>
         <div className="target">
           <ProgressRing value={progress} size={56} stroke={6} />
           <div className="target-text">
             <span className="target-num">
-              {approvedCount} <span className="muted">of {p.client.monthlyTarget}</span>
+              {approvedCount} <span className="muted">{t("plan.board.ofTarget", { target: p.client.monthlyTarget })}</span>
             </span>
-            <span className="small muted">videos approved this month</span>
-            <span className="small muted">{postedCount} posted this month</span>
+            <span className="small muted">{t("plan.board.approvedThisMonth")}</span>
+            <span className="small muted">{t("plan.board.postedThisMonth", { n: postedCount })}</span>
           </div>
         </div>
       </header>
 
       {mine.length === 0 ? (
         <div className="empty">
-          <h2>No saved ideas yet</h2>
-          <p>
-            Save videos from Find ideas. They show up here so you can plan the
-            shots.
-          </p>
+          <h2>{t("plan.board.noIdeas")}</h2>
+          <p>{t("plan.board.noIdeasBody")}</p>
           <button className="btn btn-primary" onClick={p.onFindMore}>
-            Find ideas for {p.client.name}
+            {t("plan.board.findIdeas", { client: p.client.name })}
           </button>
         </div>
       ) : (
@@ -445,7 +435,7 @@ export function ShortlistBoard(p: Props) {
           collisionDetection={collision}
           accessibility={{
             announcements,
-            screenReaderInstructions: { draggable: instructions },
+            screenReaderInstructions: { draggable: t("plan.board.instructions") },
           }}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
@@ -465,7 +455,7 @@ export function ShortlistBoard(p: Props) {
                     <>
                       {extra[st]}
                       {st === "posted" && postedEarlier > 0 && (
-                        <span className="small muted">{plural(postedEarlier, "video")} posted earlier</span>
+                        <span className="small muted">{tp("plan.board.postedEarlier", postedEarlier)}</span>
                       )}
                     </>
                   }
@@ -478,12 +468,12 @@ export function ShortlistBoard(p: Props) {
             })}
           </div>
           {confirmIdea && (
-            <div className="plan-bar pb-confirm" role="alertdialog" aria-label="Confirm taking approval back">
+            <div className="plan-bar pb-confirm" role="alertdialog" aria-label={t("plan.board.confirmAria")}>
               <span className="pb-confirm-text">
-                {nameOf(confirmIdea)}: this moves it back to Waiting for approval. Continue?
+                {t("plan.board.confirmText", { name: nameOf(confirmIdea) })}
               </span>
               <button className="btn btn-ghost" onClick={() => setConfirm(null)}>
-                Cancel
+                {t("plan.common.cancel")}
               </button>
               <button
                 className="btn btn-primary"
@@ -493,7 +483,7 @@ export function ShortlistBoard(p: Props) {
                   apply(confirmIdea, "storyboard");
                 }}
               >
-                Continue
+                {t("plan.common.continue")}
               </button>
             </div>
           )}

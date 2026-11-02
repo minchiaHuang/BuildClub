@@ -1,16 +1,17 @@
 import { PresetPicker } from '../PresetPicker'
+import { t } from '../../lib/i18n'
 import type { SubtitleStyle, SubSize, SubPosition, ZonePlatform } from '../../lib/grading'
 import { SubtitleOverlay } from './SubtitleOverlay'
 import { SafeZoneLayer, SafeZoneToggle } from './SafeZones'
 
-const SIZES = [
-  { id: 'S', label: 'Small' },
-  { id: 'M', label: 'Medium' },
-  { id: 'L', label: 'Large' },
+const sizes = () => [
+  { id: 'S', label: t('cut.subs.small') },
+  { id: 'M', label: t('cut.subs.medium') },
+  { id: 'L', label: t('cut.subs.large') },
 ]
-const POSITIONS = [
-  { id: 'bottom', label: 'Bottom' },
-  { id: 'middle', label: 'Middle' },
+const positions = () => [
+  { id: 'bottom', label: t('cut.subs.bottom') },
+  { id: 'middle', label: t('cut.subs.middle') },
 ]
 
 interface Props {
@@ -32,23 +33,23 @@ export function SubtitleControls({ burn, style, onBurn, onStyle, disabled, showS
       <label className="gr-switch">
         <input type="checkbox" role="switch" checked={burn} disabled={disabled} onChange={(e) => onBurn(e.target.checked)} />
         <span className="gr-switch-track" aria-hidden="true" />
-        <span>Burn subtitles into the video</span>
-        <span className="small gr-switch-state">{burn ? 'On' : 'Off'}</span>
+        <span>{t('cut.subs.burn')}</span>
+        <span className="small gr-switch-state">{burn ? t('cut.subs.on') : t('cut.subs.off')}</span>
       </label>
       {burn && (
         <div className="gr-style">
           <div className="gr-style-controls">
-            <PresetPicker label="Size" options={SIZES} value={style.size} disabled={disabled} onChange={(id) => onStyle({ ...style, size: id as SubSize })} />
-            <PresetPicker label="Position" options={POSITIONS} value={style.position} disabled={disabled} onChange={(id) => onStyle({ ...style, position: id as SubPosition })} />
+            <PresetPicker label={t('cut.subs.size')} options={sizes()} value={style.size} disabled={disabled} onChange={(id) => onStyle({ ...style, size: id as SubSize })} />
+            <PresetPicker label={t('cut.subs.position')} options={positions()} value={style.position} disabled={disabled} onChange={(id) => onStyle({ ...style, position: id as SubPosition })} />
             <label className="check small">
               <input type="checkbox" checked={style.box} disabled={disabled} onChange={(e) => onStyle({ ...style, box: e.target.checked })} />
-              <span>Dark box behind the words</span>
+              <span>{t('cut.subs.box')}</span>
             </label>
             <SafeZoneToggle zone={zone} style={style} onZone={onZone} />
           </div>
           {showSample && (
-            <div className="gr-sample" role="img" aria-label="Sample of the subtitle style">
-              <SubtitleOverlay text="Your words show up like this" style={style} />
+            <div className="gr-sample" role="img" aria-label={t('cut.subs.sampleAria')}>
+              <SubtitleOverlay text={t('cut.subs.sample')} style={style} />
               {zone && <SafeZoneLayer platform={zone} />}
             </div>
           )}

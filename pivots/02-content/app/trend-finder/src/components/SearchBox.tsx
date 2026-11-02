@@ -6,6 +6,7 @@ import { ClientChips } from "./ClientChips";
 import type { PulseInfo } from "./ClientChips";
 import { VoiceButton } from "./VoiceButton";
 import { usePastSearches } from "../lib/usePastSearches";
+import { t } from "../lib/i18n";
 
 interface Props {
   inputId: string;
@@ -42,7 +43,7 @@ export function SearchBox(p: Props) {
       [
         {
           id: "starter" as const,
-          title: `Searches that fit ${p.clientName}`,
+          title: t('find.starter.title', { client: p.clientName }),
           chips: p.clientExamples
             .slice(0, 5)
             .map((e) => ({ label: e, value: e })),
@@ -58,12 +59,12 @@ export function SearchBox(p: Props) {
       }}
     >
       <div className="search-on">
-        <span className="field-label">Search on</span>
+        <span className="field-label">{t('find.box.searchOn')}</span>
         <PlatformToggles selected={p.platforms} onChange={p.onPlatformsChange} />
       </div>
 
       <label htmlFor={p.inputId} className="sr-only">
-        Search a topic, ask a question, or paste a video link
+        {t('find.box.label')}
       </label>
       <div className="search-row">
         <div className="search-input">
@@ -73,10 +74,10 @@ export function SearchBox(p: Props) {
             onChange={(e) => p.onValueChange(e.target.value)}
             placeholder={
               listening
-                ? "Listening… say what you want to find"
+                ? t('find.box.listening')
                 : p.live
-                  ? `e.g. ${p.clientExamples[0] ?? "tofu recipe"}`
-                  : "e.g. tofu, a question, or a TikTok link"
+                  ? t('find.box.eg', { example: p.clientExamples[0] ?? "tofu recipe" })
+                  : t('find.box.egDemo')
             }
             autoFocus={p.autoFocus}
             list={p.live ? listId : undefined}
@@ -102,11 +103,11 @@ export function SearchBox(p: Props) {
           type="submit"
           className="btn btn-primary"
           disabled={!p.value.trim()}
-          title={p.value.trim() ? undefined : "Type what to search for first."}
+          title={p.value.trim() ? undefined : t('find.box.typeFirst')}
         >
           {/https?:\/\//.test(p.value)
-            ? "Find more like this"
-            : "Find trending videos"}
+            ? t('find.box.findMore')
+            : t('find.box.findTrending')}
         </button>
       </div>
 
@@ -117,7 +118,7 @@ export function SearchBox(p: Props) {
             type="file"
             accept="image/png,image/jpeg,image/webp"
             className="sr-only"
-            aria-label="Upload a screenshot"
+            aria-label={t('find.box.uploadAria')}
             // The visible "Upload screenshot" button opens this input, so it is not a second Tab stop.
             tabIndex={-1}
             onChange={(e) => {
@@ -127,9 +128,9 @@ export function SearchBox(p: Props) {
             }}
           />
           <button type="button" className="btn btn-ghost" onClick={() => fileInput.current?.click()}>
-            Upload screenshot
+            {t('find.box.upload')}
           </button>
-          <span className="small muted">Find videos like a screenshot.</span>
+          <span className="small muted">{t('find.box.uploadHint')}</span>
         </div>
       )}
 

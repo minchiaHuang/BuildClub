@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from "../types";
 import type { Pulse } from "../lib/clientChips";
 import { clientTopic } from "../lib/clientChips";
+import { t } from "../lib/i18n";
 import {
   filmNext,
   planName,
@@ -85,27 +86,27 @@ export function ClientHome(p: Props) {
     p.live && !p.pulse
       ? {
           text: p.pulseLoading
-            ? `Checking TikTok for "${topic}"…`
-            : `Remake hasn't checked TikTok for ${client.name} today. It looks up "${topic}" once a day.`,
-          fix: "Check TikTok now",
+            ? t("home.client.checking", { topic })
+            : t("home.client.notChecked", { name: client.name, topic }),
+          fix: t("home.client.checkNow"),
           onFix: p.onRefreshPulse,
           busy: p.pulseLoading,
         }
       : p.live
         ? {
-            text: `Everything from today's TikTok check of "${topic}" already has a plan.`,
-            fix: `Find ideas for ${client.name}`,
+            text: t("home.client.allPlannedLive", { topic }),
+            fix: t("home.client.findIdeas", { name: client.name }),
             onFix: p.onFindIdeas,
           }
         : picks.length === 0 && plannedKinds === 0
           ? {
-              text: `The sample data only covers tofu, so there's nothing to suggest for ${client.name} yet.`,
-              fix: `Find ideas for ${client.name}`,
+              text: t("home.client.sampleOnlyTofu", { name: client.name }),
+              fix: t("home.client.findIdeas", { name: client.name }),
               onFix: p.onFindIdeas,
             }
           : {
-              text: `Every sample video that fits ${client.name} already has a plan.`,
-              fix: `Find ideas for ${client.name}`,
+              text: t("home.client.allPlannedSample", { name: client.name }),
+              fix: t("home.client.findIdeas", { name: client.name }),
               onFix: p.onFindIdeas,
             };
 
@@ -113,13 +114,11 @@ export function ClientHome(p: Props) {
     <section className="ch ch-wide">
       <header className="ch-head">
         <div className="ch-id">
-          <h1>Dashboard</h1>
-          <p className="muted">
-            How {client.name} is tracking this month, and what needs you.
-          </p>
+          <h1>{t("home.client.title")}</h1>
+          <p className="muted">{t("home.client.sub", { name: client.name })}</p>
         </div>
         <button className="btn btn-primary" onClick={p.onFindIdeas}>
-          Find ideas for {client.name}
+          {t("home.client.findIdeas", { name: client.name })}
         </button>
       </header>
 
@@ -155,23 +154,22 @@ export function ClientHome(p: Props) {
       </div>
 
       <LaterSection
-        intro={`These need numbers from ${possessive(client.name)} TikTok account after videos go live. Remake doesn't collect them yet, so nothing here is real data.`}
+        intro={t("home.client.laterIntro", { owner: possessive(client.name) })}
         cards={[
           {
-            title: "How posted videos did",
-            what: `Views on each video ${client.name} posted, next to their usual views.`,
-            needs: `Would need: access to ${possessive(client.name)} TikTok stats.`,
+            title: t("home.client.later1Title"),
+            what: t("home.client.later1What", { name: client.name }),
+            needs: t("home.client.laterNeedsStats", { owner: possessive(client.name) }),
           },
           {
-            title: "Which copied videos worked",
-            what: `Which of the TikTok videos we copied led to ${possessive(client.name)} best results.`,
-            needs:
-              "Would need: TikTok stats, plus a link from each posted video back to its plan.",
+            title: t("home.client.later2Title"),
+            what: t("home.client.later2What", { owner: possessive(client.name) }),
+            needs: t("home.client.later2Needs"),
           },
           {
-            title: "Follower growth",
-            what: `How ${possessive(client.name)} followers changed month by month.`,
-            needs: `Would need: access to ${possessive(client.name)} TikTok stats.`,
+            title: t("home.client.later3Title"),
+            what: t("home.client.later3What", { owner: possessive(client.name) }),
+            needs: t("home.client.laterNeedsStats", { owner: possessive(client.name) }),
           },
         ]}
       />

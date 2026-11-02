@@ -1,12 +1,14 @@
+import { t, type Key } from './i18n.ts'
+
 // The server sends people back to /?google_error=<reason> when Google sign-in fails.
-const MESSAGES: Record<string, string> = {
-  expired: 'The Google sign-in expired. Try again.',
-  rejected: 'Google did not accept that sign-in.',
-  unverified: 'Google has not verified that email.',
-  no_account: 'No Remake account for that Google email.',
+const MESSAGES: Record<string, Key> = {
+  expired: 'find.google.expired',
+  rejected: 'find.google.rejected',
+  unverified: 'find.google.unverified',
+  no_account: 'find.google.noAccount',
 }
 
 export function googleErrorMessage(search: string): string | null {
   const reason = new URLSearchParams(search).get('google_error')
-  return reason && Object.prototype.hasOwnProperty.call(MESSAGES, reason) ? MESSAGES[reason] : null
+  return reason && Object.prototype.hasOwnProperty.call(MESSAGES, reason) ? t(MESSAGES[reason]) : null
 }

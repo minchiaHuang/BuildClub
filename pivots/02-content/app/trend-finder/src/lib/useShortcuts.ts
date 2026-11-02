@@ -1,16 +1,17 @@
 import { useEffect, useRef } from 'react'
+import { t } from './i18n'
 
 // Keyboard shortcuts for the results grid. Tiles mark their main button with data-video-id,
 // so the shortcuts move real DOM focus (screen readers follow it) and act on the focused tile.
 
-export const resultsShortcuts: { keys: string; label: string }[] = [
-  { keys: 'J / K', label: 'Next / previous video' },
-  { keys: 'Enter', label: 'Open the focused video' },
-  { keys: 'S', label: 'Add to or remove from the shortlist' },
-  { keys: 'P', label: 'Shortlist it, or open its plan' },
-  { keys: '/', label: 'Search' },
-  { keys: 'Esc', label: 'Close' },
-  { keys: '?', label: 'Show these shortcuts' },
+export const resultsShortcuts = (): { keys: string; label: string }[] => [
+  { keys: 'J / K', label: t('find.keys.next') },
+  { keys: 'Enter', label: t('find.keys.open') },
+  { keys: 'S', label: t('find.keys.save') },
+  { keys: 'P', label: t('find.keys.plan') },
+  { keys: '/', label: t('find.keys.search') },
+  { keys: 'Esc', label: t('find.keys.close') },
+  { keys: '?', label: t('find.keys.help') },
 ]
 
 interface Handlers {

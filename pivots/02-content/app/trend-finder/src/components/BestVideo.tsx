@@ -5,6 +5,7 @@ import { platformName } from '../lib/metrics'
 import { Thumb } from './Thumb'
 import { playerUrl, seekTo, tiktokVideoId } from '../lib/tiktokPlayer.ts'
 import { useTiktokFrame } from '../lib/useTiktokFrame.ts'
+import { t } from '../lib/i18n'
 
 // What the comments box can ask of the player. Only TikTok's embed reports its time and accepts a jump.
 export interface PlayerControl {
@@ -45,7 +46,7 @@ function TikTokVideo({ video, src, control }: { video: Video; src: string; contr
       <div className="best-video best-video-fail">
         <Thumb video={video} large />
         <a className="best-fail-link" href={video.url} target="_blank" rel="noopener noreferrer">
-          Watch on TikTok ↗
+          {t('find.watchOn', { platform: 'TikTok' })} ↗
         </a>
       </div>
     )
@@ -55,7 +56,7 @@ function TikTokVideo({ video, src, control }: { video: Video; src: string; contr
       <iframe
         ref={setFrame}
         src={src}
-        title={`${platformName[video.platform]} video: ${video.hook}`}
+        title={t('find.best.videoTitle', { platform: platformName[video.platform], hook: video.hook })}
         allow="encrypted-media; fullscreen; picture-in-picture"
         allowFullScreen
         loading="lazy"
@@ -72,7 +73,7 @@ export function BestVideo({ video, onOpen, control }: { video: Video; onOpen?: (
       <div className="best-video">
         <iframe
           src={src}
-          title={`${platformName[video.platform]} video: ${video.hook}`}
+          title={t('find.best.videoTitle', { platform: platformName[video.platform], hook: video.hook })}
           allow="encrypted-media; fullscreen; picture-in-picture"
           allowFullScreen
           loading="lazy"
@@ -87,19 +88,19 @@ export function BestVideo({ video, onOpen, control }: { video: Video; onOpen?: (
         ▶
       </span>
       {!video.live ? (
-        <span className="best-video-note">Sample video, can’t play</span>
+        <span className="best-video-note">{t('find.best.sampleNote')}</span>
       ) : (
-        onOpen && <span className="best-video-note">Open to watch on {platformName[video.platform]}</span>
+        onOpen && <span className="best-video-note">{t('find.best.openToWatch', { platform: platformName[video.platform] })}</span>
       )}
     </>
   )
   // Without onOpen (plan page) the cover links straight to the video; the page's own "Watch on" link is the text label.
   return onOpen ? (
-    <button className="best-video best-video-sample" onClick={onOpen} aria-label={`See why it worked: ${video.hook}`}>
+    <button className="best-video best-video-sample" onClick={onOpen} aria-label={t('find.seeWhyAria', { hook: video.hook })}>
       {inner}
     </button>
   ) : video.live && video.url ? (
-    <a className="best-video best-video-sample" href={video.url} target="_blank" rel="noreferrer" aria-label={`Watch on ${platformName[video.platform]}`}>
+    <a className="best-video best-video-sample" href={video.url} target="_blank" rel="noreferrer" aria-label={t('find.watchOn', { platform: platformName[video.platform] })}>
       {inner}
     </a>
   ) : (

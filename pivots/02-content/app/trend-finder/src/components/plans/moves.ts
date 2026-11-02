@@ -1,12 +1,13 @@
 import type { KeyboardCoordinateGetter } from '@dnd-kit/core'
 import type { Format, SavedIdea, Video } from '../../types'
-import { STEPS, STEP_LABEL } from '../../lib/steps.ts'
+import { STEPS } from '../../lib/steps.ts'
 import type { Step } from '../../lib/steps.ts'
+import { getActiveLang, t } from '../../lib/i18n'
 
 // The Plans board columns, left to right: the six steps of a video.
 export const COLUMNS: Step[] = STEPS
 
-export const columnTitle: Record<Step, string> = STEP_LABEL
+export const columnTitle = (step: Step): string => t(`plan.step.${step}`)
 
 // The plan's name on the board: the format name, or how a live video starts.
 export const planName = (v: Video, f?: Format) => (v.live ? v.hook : (f?.name ?? v.hook))
@@ -17,7 +18,7 @@ export const shotsOf = (idea: SavedIdea, f?: Format) => idea.shots ?? (idea.stat
 
 // "Nov 13" from "2026-11-13".
 export const dueLabel = (iso: string) =>
-  new Date(`${iso}T00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  new Date(`${iso}T00:00`).toLocaleDateString(getActiveLang() === 'zh-Hant' ? 'zh-TW' : 'en-US', { month: 'short', day: 'numeric' })
 
 export interface DragData {
   step: Step

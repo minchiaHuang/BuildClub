@@ -1,4 +1,5 @@
 import type { Client, ClientEvent, Decision as Answer, Format, SavedIdea, Video } from '../types'
+import { t } from './i18n.ts'
 
 // What the manager decided on one plan. The comment is the change asked for, or the reason it was sent back.
 export interface Decision {
@@ -8,10 +9,17 @@ export interface Decision {
   shotComments?: Record<number, string>
 }
 
+// Getters, so the label follows the language on show.
 export const decisionLabel: Record<ClientEvent['kind'], string> = {
-  approved: 'Approved',
-  'approved-with-changes': 'Approved with changes',
-  'sent-back': 'Sent back',
+  get approved() {
+    return t('home.memory.approved')
+  },
+  get 'approved-with-changes'() {
+    return t('home.memory.approvedChanges')
+  },
+  get 'sent-back'() {
+    return t('home.memory.sentBack')
+  },
 }
 
 // The idea after a decision. "Approved with changes" is status 'approved' plus managerNote.
@@ -66,9 +74,9 @@ export function memorySummary(events: ClientEvent[]): string {
   const approved = count('approved') + changes
   const back = count('sent-back')
   return [
-    `${approved} approved${changes ? ` (${changes} with changes)` : ''}`,
-    `${back} sent back`,
-  ].join(', ')
+    `${t('home.memory.summaryApproved', { n: approved })}${changes ? t('home.memory.summaryChanges', { n: changes }) : ''}`,
+    t('home.memory.summaryBack', { n: back }),
+  ].join(t('home.list.sep'))
 }
 
 // The plan's name for the memory list: format and the reference hook.
@@ -81,6 +89,6 @@ export function planTitle(
   const idea = ideas.find((i) => i.id === ideaId)
   const v = idea && videoById.get(idea.videoId)
   const f = v && formatById.get(v.formatId)
-  if (!v || !f) return { title: 'A plan that was removed' }
-  return { title: f.name, detail: `Reference: "${v.hook}"` }
+  if (!v || !f) return { title: t('home.memory.removedPlan') }
+  return { title: f.name, detail: t('home.memory.reference', { hook: v.hook }) }
 }

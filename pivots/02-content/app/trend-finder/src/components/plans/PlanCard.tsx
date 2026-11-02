@@ -1,16 +1,17 @@
 import { useDraggable } from "@dnd-kit/core";
 import type { Format, SavedIdea, Video } from "../../types";
-import { STEP_LABEL } from "../../lib/steps.ts";
 import type { Flags, Step } from "../../lib/steps.ts";
 import { FlagBadge } from "../FlagBadge";
 import { StepProgress } from "../StepProgress";
 import { PostedResult } from "../publish/PostedResult";
-import { compact, plural } from "../../lib/metrics";
+import { compact } from "../../lib/metrics";
 import { beatUsual } from "../find/words";
 import { Thumb } from "../Thumb";
 import { useManagerName } from "../../lib/appContext";
 import { lastSentBack } from "../../lib/memory";
+import { t, tp } from "../../lib/i18n";
 import {
+  columnTitle,
   dueLabel,
   planName,
   shotsOf,
@@ -46,16 +47,20 @@ export function PlanCardBody({
         <strong>{planName(v, f)}</strong>
         <span className="small pb-client">{clientName}</span>
         <span className="small muted">
-          Copies {v.live ? v.handle : `"${v.hook}" by ${v.handle}`} ·{" "}
-          {compact(v.views)} views,{" "}
-          {beatUsual(v).replace(/^\w/, (c) => c.toLowerCase())}
+          {t("plan.card.copiesLine", {
+            what: v.live
+              ? t("plan.card.copiesLive", { handle: v.handle })
+              : t("plan.card.copiesVideo", { hook: v.hook, handle: v.handle }),
+            views: compact(v.views),
+            beat: beatUsual(v).replace(/^\w/, (c) => c.toLowerCase()),
+          })}
         </span>
         <span className="small">
-          Due {dueLabel(idea.dueDate)} ·{" "}
+          {t("plan.card.due", { date: dueLabel(idea.dueDate) })} ·{" "}
           {shots ? (
-            plural(shots, "shot")
+            tp("plan.card.shots", shots)
           ) : (
-            <span className="muted">No shots yet</span>
+            <span className="muted">{t("plan.card.noShots")}</span>
           )}
         </span>
       </div>
@@ -69,18 +74,18 @@ export function PlanCardBody({
         )}
         {step === "posted" && <PostedResult ideaId={idea.id} />}
         <p className="pb-next small">
-          <span className="pb-next-label">Next</span> {next}
+          <span className="pb-next-label">{t("plan.card.next")}</span> {next}
         </p>
         {idea.status === "rejected" && (
           <span className="board-reason small">
-            {manager} sent it back:{" "}
+            {t("plan.card.sentBack", { manager })}{" "}
             {idea.rejectTags?.length ? `${idea.rejectTags.join(" · ")}. ` : ""}
-            {idea.rejectReason || (idea.rejectTags?.length ? "" : "No reason given.")}
+            {idea.rejectReason || (idea.rejectTags?.length ? "" : t("plan.card.noReason"))}
           </span>
         )}
         {last && (
           <span className="board-reason small">
-            Last time {manager} sent it back:{" "}
+            {t("plan.card.lastSentBack", { manager })}{" "}
             {last.tags?.length ? `${last.tags.join(" · ")}. ` : ""}
             {last.reason ?? ""}
           </span>
@@ -136,7 +141,7 @@ export function PlanCard(p: Props) {
       {...attributes}
       {...listeners}
       role="group"
-      aria-roledescription="movable plan"
+      aria-roledescription={t("plan.card.roleDescription")}
       aria-label={name}
     >
       <PlanCardBody
@@ -151,26 +156,26 @@ export function PlanCard(p: Props) {
 
       <div className="board-card-actions" {...keep}>
         <button className="btn btn-ghost btn-sm" onClick={p.onOpenPlan}>
-          Open plan
+          {t("plan.card.openPlan")}
         </button>
         {p.targets.length > 0 && (
           <select
             className="stage-select pb-move"
-            aria-label={`Move ${name} to`}
+            aria-label={t("plan.card.moveTo", { name })}
             value=""
             onChange={(e) => e.target.value && p.onMove(e.target.value as Step)}
           >
-            <option value="">Move to…</option>
-            {p.targets.map((t) => (
-              <option key={t} value={t}>
-                {STEP_LABEL[t]}
+            <option value="">{t("plan.card.moveToOption")}</option>
+            {p.targets.map((to) => (
+              <option key={to} value={to}>
+                {columnTitle(to)}
               </option>
             ))}
           </select>
         )}
         {p.actions}
         <label className="pb-due">
-          <span className="sr-only">Due date for {name}</span>
+          <span className="sr-only">{t("plan.card.dueFor", { name })}</span>
           <input
             type="date"
             value={p.idea.dueDate}
@@ -180,9 +185,9 @@ export function PlanCard(p: Props) {
         <button
           className="link-btn"
           onClick={p.onRemove}
-          aria-label={`Remove ${name}`}
+          aria-label={t("plan.card.removeAria", { name })}
         >
-          Remove
+          {t("plan.card.remove")}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { LinkClosed } from './share.ts'
+import { t } from './i18n.ts'
 
 // A note pinned to a second of a plan's reference video. Added and read, never edited or deleted.
 export interface Comment {
@@ -42,7 +43,7 @@ const base = (ideaId: string, token?: string) =>
 export async function listComments(ideaId: string, token?: string): Promise<Comment[]> {
   const r = await fetch(base(ideaId, token))
   if (r.status === 404 && token) throw new LinkClosed()
-  if (!r.ok) throw new Error("Couldn't load the comments.")
+  if (!r.ok) throw new Error(t('cut.err.commentsLoad'))
   return r.json()
 }
 
@@ -57,7 +58,7 @@ export async function addComment(
     body: JSON.stringify(c),
   })
   if (r.status === 404 && token) throw new LinkClosed()
-  if (r.status === 409) throw new Error('This video has the most comments it can hold.')
-  if (!r.ok) throw new Error("Couldn't save your comment.")
+  if (r.status === 409) throw new Error(t('cut.err.commentsFull'))
+  if (!r.ok) throw new Error(t('cut.err.commentSave'))
   return r.json()
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Pattern } from '../lib/live'
 import { COPY, followerBand, times as multipleText, type Cohort } from '../lib/evidence'
 import { beatUsualAverage } from './find/words'
+import { t, tp } from '../lib/i18n'
 
 interface Props {
   patterns: Pattern[]
@@ -18,19 +19,19 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
     <div className="trends">
       <div className="section-head">
         <div className="section-title">
-          <h2>Sounds and hashtags many accounts are using</h2>
+          <h2>{t('find.patterns.title')}</h2>
           <p className="section-sub">
-            When several accounts use the same sound or hashtag, it's catching on, not luck. Tap one to see only those videos.
+            {t('find.patterns.sub')}
           </p>
         </div>
         {active && (
           <button className="btn btn-ghost btn-sm" onClick={() => onPick(null)}>
-            Show all videos
+            {t('find.patterns.showAll')}
           </button>
         )}
       </div>
       {patterns.length === 0 ? (
-        <p className="muted small">No sound or hashtag shows up across several accounts in these results yet.</p>
+        <p className="muted small">{t('find.patterns.none')}</p>
       ) : (
         <div className="trend-row">
           {patterns.map((p) => {
@@ -44,12 +45,12 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
                   aria-pressed={on}
                   onClick={() => onPick(on ? null : p.label)}
                 >
-                  <span className="field-label">{p.kind === 'sound' ? 'Sound' : 'Hashtag'}</span>
+                  <span className="field-label">{p.kind === 'sound' ? t('find.patterns.sound') : t('find.patterns.hashtag')}</span>
                   <strong className="pattern-label">{p.label}</strong>
                   <span className="trend-text">
-                    Used by {p.accounts} accounts. Their videos got {beatUsualAverage(p.avgScore, true)} on average.
+                    {t('find.patterns.usedBy', { accounts: p.accounts, beat: beatUsualAverage(p.avgScore, true) })}
                   </span>
-                  <span className="trend-count">{p.videoIds.length === 1 ? '1 video' : `${p.videoIds.length} videos`} in these results</span>
+                  <span className="trend-count">{tp('find.patterns.count', p.videoIds.length)}</span>
                 </button>
                 {cohort && (
                   <button
@@ -57,7 +58,7 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
                     aria-expanded={expanded}
                     onClick={() => setOpen(expanded ? null : p.label)}
                   >
-                    Accounts ({cohort.accounts})
+                    {t('find.patterns.accountsBtn', { n: cohort.accounts })}
                   </button>
                 )}
               </div>
@@ -66,7 +67,7 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
         </div>
       )}
       {open && openCohort && (
-        <div className="trend-accounts" role="region" aria-label={`Accounts using ${open}`}>
+        <div className="trend-accounts" role="region" aria-label={t('find.patterns.accountsAria', { label: open })}>
           <strong className="pattern-label">{open}</strong>
           {openCohort.rows.length > 0 && (
             <ul className="trend-account-list">
@@ -76,7 +77,7 @@ export function PatternStrip({ patterns, cohorts, active, onPick }: Props) {
                   <span className="muted">{followerBand(r.followers)}</span>
                   <span>{r.multiple !== null ? multipleText(r.multiple) : '–'}</span>
                   <span className={r.hit ? 'trend-hit' : 'muted'}>
-                    {r.rough ? COPY.roughShort : r.hit === null ? '–' : r.hit ? 'Hit' : 'Not a hit'}
+                    {r.rough ? COPY.roughShort : r.hit === null ? '–' : r.hit ? t('find.patterns.hit') : t('find.patterns.notHit')}
                   </span>
                 </li>
               ))}

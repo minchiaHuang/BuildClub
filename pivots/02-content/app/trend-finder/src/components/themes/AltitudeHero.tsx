@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { t } from '../../lib/i18n'
 
 // Search-page hero: the design system's navy panel with dots (styles in theme-remake.css).
 // Static on purpose: the design system says nothing loops.
@@ -7,8 +8,8 @@ export function AltitudeHero({ clientName, children }: { clientName: string; chi
   return (
     <header className="alt-hero">
       <div className="alt-hero-inner">
-        <h1>What should {clientName} <em>film</em> next?</h1>
-        <p className="alt-lede">Search TikTok for a topic. We show first the videos that got far more views than their account usually gets, so you can copy what is already working.</p>
+        <h1>{t('shell.hero.titleBefore', { name: clientName })}<em>{t('shell.hero.titleEm')}</em>{t('shell.hero.titleAfter')}</h1>
+        <p className="alt-lede">{t('shell.hero.lede')}</p>
         {children && <div className="alt-search">{children}</div>}
       </div>
     </header>

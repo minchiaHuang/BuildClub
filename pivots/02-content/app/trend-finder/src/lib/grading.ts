@@ -1,3 +1,5 @@
+import { t, tp } from './i18n.ts'
+
 // Colour grade and burned-in subtitles for the cut. Mirrors backend/grading.py and backend/subtitles.py.
 
 export interface GradePreset {
@@ -78,7 +80,7 @@ async function body<T>(r: Response, fallback: string): Promise<T> {
 }
 
 export async function getGrades(): Promise<GradePreset[]> {
-  const res = await body<{ presets: GradePreset[] }>(await fetch('/api/cut/grades'), "Couldn't load the colour looks.")
+  const res = await body<{ presets: GradePreset[] }>(await fetch('/api/cut/grades'), t('cut.err.grades'))
   return res.presets
 }
 
@@ -86,7 +88,7 @@ export async function getGrades(): Promise<GradePreset[]> {
 export async function getCues(ideaId: string): Promise<{ cues: Cue[]; edited: boolean } | null> {
   const r = await fetch(`${base(ideaId)}/subtitles`)
   if (r.status === 404) return null
-  return body(r, "Couldn't load the subtitles.")
+  return body(r, t('cut.err.cuesLoad'))
 }
 
 export async function putCues(ideaId: string, cues: { id: number; text: string }[]): Promise<{ cues: Cue[]; edited: boolean }> {
@@ -95,7 +97,7 @@ export async function putCues(ideaId: string, cues: { id: number; text: string }
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cues: cues.map((c) => ({ id: c.id, text: c.text })) }),
   })
-  return body(r, "Couldn't save the subtitles.")
+  return body(r, t('cut.err.cuesSave'))
 }
 
 // ---- platform safe zones (preview only, never burned in) -----------------------------------------------------
@@ -115,21 +117,18 @@ export interface SafeZone {
   top: number
   bottom: number
   right: number
-  topLabel: string
-  bottomLabel: string
-  rightLabel: string
 }
 
 export const SAFE_ZONES: Record<ZonePlatform, SafeZone> = {
-  tiktok: { label: 'TikTok', top: 130, bottom: 480, right: 140, topLabel: 'Top bar', bottomLabel: 'Caption and username', rightLabel: 'Buttons' },
-  reels: { label: 'Reels', top: 108, bottom: 320, right: 120, topLabel: 'Top bar', bottomLabel: 'Caption and username', rightLabel: 'Buttons' },
+  tiktok: { label: 'TikTok', top: 130, bottom: 480, right: 140 },
+  reels: { label: 'Reels', top: 108, bottom: 320, right: 120 },
 }
 
 // A short sentence when the chosen subtitle position falls inside an area the platform covers; null when it doesn't.
 export function zoneWarning(platform: ZonePlatform, style: SubtitleStyle): string | null {
   const z = SAFE_ZONES[platform]
   if (style.position === 'bottom' && BURN_BOTTOM_EDGE > FRAME_H - z.bottom) {
-    return `At the bottom, the subtitles sit under ${z.label}'s caption and username area. Try the middle.`
+    return t('cut.zone.warning', { platform: z.label })
   }
   return null
 }
@@ -146,23 +145,22 @@ export interface AutoCut {
   trims: Trim[]
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-const secs = (n: number) => `${(Math.round(n * 10) / 10).toFixed(1)} s`
+const secs = (n: number) => t('cut.secs', { v: (Math.round(n * 10) / 10).toFixed(1) })
 
 // "2 pauses (1.4 s), 1 filler (0.4 s)" for a list of trims; "" when empty.
 export function trimPhrase(trims: Trim[]): string {
-  const part = (kind: Trim['kind'], word: string) => {
-    const t = trims.filter((x) => x.kind === kind)
-    return t.length ? `${plural(t.length, word)} (${secs(t.reduce((a, x) => a + (x.end - x.start), 0))})` : ''
+  const part = (kind: Trim['kind'], base: 'cut.trim.pause' | 'cut.trim.filler') => {
+    const found = trims.filter((x) => x.kind === kind)
+    return found.length ? t('cut.trim.withTotal', { what: tp(base, found.length), total: secs(found.reduce((a, x) => a + (x.end - x.start), 0)) }) : ''
   }
-  return [part('pause', 'pause'), part('filler', 'filler')].filter(Boolean).join(', ')
+  return [part('pause', 'cut.trim.pause'), part('filler', 'cut.trim.filler')].filter(Boolean).join(t('cut.trim.sep'))
 }
 
 // "Removed 4 pauses (3.2 s), 2 fillers (0.6 s) · Final length 18.4 s, was 24.1 s"
 export function autoCutLine(a: AutoCut, finalSec: number): string {
   const removed = trimPhrase(a.trims)
-  const first = removed ? `Removed ${removed}` : 'Nothing needed cutting'
-  const length = a.originalSec ? `Final length ${secs(finalSec)}, was ${secs(a.originalSec)}` : `Final length ${secs(finalSec)}`
+  const first = removed ? t('cut.autocut.removed', { what: removed }) : t('cut.autocut.nothing')
+  const length = a.originalSec ? t('cut.autocut.finalWas', { final: secs(finalSec), was: secs(a.originalSec) }) : t('cut.autocut.final', { final: secs(finalSec) })
   return `${first} · ${length}`
 }
 

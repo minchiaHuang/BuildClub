@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../lib/i18n'
 
 // Minimal types for the browser's speech recognition (Chrome, Edge, Safari). Not in TypeScript's DOM types yet.
 interface SpeechResultEvent {
@@ -50,7 +51,7 @@ export function VoiceButton({ onText, onDone, onListeningChange }: Props) {
 
   if (!Ctor) {
     return (
-      <span className="mic-btn mic-off" title="Voice search needs Chrome, Edge or Safari" aria-hidden="true">
+      <span className="mic-btn mic-off" title={t('find.voice.unsupported')} aria-hidden="true">
         <MicIcon />
       </span>
     )
@@ -75,10 +76,10 @@ export function VoiceButton({ onText, onDone, onListeningChange }: Props) {
     r.onerror = (e) =>
       setError(
         e.error === 'not-allowed' || e.error === 'service-not-allowed'
-          ? 'Microphone access is blocked. Allow it in your browser to use voice search.'
+          ? t('find.voice.blocked')
           : e.error === 'no-speech'
-            ? "Didn't catch that. Tap the mic and try again."
-            : 'Voice search stopped. Try again.',
+            ? t('find.voice.noSpeech')
+            : t('find.voice.stopped'),
       )
     r.onend = () => {
       setListening(false)
@@ -96,8 +97,8 @@ export function VoiceButton({ onText, onDone, onListeningChange }: Props) {
         type="button"
         className={`mic-btn ${listening ? 'mic-on' : ''}`}
         aria-pressed={listening}
-        aria-label={listening ? 'Stop listening' : 'Search by voice'}
-        title={listening ? 'Stop listening' : 'Search by voice'}
+        aria-label={listening ? t('find.voice.stop') : t('find.voice.start')}
+        title={listening ? t('find.voice.stop') : t('find.voice.start')}
         onClick={() => (listening ? rec.current?.stop() : start())}
       >
         <MicIcon />

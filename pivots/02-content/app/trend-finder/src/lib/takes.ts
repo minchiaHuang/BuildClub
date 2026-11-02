@@ -1,4 +1,5 @@
 import type { IdeaStatus } from '../types'
+import { t } from './i18n.ts'
 
 // One uploaded video for a shot (0-based index) of an approved plan. One take per shot is chosen.
 export interface Take {
@@ -14,8 +15,6 @@ export interface Take {
 
 // Same limits and copy as backend/takes.py.
 export const MAX_TAKE_BYTES = 200 * 1024 * 1024
-const TOO_BIG = 'The file is over the 200 MB limit.'
-const NOT_VIDEO = 'Upload an .mp4 or .mov video file.'
 
 type VideoType = 'video/mp4' | 'video/quicktime'
 
@@ -29,8 +28,8 @@ export function videoType(file: { name: string; type: string }): VideoType | nul
 
 // The reason a file can't be uploaded, checked before sending it; null when it can.
 export function checkFile(file: { name: string; type: string; size: number }): string | null {
-  if (!videoType(file)) return NOT_VIDEO
-  if (file.size > MAX_TAKE_BYTES) return TOO_BIG
+  if (!videoType(file)) return t('plan.takes.notVideo')
+  if (file.size > MAX_TAKE_BYTES) return t('plan.takes.tooBig')
   return null
 }
 
@@ -71,7 +70,7 @@ async function send<T>(r: Response, fallback: string): Promise<T> {
 }
 
 export async function listTakes(ideaId: string): Promise<Take[]> {
-  return send(await fetch(`${base(ideaId)}/takes`), "Couldn't load the takes.")
+  return send(await fetch(`${base(ideaId)}/takes`), t('plan.takes.err.load'))
 }
 
 export async function uploadTake(ideaId: string, shot: number, file: File): Promise<Take> {
@@ -80,13 +79,13 @@ export async function uploadTake(ideaId: string, shot: number, file: File): Prom
     body: file,
     headers: { 'content-type': videoType(file) ?? '', 'x-filename': encodeURIComponent(file.name) },
   })
-  return send(r, "Couldn't upload the take.")
+  return send(r, t('plan.takes.err.upload'))
 }
 
 export async function chooseTake(ideaId: string, takeId: string): Promise<Take[]> {
-  return send(await fetch(`${base(ideaId)}/takes/${encodeURIComponent(takeId)}/choose`, { method: 'POST' }), "Couldn't choose that take.")
+  return send(await fetch(`${base(ideaId)}/takes/${encodeURIComponent(takeId)}/choose`, { method: 'POST' }), t('plan.takes.err.choose'))
 }
 
 export async function deleteTake(ideaId: string, takeId: string): Promise<Take[]> {
-  return send(await fetch(`${base(ideaId)}/takes/${encodeURIComponent(takeId)}`, { method: 'DELETE' }), "Couldn't delete that take.")
+  return send(await fetch(`${base(ideaId)}/takes/${encodeURIComponent(takeId)}`, { method: 'DELETE' }), t('plan.takes.err.delete'))
 }

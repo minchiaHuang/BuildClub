@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { METRIC_FIELDS, METRIC_LABEL, checkMetrics, saveMetrics } from '../../lib/publish'
+import { METRIC_FIELDS, checkMetrics, metricLabel, saveMetrics } from '../../lib/publish'
 import type { MetricField, MetricInputs, Snapshot } from '../../lib/publish'
 import { compact } from '../../lib/metrics'
 import { formatDay } from '../../lib/dates'
+import { t } from '../../lib/i18n'
 
 interface Props {
   postId: string
@@ -16,7 +17,7 @@ function snapshotLine(s: Snapshot): string {
   const parts: string[] = []
   for (const f of METRIC_FIELDS) {
     const v = s[f]
-    if (v !== null && v !== undefined) parts.push(`${compact(v)} ${f === 'followers' ? 'followers' : f}`)
+    if (v !== null && v !== undefined) parts.push(t(`cut.snap.${f}`, { v: compact(v) }))
   }
   return parts.join(' · ')
 }
@@ -34,7 +35,7 @@ export function ResultsEntry({ postId, platformName, latest, onSaved }: Props) {
     const check = checkMetrics(inputs)
     setErrors(check.errors)
     setFormError(null)
-    if (check.empty) return setFormError('Enter at least one number.')
+    if (check.empty) return setFormError(t('cut.results.atLeastOne'))
     if (Object.keys(check.errors).length) return
     setSaving(true)
     try {
@@ -53,22 +54,22 @@ export function ResultsEntry({ postId, platformName, latest, onSaved }: Props) {
     <div className="pub-results">
       {latest ? (
         <p className="small pub-latest">
-          <strong>Latest numbers:</strong> {snapshotLine(latest)}
-          <span className="muted"> · entered {formatDay(latest.fetchedAt * 1000)}</span>
+          <strong>{t('cut.results.latest')}</strong> {snapshotLine(latest)}
+          <span className="muted"> · {t('cut.results.entered', { day: formatDay(latest.fetchedAt * 1000) })}</span>
         </p>
       ) : (
-        <p className="small muted">No numbers yet.</p>
+        <p className="small muted">{t('cut.results.none')}</p>
       )}
       {!open ? (
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>
-          {latest ? 'Update the numbers' : `Add ${platformName} numbers`}
+          {latest ? t('cut.results.update') : t('cut.results.add', { platform: platformName })}
         </button>
       ) : (
         <form className="pub-metrics" onSubmit={(e) => void submit(e)} noValidate>
           <div className="pub-metric-grid">
             {METRIC_FIELDS.map((f) => (
               <label key={f} className="pub-metric">
-                <span className="small">{METRIC_LABEL[f]}</span>
+                <span className="small">{metricLabel(f)}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -93,10 +94,10 @@ export function ResultsEntry({ postId, platformName, latest, onSaved }: Props) {
           )}
           <div className="pub-actions">
             <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-              {saving ? 'Saving…' : 'Save numbers'}
+              {saving ? t('cut.common.saving') : t('cut.results.save')}
             </button>
             <button type="button" className="btn btn-ghost btn-sm" disabled={saving} onClick={() => setOpen(false)}>
-              Cancel
+              {t('cut.common.cancel')}
             </button>
           </div>
         </form>

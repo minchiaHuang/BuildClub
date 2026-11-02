@@ -15,6 +15,7 @@ import { ShotChecklist } from './ShotChecklist'
 import { CutPanel } from './CutPanel'
 import { PublishPanel } from './publish/PublishPanel'
 import { StoryboardSection } from './storyboard/StoryboardSection'
+import { t } from '../lib/i18n'
 
 interface Props {
   idea: SavedIdea
@@ -32,17 +33,12 @@ interface Props {
   onDecide: (d: Decision) => void
 }
 
-const statusLabel: Record<IdeaStatus, string> = {
-  saved: 'Still planning',
-  waiting: 'Waiting for approval',
-  approved: 'Approved',
-  rejected: 'Sent back',
-}
+const statusLabel = (s: IdeaStatus): string => t(`plan.screen.status.${s}`)
 
 const ago = (ts?: number) => {
   if (!ts) return ''
   const mins = Math.round((Date.now() - ts) / 60_000)
-  return mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : `${Math.round(mins / 60)}h ago`
+  return mins < 1 ? t('plan.ago.now') : mins < 60 ? t('plan.ago.min', { n: mins }) : t('plan.ago.hour', { n: Math.round(mins / 60) })
 }
 
 export function PlanScreen(p: Props) {
@@ -99,13 +95,13 @@ export function PlanScreen(p: Props) {
   const shotComment = (i: number) =>
     comments[i] && (
       <span className="shot-comment">
-        Comment: {comments[i]}
+        {t('plan.screen.comment', { text: comments[i] })}
       </span>
     )
   const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
-  const defaultNote = `Fits ${client.audience.toLowerCase()}. ${fit.text}`
+  const defaultNote = t('plan.screen.defaultNote', { audience: client.audience.toLowerCase(), fit: fit.text })
   const note = idea.noteToApprover ?? defaultNote
 
   const send = () => {
@@ -119,19 +115,19 @@ export function PlanScreen(p: Props) {
   }
   const sendButton = (
     <button className="btn btn-primary" disabled={shots.length === 0} onClick={send}>
-      Send for approval
+      {t('plan.common.sendForApproval')}
     </button>
   )
   // Everything the editor needs in one paste: reference, shots, props and notes.
   const brief = [
-    `${format.name} for ${client.name}`,
-    `Due: ${formatDay(idea.dueDate)}`,
-    `Video to copy: ${video.url ?? `${video.handle}, "${video.hook}"`}`,
+    t('plan.brief.title', { format: format.name, client: client.name }),
+    t('plan.brief.due', { date: formatDay(idea.dueDate) }),
+    t('plan.brief.video', { video: video.url ?? `${video.handle}, "${video.hook}"` }),
     '',
-    'Shots:',
-    ...shots.map((s, i) => `${i + 1}. ${s.time ? `[${s.time}] ` : ''}${s.shot}${s.text ? ` (text on screen: "${s.text}")` : ''}`),
-    ...(format.props.length ? ['', `Props: ${format.props.join(', ')}`] : []),
-    ...(idea.notes ? ['', `Editor notes: ${idea.notes}`] : []),
+    t('plan.brief.shots'),
+    ...shots.map((s, i) => `${i + 1}. ${s.time ? `[${s.time}] ` : ''}${s.shot}${s.text ? ` ${t('plan.brief.textOnScreen', { text: s.text })}` : ''}`),
+    ...(format.props.length ? ['', t('plan.brief.props', { props: format.props.join(', ') })] : []),
+    ...(idea.notes ? ['', t('plan.brief.notes', { notes: idea.notes })] : []),
   ].join('\n')
   const copyBrief = async () => {
     try {
@@ -148,13 +144,13 @@ export function PlanScreen(p: Props) {
   return (
     <section className="plan">
       <button className="link-btn" onClick={onBack}>
-        ← Back to {p.backLabel}
+        {t('plan.screen.back', { label: p.backLabel })}
       </button>
 
       <header className="plan-head">
         <div className="plan-head-row">
-          <span className="eyebrow">Plan for {client.name}</span>
-          <span className="small muted">{statusLabel[idea.status]}</span>
+          <span className="eyebrow">{t('plan.screen.eyebrow', { client: client.name })}</span>
+          <span className="small muted">{statusLabel(idea.status)}</span>
         </div>
         <h1>{format.name}</h1>
       </header>
@@ -167,20 +163,20 @@ export function PlanScreen(p: Props) {
           <div>
             {canDecide ? (
               <>
-                <strong>{reopened ? 'Changed after approval, so it needs approving again' : 'Waiting for approval'}</strong>
+                <strong>{reopened ? t('plan.screen.banner.reopenedManager') : t('plan.screen.banner.waiting')}</strong>
                 <span>
                   {reopened
-                    ? `Moved back ${ago(idea.sentAt)}. Keep editing, then approve it below.`
-                    : `Sent ${ago(idea.sentAt)}. Approve it below, or send it back with a reason. It's also in Plans under Waiting for approval.`}
+                    ? t('plan.screen.banner.reopenedManagerBody', { ago: ago(idea.sentAt) })
+                    : t('plan.screen.banner.waitingManagerBody', { ago: ago(idea.sentAt) })}
                 </span>
               </>
             ) : (
               <>
-                <strong>{reopened ? `Sent back to ${APPROVER} for approval` : `Sent to ${APPROVER} for approval`}</strong>
+                <strong>{reopened ? t('plan.screen.banner.reopenedTeam', { approver: APPROVER }) : t('plan.screen.banner.sentTeam', { approver: APPROVER })}</strong>
                 <span>
                   {reopened
-                    ? `Sent ${ago(idea.sentAt)}. Keep editing: ${APPROVER} sees your changes when reviewing it again.`
-                    : `Sent ${ago(idea.sentAt)}. ${APPROVER}'s answer will show up in Plans. Meanwhile, plan the next video for ${client.name}.`}
+                    ? t('plan.screen.banner.reopenedTeamBody', { ago: ago(idea.sentAt), approver: APPROVER })
+                    : t('plan.screen.banner.sentTeamBody', { ago: ago(idea.sentAt), approver: APPROVER, client: client.name })}
                 </span>
               </>
             )}
@@ -194,8 +190,8 @@ export function PlanScreen(p: Props) {
             ✓
           </span>
           <div>
-            <strong>{idea.managerNote ? `${APPROVER} approved this with changes` : `${APPROVER} approved this`}</strong>
-            <span>Film it by {formatDay(idea.dueDate)}, then copy the brief below for your editor.</span>
+            <strong>{idea.managerNote ? t('plan.screen.banner.approvedWithChanges', { approver: APPROVER }) : t('plan.screen.banner.approved', { approver: APPROVER })}</strong>
+            <span>{t('plan.screen.banner.approvedBody', { date: formatDay(idea.dueDate) })}</span>
           </div>
         </div>
       )}
@@ -220,12 +216,12 @@ export function PlanScreen(p: Props) {
             </div>
           )}
           <span className="small muted">
-            Video to copy: {video.handle}
+            {t('plan.screen.videoToCopy', { handle: video.handle })}
             {video.url && (
               <>
                 {' · '}
                 <a className="plan-watch" href={video.url} target="_blank" rel="noreferrer">
-                  Watch on {platformName[video.platform]} ↗
+                  {t('plan.screen.watchOn', { platform: platformName[video.platform] })}
                 </a>
               </>
             )}
@@ -242,20 +238,20 @@ export function PlanScreen(p: Props) {
         <div className="plan-main">
 
           <section className="block">
-            <h3>Shots</h3>
+            <h3>{t('plan.screen.shots')}</h3>
             <p className="small muted">
               {reopened
-                ? "You're changing an approved plan. It needs approving again before filming."
+                ? t('plan.screen.shotsHint.reopened')
                 : editable
-                ? `Based on the original video. Change them to suit ${client.name}: what you'll film and any text on screen.`
+                ? t('plan.screen.shotsHint.editable', { client: client.name })
                 : idea.status === 'approved'
-                  ? 'Approved. Locked so you film what was approved.'
-                  : 'Locked while it waits for approval. Approve it, or take it back to make changes.'}
+                  ? t('plan.screen.shotsHint.approved')
+                  : t('plan.screen.shotsHint.locked')}
             </p>
-            {shots.length === 0 && !editable && <p className="muted small">No shots written yet.</p>}
+            {shots.length === 0 && !editable && <p className="muted small">{t('plan.screen.noShots')}</p>}
             {shots.length === 0 && editable && format.shotList.length === 0 && !format.why.first3s.startsWith('Breaking down') && (
               <p className="small muted" role="status">
-                The AI breakdown isn't available for this video, so add the shots yourself.
+                {t('plan.screen.noBreakdown')}
               </p>
             )}
             <ol className="shot-edit">
@@ -266,23 +262,23 @@ export function PlanScreen(p: Props) {
                       <input
                         id={`shot-time-${i}`}
                         className="shot-time-input"
-                        aria-label={`Shot ${i + 1} timing`}
+                        aria-label={t('plan.screen.shotTiming', { n: i + 1 })}
                         value={s.time}
                         onChange={(e) => updateShot(i, { time: e.target.value })}
                       />
                       <div className="shot-fields">
                         <input
                           id={`shot-desc-${i}`}
-                          aria-label={`Shot ${i + 1}: what we film`}
+                          aria-label={t('plan.screen.shotWhat', { n: i + 1 })}
                           value={s.shot}
-                          placeholder="What we film"
+                          placeholder={t('plan.screen.whatWeFilm')}
                           onChange={(e) => updateShot(i, { shot: e.target.value })}
                         />
                         <input
                           id={`shot-text-${i}`}
-                          aria-label={`Shot ${i + 1}: text on screen`}
+                          aria-label={t('plan.screen.shotTextAria', { n: i + 1 })}
                           value={s.text ?? ''}
-                          placeholder="Text on screen (optional)"
+                          placeholder={t('plan.screen.textOptional')}
                           onChange={(e) => updateShot(i, { text: e.target.value || undefined })}
                         />
                         {shotComment(i)}
@@ -290,7 +286,7 @@ export function PlanScreen(p: Props) {
                       <button
                         type="button"
                         className="icon-btn"
-                        aria-label={`Remove shot ${i + 1}`}
+                        aria-label={t('plan.screen.removeShot', { n: i + 1 })}
                         onClick={() => {
                           setRemoved({ shot: s, index: i })
                           setAddedAt(null)
@@ -305,7 +301,7 @@ export function PlanScreen(p: Props) {
                       <span className="shot-time">{s.time}</span>
                       <span>
                         {s.shot}
-                        {s.text && <span className="shot-text">Text: "{s.text}"</span>}
+                        {s.text && <span className="shot-text">{t('plan.screen.textShown', { text: s.text })}</span>}
                         {shotComment(i)}
                       </span>
                     </>
@@ -323,7 +319,7 @@ export function PlanScreen(p: Props) {
                     setShots([...shots, { time: '', shot: '' }])
                   }}
                 >
-                  + Add a shot
+                  {t('plan.screen.addShot')}
                 </button>
                 {removed && (
                   <button
@@ -336,7 +332,7 @@ export function PlanScreen(p: Props) {
                       setRemoved(null)
                     }}
                   >
-                    Undo remove
+                    {t('plan.screen.undoRemove')}
                   </button>
                 )}
                 {idea.shots && format.shotList.length > 0 && (
@@ -348,7 +344,7 @@ export function PlanScreen(p: Props) {
                       setRemoved(null)
                     }}
                   >
-                    Reset to suggested shots
+                    {t('plan.screen.resetShots')}
                   </button>
                 )}
               </div>
@@ -363,11 +359,11 @@ export function PlanScreen(p: Props) {
 
           {format.lines && format.lines.length > 0 && (
             <section className="block">
-              <h3>What each line does</h3>
+              <h3>{t('plan.screen.lineRoles')}</h3>
               <ul className="line-roles">
                 {format.lines.map((l, i) => (
                   <li key={i}>
-                    <span className="shot-time">{l.time}</span> <span className="ai-tag">{l.role}</span> <span>{l.text}</span>
+                    <span className="shot-time">{l.time}</span> <span className="ai-tag">{t(`shell.role.${l.role}`)}</span> <span>{l.text}</span>
                   </li>
                 ))}
               </ul>
@@ -376,14 +372,14 @@ export function PlanScreen(p: Props) {
 
           <section className="block">
             <label htmlFor="note-to-approver">
-              <h3>Why it fits {client.name}</h3>
+              <h3>{t('plan.screen.whyFits', { client: client.name })}</h3>
             </label>
             {editable ? (
               <textarea
                 id="note-to-approver"
                 rows={3}
                 value={note}
-                placeholder={`Why this would work for ${client.name}`}
+                placeholder={t('plan.screen.whyPlaceholder', { client: client.name })}
                 onChange={(e) => onChange({ noteToApprover: e.target.value })}
               />
             ) : (
@@ -393,25 +389,25 @@ export function PlanScreen(p: Props) {
 
           {idea.status === 'approved' && idea.managerNote && (
             <section className="block manager-note">
-              <h3>Changes to make before filming</h3>
+              <h3>{t('plan.screen.changesBeforeFilming')}</h3>
               <p className="quote">{idea.managerNote}</p>
             </section>
           )}
 
           {idea.status === 'approved' && (
             <section className={`block editor-brief${copied === 'done' ? ' is-copied' : ''}`}>
-              <h3>For the editor</h3>
+              <h3>{t('plan.screen.forEditor')}</h3>
               <div className="field">
-                <span className="field-label">Stage</span>
+                <span className="field-label">{t('plan.screen.stage')}</span>
                 <StageSelect idea={idea} name={format.name} onChange={onChange} />
               </div>
               <label className="field">
-                <span className="field-label">Due</span>
+                <span className="field-label">{t('plan.screen.due')}</span>
                 <input id="plan-due" type="date" value={idea.dueDate} onChange={(e) => onChange({ dueDate: e.target.value })} />
               </label>
               {format.props.length > 0 && (
                 <div className="field">
-                  <span className="field-label">Props</span>
+                  <span className="field-label">{t('plan.screen.props')}</span>
                   <ul className="props-list">
                     {format.props.map((x) => (
                       <li key={x}>{x}</li>
@@ -420,7 +416,7 @@ export function PlanScreen(p: Props) {
                 </div>
               )}
               <label className="field">
-                <span className="field-label">Notes for the editor</span>
+                <span className="field-label">{t('plan.screen.editorNotes')}</span>
                 <textarea id="plan-editor-notes" rows={3} value={idea.notes} onChange={(e) => onChange({ notes: e.target.value })} />
               </label>
             </section>
@@ -428,16 +424,16 @@ export function PlanScreen(p: Props) {
 
           {idea.status === 'rejected' && (
             <section className="block">
-              <h3>{APPROVER}'s feedback</h3>
+              <h3>{t('plan.screen.feedbackOf', { approver: APPROVER })}</h3>
               {idea.rejectTags && idea.rejectTags.length > 0 && <p className="small">{idea.rejectTags.join(' · ')}</p>}
-              <p className="quote">{idea.rejectReason || (idea.rejectTags?.length ? 'No written reason.' : 'No reason given.')}</p>
+              <p className="quote">{idea.rejectReason || (idea.rejectTags?.length ? t('plan.screen.noWrittenReason') : t('plan.screen.noReason'))}</p>
             </section>
           )}
           {idea.status !== 'rejected' && lastSentBack(idea) && (
             <section className="block">
-              <h3>Last time {APPROVER} sent it back</h3>
+              <h3>{t('plan.screen.lastSentBack', { approver: APPROVER })}</h3>
               {(lastSentBack(idea)?.tags?.length ?? 0) > 0 && <p className="small">{lastSentBack(idea)?.tags?.join(' · ')}</p>}
-              <p className="quote">{lastSentBack(idea)?.reason || 'No written reason.'}</p>
+              <p className="quote">{lastSentBack(idea)?.reason || t('plan.screen.noWrittenReason')}</p>
             </section>
           )}
 
@@ -448,9 +444,9 @@ export function PlanScreen(p: Props) {
       <div className="plan-bar">
         {idea.status === 'saved' && (
           <>
-            <span className="plan-bar-text">Ready? Send it for approval with the video, your shot list and your note.</span>
+            <span className="plan-bar-text">{t('plan.screen.bar.saved')}</span>
             <button className="btn btn-ghost" onClick={onBack}>
-              Save for later
+              {t('plan.screen.bar.saveLater')}
             </button>
             {sendButton}
           </>
@@ -461,7 +457,7 @@ export function PlanScreen(p: Props) {
             {/* Full width so the question stays visible on phones too (the bar hides button-less text there). */}
             <label className="field" style={{ flexBasis: '100%' }}>
               <span className="field-label">
-                {deciding === 'changes' ? 'What should change before filming?' : 'Why are you sending it back?'}
+                {deciding === 'changes' ? t('plan.screen.bar.changesQ') : t('plan.screen.bar.backQ')}
               </span>
               <textarea
                 id="plan-decision"
@@ -472,10 +468,10 @@ export function PlanScreen(p: Props) {
               />
             </label>
             <button className="btn btn-ghost" onClick={() => setDeciding(null)}>
-              Cancel
+              {t('plan.common.cancel')}
             </button>
             <button className="btn btn-primary" onClick={confirmDecision} disabled={!decisionText.trim()}>
-              {deciding === 'changes' ? 'Approve with changes' : 'Send back'}
+              {deciding === 'changes' ? t('plan.common.approveWithChanges') : t('plan.common.sendBack')}
             </button>
           </>
         )}
@@ -483,17 +479,17 @@ export function PlanScreen(p: Props) {
         {idea.status === 'waiting' && !canDecide && (
           <>
             <span className="plan-bar-text">
-              Waiting for {APPROVER}.{' '}
+              {t('plan.screen.bar.waitingFor', { approver: APPROVER })}{' '}
               <button className="link-btn" onClick={() => onChange({ status: 'saved' })}>
-                Take it back
+                {t('plan.common.takeItBack')}
               </button>
               {' · '}
               <button className="link-btn" onClick={onGoApprovals}>
-                Open Plans
+                {t('plan.common.openPlans')}
               </button>
             </span>
             <button className="btn btn-primary" onClick={onPlanAnother}>
-              Plan another video
+              {t('plan.common.planAnother')}
             </button>
           </>
         )}
@@ -501,35 +497,35 @@ export function PlanScreen(p: Props) {
         {idea.status === 'waiting' && canDecide && !deciding && (
           <>
             <span className="plan-bar-text">
-              Waiting for approval.{' '}
+              {t('plan.screen.bar.waiting')}{' '}
               <button className="link-btn" onClick={() => onChange({ status: 'saved' })}>
-                Take it back
+                {t('plan.common.takeItBack')}
               </button>
               {' · '}
               <button className="link-btn" onClick={onGoApprovals}>
-                Open Plans
+                {t('plan.common.openPlans')}
               </button>
             </span>
             <button className="btn btn-ghost" onClick={() => startDeciding('back')}>
-              Send back
+              {t('plan.common.sendBack')}
             </button>
             <button className="btn btn-ghost" onClick={() => startDeciding('changes')}>
-              Approve with changes
+              {t('plan.common.approveWithChanges')}
             </button>
             <button className="btn btn-primary" onClick={approveNow}>
-              Approve
+              {t('plan.screen.bar.approve')}
             </button>
           </>
         )}
 
         {idea.status === 'approved' && confirmEdit && (
           <>
-            <span className="plan-bar-text">This moves it back to Waiting for approval. Continue?</span>
+            <span className="plan-bar-text">{t('plan.screen.bar.reopenQ')}</span>
             <button className="btn btn-ghost" onClick={() => setConfirmEdit(false)}>
-              Cancel
+              {t('plan.common.cancel')}
             </button>
             <button className="btn btn-primary" onClick={reopen}>
-              Continue
+              {t('plan.common.continue')}
             </button>
           </>
         )}
@@ -538,16 +534,16 @@ export function PlanScreen(p: Props) {
           <>
             <span className="plan-bar-text" role="status">
               {copied === 'done'
-                ? 'Brief copied. Paste it to your editor with the footage.'
+                ? t('plan.screen.bar.briefCopied')
                 : copied === 'failed'
-                  ? "Couldn't copy. Your browser blocked the clipboard."
-                  : `Approved. ${dueLabel(idea.dueDate).text}.`}
+                  ? t('plan.screen.bar.copyFailed')
+                  : t('plan.screen.bar.approvedDue', { due: dueLabel(idea.dueDate).text })}
             </span>
             <button className="btn btn-ghost" onClick={() => setConfirmEdit(true)}>
-              Edit
+              {t('plan.screen.bar.edit')}
             </button>
             <button className="btn btn-ghost" onClick={onPlanAnother}>
-              Plan another video
+              {t('plan.common.planAnother')}
             </button>
             <button
               className={`btn btn-primary copy-btn${copied === 'done' ? ' is-copied' : ''}`}
@@ -555,7 +551,7 @@ export function PlanScreen(p: Props) {
             >
               {copied === 'done' ? (
                 <>
-                  Copied
+                  {t('plan.common.copied')}
                   <svg className="copy-icon copy-icon-check" viewBox="0 0 16 16" aria-hidden="true">
                     <path d="M3.5 8.5l3 3 6-7" />
                   </svg>
@@ -566,7 +562,7 @@ export function PlanScreen(p: Props) {
                     <path d="M5.5 5.5V3.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2" />
                     <path d="M3.5 5.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z" />
                   </svg>
-                  Copy brief for editor
+                  {t('plan.screen.bar.copyBrief')}
                 </>
               )}
             </button>
@@ -575,9 +571,9 @@ export function PlanScreen(p: Props) {
 
         {idea.status === 'rejected' && (
           <>
-            <span className="plan-bar-text">Sent back. Fix the shots or note, then send it for approval again.</span>
+            <span className="plan-bar-text">{t('plan.screen.bar.rejected')}</span>
             <button className="btn btn-ghost" onClick={onFindMore}>
-              Find another idea
+              {t('plan.screen.bar.findAnother')}
             </button>
             {sendButton}
           </>

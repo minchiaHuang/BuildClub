@@ -1,5 +1,6 @@
 import type { SavedIdea, Stage } from '../types'
 import { STAGES, STAGE_LABEL, moveTo, stageOf } from '../lib/stage'
+import { t } from '../lib/i18n'
 
 interface Props {
   idea: SavedIdea
@@ -15,7 +16,7 @@ export function StageSelect({ idea, name, onChange }: Props) {
   return (
     <select
       className="stage-select"
-      aria-label={`Stage for ${name}`}
+      aria-label={t('home.stageSelect.aria', { name })}
       value={stage}
       onChange={(e) => {
         const patch = moveTo(idea, e.target.value as Stage)

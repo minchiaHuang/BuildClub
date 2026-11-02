@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PresetPicker } from '../PresetPicker'
+import { areas, t } from '../../lib/i18n'
+import type { Key } from '../../lib/i18n'
 import type { GradePreset } from '../../lib/grading'
 import { getGrades, previewUrl } from '../../lib/grading'
 
@@ -13,10 +15,10 @@ interface Props {
 }
 
 type Show = 'both' | 'before' | 'after'
-const SHOW: { id: Show; label: string }[] = [
-  { id: 'both', label: 'Both' },
-  { id: 'before', label: 'Original' },
-  { id: 'after', label: 'With the look' },
+const showOptions = (): { id: Show; label: string }[] => [
+  { id: 'both', label: t('cut.grade.both') },
+  { id: 'before', label: t('cut.grade.original') },
+  { id: 'after', label: t('cut.grade.withLook') },
 ]
 
 type Frame = { state: 'loading' } | { state: 'ready'; src: string } | { state: 'error'; message: string }
@@ -45,7 +47,7 @@ export function GradePicker({ ideaId, value, onChange, hasTake, disabled }: Prop
         <p className="error" role="alert">
           {failed}{' '}
           <button type="button" className="link-btn" onClick={() => setTries((n) => n + 1)}>
-            Retry
+            {t('cut.common.retry')}
           </button>
         </p>
       </div>
@@ -54,7 +56,7 @@ export function GradePicker({ ideaId, value, onChange, hasTake, disabled }: Prop
   if (!presets) {
     return (
       <div className="gr-grade" aria-busy="true">
-        <span className="small">Colour look</span>
+        <span className="small">{t('cut.grade.label')}</span>
         <div className="chip-row">
           {[0, 1, 2, 3].map((n) => (
             <span key={n} className="cchip cchip-skeleton gr-skeleton-chip" />
@@ -64,14 +66,17 @@ export function GradePicker({ ideaId, value, onChange, hasTake, disabled }: Prop
     )
   }
 
-  const chosen = presets.find((p) => p.id === value)
+  // The server names the looks in English; known ones are shown in the active language.
+  const look = (p: GradePreset) => ({ ...p, label: (`cut.look.${p.id}` in areas.cut.en ? t(`cut.look.${p.id}` as Key) : p.label) })
+  const shown = presets.map(look)
+  const chosen = shown.find((p) => p.id === value)
   return (
     <div className="gr-grade">
-      <PresetPicker label="Colour look" options={presets} value={value} onChange={onChange} disabled={disabled} />
+      <PresetPicker label={t('cut.grade.label')} options={shown} value={value} onChange={onChange} disabled={disabled} />
       {value === 'none' ? (
-        <p className="muted small">The colours stay as filmed.</p>
+        <p className="muted small">{t('cut.grade.none')}</p>
       ) : !hasTake ? (
-        <p className="muted small">Choose a take for a shot to see a before and after.</p>
+        <p className="muted small">{t('cut.grade.needTake')}</p>
       ) : (
         <BeforeAfter key={`${ideaId}:${value}`} ideaId={ideaId} preset={value} label={chosen?.label ?? value} />
       )}
@@ -93,7 +98,7 @@ function BeforeAfter({ ideaId, preset, label }: { ideaId: string; preset: string
         const r = await fetch(previewUrl(ideaId, preset), { signal: ac.signal })
         if (!r.ok) {
           const b = await r.json().catch(() => null)
-          throw new Error(b?.error ?? "Couldn't make the preview.")
+          throw new Error(b?.error ?? t('cut.grade.previewFail'))
         }
         objectUrl = URL.createObjectURL(await r.blob())
         if (ac.signal.aborted) URL.revokeObjectURL(objectUrl)
@@ -113,7 +118,7 @@ function BeforeAfter({ ideaId, preset, label }: { ideaId: string; preset: string
       <p className="error" role="alert">
         {frame.message}{' '}
         <button type="button" className="link-btn" onClick={() => setTries((n) => n + 1)}>
-          Try again
+          {t('cut.common.tryAgain')}
         </button>
       </p>
     )
@@ -121,23 +126,23 @@ function BeforeAfter({ ideaId, preset, label }: { ideaId: string; preset: string
 
   return (
     <div className="gr-compare-wrap">
-      <PresetPicker label="Show" options={SHOW} value={show} onChange={(id) => setShow(id as Show)} />
+      <PresetPicker label={t('cut.grade.show')} options={showOptions()} value={show} onChange={(id) => setShow(id as Show)} />
       <div className="gr-compare" data-show={show} aria-busy={frame.state === 'loading'}>
         {(['before', 'after'] as const).map((side) => (
           <figure key={side} className="gr-pane" data-side={side}>
             <div
               className={`gr-frame${frame.state === 'loading' ? ' is-loading' : ''}`}
               role="img"
-              aria-label={side === 'before' ? 'A frame as filmed' : `The same frame with the ${label} look`}
+              aria-label={side === 'before' ? t('cut.grade.beforeAria') : t('cut.grade.afterAria', { label })}
               style={frame.state === 'ready' ? ({ '--gr-img': `url("${frame.src}")` } as React.CSSProperties) : undefined}
             />
-            <figcaption className="small">{side === 'before' ? 'Original' : label}</figcaption>
+            <figcaption className="small">{side === 'before' ? t('cut.grade.original') : label}</figcaption>
           </figure>
         ))}
       </div>
       {frame.state === 'loading' && (
         <p className="muted small" role="status">
-          Making the preview…
+          {t('cut.grade.making')}
         </p>
       )}
     </div>

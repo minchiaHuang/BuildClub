@@ -1,4 +1,9 @@
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+import { getActiveLang, t } from './i18n.ts'
+
+const monthName = (i: number) => t(`home.dates.month.${i}` as `home.dates.month.0`)
+
+// The locale for toLocaleDateString: the browser's own in English, Taiwan Chinese otherwise.
+export const dateLocale = (): string | undefined => (getActiveLang() === 'zh-Hant' ? 'zh-TW' : undefined)
 
 // The one way a day is written on screen: "31 Oct", with the year when it isn't this year. Takes the "YYYY-MM-DD"
 // of a due date or a timestamp (a posted date).
@@ -6,8 +11,11 @@ export function formatDay(when: string | number): string {
   const m = typeof when === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(when) : null
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(when)
   if (Number.isNaN(d.getTime())) return String(when)
-  const year = d.getFullYear() === new Date().getFullYear() ? '' : ` ${d.getFullYear()}`
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}${year}`
+  const day = d.getDate()
+  const month = monthName(d.getMonth())
+  return d.getFullYear() === new Date().getFullYear()
+    ? t('home.dates.day', { d: day, m: month })
+    : t('home.dates.dayYear', { d: day, m: month, y: d.getFullYear() })
 }
 
 // Whole days from today (local midnight) to a "YYYY-MM-DD" due date: negative once it has passed.
@@ -22,5 +30,5 @@ export function daysFromToday(iso: string): number {
 // "Due 31 Oct", or "Overdue · due 28 Oct" once the day has passed. `late` is true only then.
 export function dueLabel(iso: string): { text: string; late: boolean } {
   const late = daysFromToday(iso) < 0
-  return { text: late ? `Overdue · due ${formatDay(iso)}` : `Due ${formatDay(iso)}`, late }
+  return { text: late ? t('home.dates.overdue', { day: formatDay(iso) }) : t('home.dates.due', { day: formatDay(iso) }), late }
 }

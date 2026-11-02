@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from '../lib/i18n'
 
 // One colour from a frame: a swatch and its hex. Click copies the hex.
 export function SwatchChip({ hex }: { hex: string }) {
@@ -17,10 +18,10 @@ export function SwatchChip({ hex }: { hex: string }) {
     }
   }
   return (
-    <button type="button" className="sb-swatch" title={`Copy ${hex}`} aria-label={`Copy colour ${hex}`} onClick={() => void copy()}>
+    <button type="button" className="sb-swatch" title={t('home.swatch.copy', { hex })} aria-label={t('home.swatch.copyAria', { hex })} onClick={() => void copy()}>
       {/* The swatch colour is data from the image, passed as a variable; the theme colours stay in the stylesheet. */}
       <span className="sb-swatch-dot" style={{ '--sw': hex } as React.CSSProperties} aria-hidden="true" />
-      <span className="sb-swatch-hex">{state === 'copied' ? 'Copied' : state === 'failed' ? "Can't copy" : hex}</span>
+      <span className="sb-swatch-hex">{state === 'copied' ? t('home.swatch.copied') : state === 'failed' ? t('home.swatch.failed') : hex}</span>
     </button>
   )
 }
@@ -28,7 +29,7 @@ export function SwatchChip({ hex }: { hex: string }) {
 export function SwatchRow({ colors }: { colors: string[] }) {
   if (colors.length === 0) return null
   return (
-    <div className="sb-swatches" role="group" aria-label="Colours in this frame">
+    <div className="sb-swatches" role="group" aria-label={t('home.swatch.group')}>
       {colors.map((c) => (
         <SwatchChip key={c} hex={c} />
       ))}

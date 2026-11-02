@@ -1,6 +1,8 @@
 // Channel summaries: the API decodes a whole channel in the background (minutes), the page polls it.
 // Shapes follow channel-decoder's analysis.json and ChannelJob in backend/models.py.
 
+import { t } from './i18n.ts'
+
 export type ChannelPlatform = 'youtube' | 'tiktok' | 'instagram'
 
 export interface ChannelVideo {
@@ -96,9 +98,9 @@ export async function pollChannel(job: string, onProgress: (p: ChannelProgress) 
   for (;;) {
     const res = await fetch(`/api/channel/${job}`, { signal })
     const body = (await res.json().catch(() => ({}))) as Partial<ChannelJob> & { error?: string }
-    if (!res.ok) throw new Error(body.error ?? 'The channel summary was lost. Try again.')
+    if (!res.ok) throw new Error(body.error ?? t('home.channelLib.lost'))
     if (body.status === 'done' && body.result) return body.result
-    if (body.status === 'failed') throw new Error(body.error ?? 'The channel summary failed.')
+    if (body.status === 'failed') throw new Error(body.error ?? t('home.channelLib.failed'))
     onProgress({
       status: body.status ?? 'queued',
       step: body.step ?? '',
@@ -125,7 +127,7 @@ export async function analyzeChannel(
     signal,
   })
   const started = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error([started.error ?? 'Could not start the channel summary.', started.detail].filter(Boolean).join(' '))
+  if (!r.ok) throw new Error([started.error ?? t('home.channelLib.couldNotStart'), started.detail].filter(Boolean).join(' '))
   remember(started.job, platform, handle)
   return pollChannel(started.job, onProgress, signal)
 }

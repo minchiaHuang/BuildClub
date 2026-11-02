@@ -13,6 +13,7 @@ import {
   writeScript,
   writeShotScript,
 } from '../../lib/storyboard'
+import { t, tp } from '../../lib/i18n'
 import { ShotItem } from './ShotItem'
 import type { Busy } from './ShotItem'
 
@@ -107,7 +108,7 @@ export function StoryboardSection({ ideaId, shots, editable, onShots }: Props) {
       const kept = latest.current.filter((s) => s.edited).length
       apply((s) => mergeScript(s, res.shots))
       setNotice(
-        `${res.source === 'demo' ? 'Sample script written' : 'Script written'}.${kept ? ` ${kept} edited ${kept === 1 ? 'line was' : 'lines were'} kept.` : ''}`,
+        `${res.source === 'demo' ? t('plan.sb.sampleWritten') : t('plan.sb.scriptWritten')}${kept ? ` ${tp('plan.sb.keptNote', kept)}` : ''}`,
       )
     } catch (e) {
       setProblem((e as Error).message)
@@ -183,25 +184,25 @@ export function StoryboardSection({ ideaId, shots, editable, onShots }: Props) {
   return (
     <section className="block sb-section" aria-labelledby="sb-title">
       <div className="sb-bar">
-        <h3 id="sb-title">Script and storyboard</h3>
-        <div className="sb-toggle" role="group" aria-label="Layout">
+        <h3 id="sb-title">{t('plan.sb.title')}</h3>
+        <div className="sb-toggle" role="group" aria-label={t('plan.sb.layout')}>
           <button type="button" className="sb-toggle-btn" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>
-            Cards
+            {t('plan.sb.cards')}
           </button>
           <button type="button" className="sb-toggle-btn" aria-pressed={view === 'table'} onClick={() => setView('table')}>
-            Script table
+            {t('plan.sb.table')}
           </button>
         </div>
       </div>
       <p className="small muted">
         {editable
-          ? 'One line and one frame for each shot. Lines you edit are kept when you rewrite the script.'
-          : 'The script and frames for this plan. Take the plan back to change them.'}
+          ? t('plan.sb.hintEditable')
+          : t('plan.sb.hintLocked')}
       </p>
       {editable && (
         <div className="sb-bar-actions">
           <button type="button" className={`btn btn-sm ${anyLine ? 'btn-ghost' : 'btn-primary'}`} disabled={total === 0 || anyBusy} onClick={() => void writeAll()}>
-            {scriptBusy ? 'Writing…' : anyLine ? 'Rewrite the script' : 'Write the script'}
+            {scriptBusy ? t('plan.sb.writing') : anyLine ? t('plan.sb.rewriteScript') : t('plan.sb.writeScript')}
           </button>
           {notice && (
             <span className="small muted" role="status">
@@ -216,13 +217,13 @@ export function StoryboardSection({ ideaId, shots, editable, onShots }: Props) {
         </p>
       )}
       {total === 0 ? (
-        <p className="small muted">Add shots above, then write the script.</p>
+        <p className="small muted">{t('plan.sb.addShotsFirst')}</p>
       ) : view === 'table' ? (
         <table className="sb-table">
           <thead>
             <tr>
-              <th scope="col">Frame and shot</th>
-              <th scope="col">Line</th>
+              <th scope="col">{t('plan.sb.colFrameShot')}</th>
+              <th scope="col">{t('plan.sb.colLine')}</th>
             </tr>
           </thead>
           <tbody>{items}</tbody>

@@ -2,6 +2,7 @@ import { PlatformLogo } from '../PlatformToggles'
 import { PUB_PLATFORM_NAME, badgeOf, postNote } from '../../lib/publish'
 import type { Post, Snapshot } from '../../lib/publish'
 import { formatDay } from '../../lib/dates'
+import { t } from '../../lib/i18n'
 import { StatusBadge } from './StatusBadge'
 import { ResultsEntry } from './ResultsEntry'
 
@@ -21,7 +22,7 @@ export function PlatformPublishRow({ post, simulated, latest, retrying, onRetry,
   const name = PUB_PLATFORM_NAME[post.platform]
   const when =
     post.status === 'scheduled' && post.scheduledAt
-      ? `for ${formatDay(post.scheduledAt * 1000)} ${new Date(post.scheduledAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      ? t('cut.pub.scheduledFor', { when: `${formatDay(post.scheduledAt * 1000)} ${new Date(post.scheduledAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` })
       : post.publishedAt
         ? formatDay(post.publishedAt * 1000)
         : null
@@ -39,10 +40,10 @@ export function PlatformPublishRow({ post, simulated, latest, retrying, onRetry,
       {post.status === 'failed' && (
         <div className="pub-failed">
           <p className="error small" role="alert">
-            {post.error || "It didn't go through."}
+            {post.error || t('cut.pub.failedFallback')}
           </p>
           <button type="button" className="btn btn-ghost btn-sm" disabled={retrying} onClick={onRetry}>
-            {retrying ? 'Trying…' : 'Try again'}
+            {retrying ? t('cut.pub.trying') : t('cut.common.tryAgain')}
           </button>
         </div>
       )}

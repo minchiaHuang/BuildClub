@@ -1,13 +1,23 @@
 import type { SavedIdea, Stage } from '../types'
+import { t } from './i18n.ts'
 
 // Production stages of an approved plan, in order.
 export const STAGES: Stage[] = ['approved', 'filming', 'editing', 'posted']
 
+// Getters, so the label follows the language on show.
 export const STAGE_LABEL: Record<Stage, string> = {
-  approved: 'Ready to film',
-  filming: 'Filming',
-  editing: 'Editing',
-  posted: 'Posted',
+  get approved() {
+    return t('home.stage.approved')
+  },
+  get filming() {
+    return t('home.stage.filming')
+  },
+  get editing() {
+    return t('home.stage.editing')
+  },
+  get posted() {
+    return t('home.stage.posted')
+  },
 }
 
 // An approved plan's stage (none set means ready to film); null for any plan not approved.

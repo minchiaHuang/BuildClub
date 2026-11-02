@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Cue } from '../../lib/grading'
+import { t } from '../../lib/i18n'
 import { MAX_CUE_TEXT, cuesChanged, formatCueTime, putCues, srtUrl } from '../../lib/grading'
 
 interface Props {
@@ -39,11 +40,11 @@ export function CueEditor({ ideaId, cues, edited, disabled, onSaved }: Props) {
   return (
     <details className="gr-cues">
       <summary>
-        Edit the subtitles <span className="muted small">({cues.length})</span>
-        {edited && <span className="pill gr-edited">Edited</span>}
+        {t('cut.cues.edit')} <span className="muted small">({cues.length})</span>
+        {edited && <span className="pill gr-edited">{t('cut.cues.edited')}</span>}
       </summary>
       <p className="muted small">
-        Your changes are burned in the next time you press "Make the video" with subtitles on. If you change the takes or the speed first, the words are made again from the speech and these edits are lost.
+        {t('cut.cues.help')}
       </p>
       <ol className="gr-cue-list">
         {cues.map((c) => (
@@ -56,7 +57,7 @@ export function CueEditor({ ideaId, cues, edited, disabled, onSaved }: Props) {
               value={text(c)}
               maxLength={MAX_CUE_TEXT}
               disabled={disabled || saving}
-              aria-label={`Subtitle at ${formatCueTime(c.start)}`}
+              aria-label={t('cut.cues.aria', { time: formatCueTime(c.start) })}
               aria-invalid={!text(c).trim()}
               onChange={(e) => {
                 setSaved(false)
@@ -68,15 +69,15 @@ export function CueEditor({ ideaId, cues, edited, disabled, onSaved }: Props) {
       </ol>
       <div className="gr-cue-actions">
         <button type="button" className="btn btn-primary btn-sm" disabled={!changed || empty || disabled || saving} onClick={() => void save()}>
-          {saving ? 'Saving…' : 'Save subtitles'}
+          {saving ? t('cut.common.saving') : t('cut.cues.save')}
         </button>
         <a className="btn btn-ghost btn-sm" href={srtUrl(ideaId)} download>
-          Download .srt
+          {t('cut.cues.srt')}
         </a>
-        {empty && <span className="small gr-cue-note">Every subtitle needs some words.</span>}
+        {empty && <span className="small gr-cue-note">{t('cut.cues.empty')}</span>}
         {saved && !changed && (
           <span className="small gr-cue-note" role="status">
-            Saved. Make the video again to burn them in.
+            {t('cut.cues.saved')}
           </span>
         )}
       </div>
