@@ -1,10 +1,10 @@
 import publishing
 import server
+from publish_helpers import approved_cut
 
 
 def setup_variants(client, variants=("A", "B")):
-    client.put("/api/ideas", json=[{"id": "ok", "videoId": "v", "clientId": "a", "status": "approved",
-                                     "dueDate": "2026-11-02", "notes": "", "sentAt": 1}])
+    approved_cut(client, "ok")
     ids = {}
     for v in variants:
         ids[v] = client.post("/api/publications", json={"ideaId": "ok", "platform": "tiktok", "variant": v}).json()["id"]
@@ -12,7 +12,7 @@ def setup_variants(client, variants=("A", "B")):
 
 
 def metrics(client, pid, views, fetched_at, **extra):
-    r = client.post(f"/api/publications/{pid}/metrics", json={"views": views, "fetchedAt": fetched_at, "source": "test", **extra})
+    r = client.post(f"/api/publications/{pid}/metrics", json={"views": views, "fetchedAt": fetched_at, **extra})
     assert r.status_code == 200
 
 
