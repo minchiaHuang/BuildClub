@@ -122,7 +122,7 @@ def test_instagram_search_from_a_real_result(client, monkeypatch):
     top = body["videos"][0]
     assert top["author"] == "thaotamto" and top["url"].startswith("https://www.instagram.com/")
     assert top["followers"] is None and top["ratio"] is None and top["medianViews"] is None
-    assert [actor for _, actor in calls] == [server.IG_ACTOR, server.instagram.REEL_ACTOR]  # then the accounts' reels
+    assert [actor for _, actor in calls] == [server.IG_ACTOR, server.instagram.PROFILE_ACTOR, server.instagram.REEL_ACTOR]  # then followers, then the accounts' reels
     assert calls[0][0]["keywordSearch"] is True
 
     # the second search comes from the cache, kept apart from TikTok's

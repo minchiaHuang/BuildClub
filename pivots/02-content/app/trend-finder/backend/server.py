@@ -258,8 +258,8 @@ def search_tiktok(query: str) -> list:
 
 
 def trim_instagram(item: dict) -> dict:
-    """The same shape as trim(). The Instagram actor gives no follower counts, so followers
-    and ratio stay empty and results are sorted by views."""
+    """The same shape as trim(). The hashtag actor gives no follower counts, so followers and ratio start
+    empty; search_ig fills them from the profile actor afterwards."""
     music = item.get("musicInfo") or {}
     return {
         "id": str(item.get("id") or item.get("shortCode") or ""),
@@ -479,6 +479,9 @@ def search_ig(query: str):
     def run(payload, max_items):
         return run_actor(payload, max_items, actor=instagram.REEL_ACTOR, max_usd=MAX_USD_PER_MEDIANS)
 
+    def run_profiles(payload, max_items):
+        return run_actor(payload, max_items, actor=instagram.PROFILE_ACTOR, max_usd=instagram.MAX_USD_PER_PROFILES)
+
     try:
         videos = search_instagram(query)
         authors = list(dict.fromkeys(v["author"] for v in videos if v["author"]))
@@ -487,19 +490,33 @@ def search_ig(query: str):
     except Exception as e:
         print(f"[search] failed: {e}", flush=True)
         return error(502, "Instagram search failed. Check the API terminal for details.", str(e))
+    followers = instagram.saved_followers(db, authors, MEDIAN_DAYS)
+    instagram.apply_followers(videos, followers)
     missing = [a for a in authors if a not in baselines][:instagram.ACCOUNTS_PER_FILL]
+    missing_followers = [a for a in authors if a not in followers][:instagram.ACCOUNTS_PER_FILL]
+    pending = bool(missing or missing_followers)
     payload = {"query": query, "platform": "instagram", "fetchedAt": int(time.time() * 1000), "videos": videos,
-               "mediansPending": bool(missing)}
+               "mediansPending": pending}
     write_cache(payload)
     print(f'[search] instagram "{query}" → {len(videos)} videos', flush=True)
-    if missing:
+    if pending:
         filling.add(cache_name(query, "instagram"))
         background = copy.deepcopy(payload)
 
         def fill():
             try:
-                found = {}
-                if spend("apify", round(len(missing) * instagram.REELS_PER_ACCOUNT * instagram.USD_PER_REEL, 2), DAILY_APIFY_USD):
+                found, found_followers = {}, {}
+                # Followers first: they are the client's score and the cheapest call (about 0.04).
+                if missing_followers:
+                    if spend("apify", round(len(missing_followers) * instagram.USD_PER_PROFILE, 4), DAILY_APIFY_USD):
+                        try:
+                            found_followers = instagram.fetch_followers(missing_followers, run_profiles)
+                            instagram.save_followers(db, found_followers)
+                        except Exception as e:
+                            print(f"[search] instagram followers failed: {e}", flush=True)
+                    else:
+                        print("[search] instagram followers skipped: today's Apify budget is used up", flush=True)
+                if missing and spend("apify", round(len(missing) * instagram.REELS_PER_ACCOUNT * instagram.USD_PER_REEL, 2), DAILY_APIFY_USD):
                     try:
                         found = instagram.fetch_baselines(missing, run)
                         instagram.save(db, found)
@@ -507,8 +524,9 @@ def search_ig(query: str):
                         found = {a: b and {**b, "fetchedAt": now} for a, b in found.items()}
                     except Exception as e:
                         print(f"[search] instagram baselines failed: {e}", flush=True)
-                else:
+                elif missing:
                     print("[search] instagram baselines skipped: today's Apify budget is used up", flush=True)
+                instagram.apply_followers(background["videos"], {**followers, **found_followers})
                 instagram.apply(background["videos"], {**baselines, **found})
                 background["mediansPending"] = False
                 write_cache(background)
