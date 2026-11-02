@@ -46,6 +46,7 @@ import google_auth
 import publishing
 import cut_review
 import renders
+import storyboard
 import takes
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
@@ -94,6 +95,7 @@ MEDIAN_DAYS = 30  # an account's usual views are reused this long before they ar
 # counted before it runs; cached searches and finished breakdowns are free and never counted.
 DAILY_APIFY_USD = float(os.environ.get("DAILY_APIFY_USD", 2.00))
 DAILY_CLAUDE_USD = float(os.environ.get("DAILY_CLAUDE_USD", 1.00))
+DAILY_IMAGE_USD = float(os.environ.get("DAILY_IMAGE_USD", 0.50))  # storyboard frames from gpt-image
 # Channel summaries: Jev labelling in US$; ScrapeCreators (Instagram only) in credits, 1 per 12 reels.
 DAILY_JEV_USD = float(os.environ.get("DAILY_JEV_USD", 0.50))
 DAILY_SCRAPECREATORS_CREDITS = float(os.environ.get("DAILY_SCRAPECREATORS_CREDITS", 20))
@@ -829,6 +831,13 @@ app.include_router(comments.make_router(load, save))
 app.include_router(google_auth.make_router(db, session_cookie_secure))
 app.include_router(publishing.make_router(db, load))
 app.include_router(takes.make_router(db, load, lambda: MEDIA_DIR))
+def storyboard_budget(wallet: str, usd: float):
+    """None when the paid call may go ahead, else the 429 to return."""
+    cap, env = (DAILY_CLAUDE_USD, "DAILY_CLAUDE_USD") if wallet == "claude" else (DAILY_IMAGE_USD, "DAILY_IMAGE_USD")
+    return None if spend(wallet, usd, cap) else over_budget("Claude" if wallet == "claude" else "Image", cap, env)
+
+
+app.include_router(storyboard.make_router(load, lambda: MEDIA_DIR, storyboard_budget))
 app.include_router(renders.make_router(db, load, lambda: MEDIA_DIR))
 app.include_router(cut_review.make_router(db, load, lambda: MEDIA_DIR))
 publishing.seed_demo(db)
