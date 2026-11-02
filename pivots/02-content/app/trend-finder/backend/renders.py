@@ -238,6 +238,9 @@ class RenderJobs:
                     (int(time.time() * 1000), result["size"], result["durationSec"], speed, shots,
                      signature([t["id"] for t in takes], speed, music[0] if music else None), idea_id))
                 conn.execute("DELETE FROM cut_reviews WHERE idea_id = ?", (idea_id,))
+            if "trims" in result:  # what the auto-cut removed, shown on the plan page
+                (folder / "trims.json").write_text(json.dumps({"originalSec": result.get("originalSec"),
+                                                               "trims": result["trims"]}))
             if result.get("cues") and cues_file is not None:
                 subtitles.save_cues(cues_file, result["cues"], cut_sig, kept is not None)
             elif cues_file is not None:
@@ -286,6 +289,10 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                 out["output"] = {"url": f"/api/ideas/{idea_id}/cut/file?v={version}", "size": size,
                                  "durationSec": duration}
                 out["stale"] = is_stale(conn, idea_id, shots)
+                try:
+                    out["autoCut"] = json.loads((folder / "trims.json").read_text())
+                except (OSError, ValueError):
+                    pass  # a video made before this was recorded
                 sent = review_row(conn, idea_id)
                 if sent is not None and sent[0] == version:  # a record of another video is not shown
                     out["review"] = {"status": sent[1], "sentAt": sent[2]}

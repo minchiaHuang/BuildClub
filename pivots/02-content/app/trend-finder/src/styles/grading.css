@@ -1,0 +1,89 @@
+/* Make the video: colour look, burned-in subtitles and the cue editor. Tokens only; the subtitle look is the
+   --sub-* tokens in theme-remake.css, shared with the burn-in. */
+:root[data-ui="altitude"] .cut-options { width: 100%; min-width: 0; justify-items: stretch; }
+:root[data-ui="altitude"] .cut-options > .btn, :root[data-ui="altitude"] .cut-options > .muted { justify-self: start; }
+
+.gr-grade, .gr-subs { display: grid; gap: var(--space-sm); min-width: 0; padding-top: var(--space-sm); border-top: 1px solid var(--line); }
+.gr-skeleton-chip { width: 76px; }
+
+/* Before / after: stacked below 760px, side by side from 760px */
+.gr-compare-wrap { display: grid; gap: var(--space-sm); min-width: 0; }
+.gr-compare { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-base); justify-items: start; }
+.gr-pane { margin: 0; display: grid; gap: var(--space-2xs); width: min(100%, 200px); }
+.gr-frame {
+  aspect-ratio: 9 / 16; border-radius: var(--radius-sm); background: var(--surface-3) center / 200% 100% no-repeat;
+  border: 1px solid var(--line);
+}
+.gr-frame { background-image: var(--gr-img, none); }
+.gr-pane[data-side="before"] .gr-frame { background-position: 0 0; }
+.gr-pane[data-side="after"] .gr-frame { background-position: 100% 0; }
+.gr-frame.is-loading { animation: pulse var(--duration-pulse) var(--ease) infinite; }
+.gr-compare[data-show="before"] .gr-pane[data-side="after"],
+.gr-compare[data-show="after"] .gr-pane[data-side="before"] { display: none; }
+@media (min-width: 760px) {
+  .gr-compare[data-show="both"] { grid-template-columns: repeat(2, minmax(0, 200px)); }
+}
+
+/* Subtitle switch */
+.gr-switch { display: inline-flex; align-items: center; gap: var(--space-sm); font-size: var(--text-ms); font-weight: 500; position: relative; min-height: 40px; cursor: pointer; }
+.gr-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; margin: 0; cursor: pointer; }
+.gr-switch-track { width: 40px; height: 22px; border-radius: var(--radius-pill); background: var(--surface-3); border: 1px solid var(--line-strong); position: relative; flex: none; transition: background-color var(--dur-fast) var(--ease); }
+.gr-switch-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line-strong); transition: transform var(--dur-fast) var(--ease); }
+.gr-switch input:checked + .gr-switch-track { background: var(--blue); border-color: var(--blue); }
+.gr-switch input:checked + .gr-switch-track::after { transform: translateX(18px); border-color: var(--surface); }
+.gr-switch input:focus-visible + .gr-switch-track { box-shadow: var(--focus-ring); }
+.gr-switch input:disabled ~ * { opacity: 0.55; }
+.gr-switch-state { color: var(--muted); }
+
+.gr-style { display: flex; flex-wrap: wrap; gap: var(--space-xl); align-items: flex-start; min-width: 0; }
+.gr-style-controls { display: grid; gap: var(--space-base); min-width: 0; }
+
+/* Subtitle overlay: sits on a container whose width is the video's, so cqw units match the burn-in */
+.gr-sample, .gr-player { position: relative; container-type: inline-size; width: 270px; max-width: 100%; aspect-ratio: 9 / 16; border-radius: var(--radius-sm); overflow: hidden; }
+.gr-sample { width: 150px; background: var(--surface-3); border: 1px solid var(--line); }
+.gr-player video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gr-sub-layer { position: absolute; inset: 0; display: flex; justify-content: center; padding: 0 var(--sub-margin-x); pointer-events: none; font-size: var(--sub-size-m); line-height: 1.3; }
+.gr-sub-layer[data-size="S"] { font-size: var(--sub-size-s); }
+.gr-sub-layer[data-size="L"] { font-size: var(--sub-size-l); }
+.gr-sub-layer[data-pos="bottom"] { align-items: flex-end; padding-bottom: var(--sub-bottom); }
+.gr-sub-layer[data-pos="middle"] { align-items: center; }
+.gr-sub-text { color: var(--sub-fg); text-align: center; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
+.gr-sub-layer[data-box="on"] .gr-sub-text { background: var(--sub-bg); border-radius: 0.2em; padding: 0.2em 0.4em; }
+.gr-sub-layer[data-box="off"] .gr-sub-text { text-shadow: 0 0 0.1em var(--sub-stroke), 0 0 0.1em var(--sub-stroke), 0 0 0.1em var(--sub-stroke); }
+
+/* Hint beside the Make button: a word, not just a colour */
+.gr-hint { color: var(--rising); font-weight: 500; align-self: center; justify-self: start; }
+:root[data-ui="altitude"] .gr-hint { color: var(--fg); background: var(--rising-soft); border-radius: var(--radius-pill); padding: 3px 10px; }
+
+/* Cue editor */
+.gr-cues { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-sm) var(--space-base); }
+.gr-cues > summary { cursor: pointer; font-weight: 500; font-size: var(--text-ms); display: flex; align-items: center; gap: var(--space-sm); min-height: 32px; }
+.gr-edited { background: var(--blue-soft); color: var(--fg); }
+.gr-cue-list { list-style: none; margin: var(--space-sm) 0; padding: 0; display: grid; gap: var(--space-sm); }
+.gr-cue { display: grid; gap: var(--space-2xs); }
+.gr-cue-time { color: var(--muted); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.gr-cue input { width: 100%; }
+.gr-cue input[aria-invalid="true"] { border-color: var(--no); }
+.gr-cue-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; }
+.gr-cue-note { color: var(--muted); }
+@media (min-width: 560px) {
+  .gr-cue { grid-template-columns: 8.5rem minmax(0, 1fr); align-items: center; gap: var(--space-sm); }
+}
+
+/* Safe zones: preview-only areas over the player or sample frame (container units, like the subtitle sizes) */
+.gr-zone-controls { display: grid; gap: var(--space-sm); min-width: 0; }
+.gr-zone-warning { background: var(--rising-soft); color: var(--fg); border-radius: var(--radius-sm); padding: 8px 12px; margin: 0; }
+.gr-zones { position: absolute; inset: 0; pointer-events: none; font-size: 3cqw; line-height: 1.2; }
+.gr-zone { position: absolute; display: grid; place-items: center; background: color-mix(in srgb, var(--no) 32%, transparent); border: 1px dashed var(--sub-fg); }
+.gr-zone span { background: var(--sub-bg); color: var(--sub-fg); padding: 0.1em 0.5em; border-radius: 0.3em; }
+.gr-zone-top { top: 0; left: 0; right: 0; height: var(--gr-zt); }
+.gr-zone-bottom { bottom: 0; left: 0; right: 0; height: var(--gr-zb); }
+.gr-zone-right { right: 0; width: var(--gr-zr); top: var(--gr-zt); bottom: var(--gr-zb); }
+.gr-zone-right span { writing-mode: vertical-rl; }
+.gr-sample .gr-zones { font-size: 6cqw; }
+
+/* What the auto-cut removed */
+.gr-autocut { display: grid; gap: var(--space-2xs); max-width: 100%; }
+.gr-autocut p { margin: 0; }
+.gr-autocut ul { margin: var(--space-2xs) 0 0; padding-left: 1.2em; }
+.gr-autocut summary { cursor: pointer; color: var(--muted); }

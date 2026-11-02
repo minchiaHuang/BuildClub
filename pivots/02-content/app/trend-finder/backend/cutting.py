@@ -123,6 +123,30 @@ def keep_intervals(words: list[Word], silences: list[tuple[float, float]], total
     return keeps
 
 
+def describe_trims(keeps: list[tuple[float, float]], words: list[Word], durations: list[float],
+                   total: float) -> list[dict]:
+    """What the auto-cut removed, per take: [{shot, kind: 'pause'|'filler', start, end}] with start/end in
+    seconds inside that take. A removed stretch that overlaps a filler word counts as a filler."""
+    removed, cursor = [], 0.0
+    for a, b in list(keeps) + [(total, total)]:
+        if a > cursor:
+            removed.append((cursor, a))
+        cursor = b
+    fillers = [(w[0], w[1]) for w in words if is_filler(w[2])]
+    bounds, offset = [], 0.0
+    for d in durations:
+        bounds.append((offset, offset + d))
+        offset += d
+    out = []
+    for a, b in removed:
+        kind = "filler" if any(fs < b and fe > a for fs, fe in fillers) else "pause"
+        for shot, (lo, hi) in enumerate(bounds):
+            s, e = max(a, lo), min(b, hi)
+            if e - s > 0.01:
+                out.append({"shot": shot, "kind": kind, "start": round(s - lo, 2), "end": round(e - lo, 2)})
+    return out
+
+
 def atempo_chain(speed: float) -> str:
     """ffmpeg atempo only accepts 0.5-2.0 per filter, so larger speeds are split."""
     if speed == 1.0:
@@ -433,4 +457,5 @@ def render_cut(takes: list[dict], music: Path | None, speed: float, work: Path, 
         part.unlink(missing_ok=True)
         raise CutError("The finished video didn't match the expected format, so it was discarded.")
     os.replace(part, out)
-    return {"size": out.stat().st_size, "durationSec": p["duration"], "cues": cues}
+    return {"size": out.stat().st_size, "durationSec": p["duration"], "cues": cues, "originalSec": total,
+            "trims": describe_trims(keeps, words, [i["duration"] for i in infos], total)}

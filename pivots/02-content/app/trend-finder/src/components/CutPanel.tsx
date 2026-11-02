@@ -5,6 +5,15 @@ import { SPEEDS, canStartCut, checkMusic, deleteMusic, formatDuration, getCut, p
 import { useManagerName } from '../lib/appContext'
 import { formatDay } from '../lib/dates'
 import { formatSize } from '../lib/takes'
+import type { CutOptions } from '../lib/grading'
+import type { ZonePlatform } from '../lib/grading'
+import { DEFAULT_OPTIONS, isDefaultOptions, optionsDiffer } from '../lib/grading'
+import { GradePicker } from './cut/GradePicker'
+import { SubtitleControls } from './cut/SubtitleControls'
+import { CutVideo } from './cut/CutVideo'
+import { CueEditor } from './cut/CueEditor'
+import { useCues } from './cut/useCues'
+import { AutoCutNote } from './cut/AutoCutNote'
 
 interface Props {
   ideaId: string
@@ -33,6 +42,11 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const manager = useManagerName()
+  // The choices on screen start from the last request (cut.options) and are then the user's.
+  const [options, setOptions] = useState<CutOptions>(DEFAULT_OPTIONS)
+  const [zone, setZone] = useState<ZonePlatform | null>(null)
+  const [previewOn, setPreviewOn] = useState(true)
+  const { data: cueData, setData: setCueData } = useCues(ideaId, cut?.output?.url)
 
   useEffect(() => {
     const ac = new AbortController()
@@ -43,6 +57,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
         if (ac.signal.aborted) return
         setCut(state)
         if (!speedSynced.current && state.status !== 'none' && SPEEDS.includes(state.speed)) setSpeed(state.speed)
+        if (!speedSynced.current && state.options) setOptions(state.options)
         speedSynced.current = true
         if (isActive(state)) await pollCut(ideaId, (s) => setCut(s), { signal: ac.signal })
       } catch (e) {
@@ -60,6 +75,8 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
   }, [takesRevision])
 
   const approved = status === 'approved'
+  // The options the current video was last requested with (the server keeps them; a failed re-cut makes this approximate).
+  const madeWith = cut?.options ?? null
   const active = isActive(cut)
   const output = cut?.output
   if (!approved && !output && !active) return null
@@ -70,7 +87,8 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
     setError(null)
     setStarting(true)
     try {
-      setCut(await startCut(ideaId, shotCount, speed))
+      const extra = isDefaultOptions(options) ? undefined : { grade: options.grade, burnSubtitles: options.burnSubtitles, subtitleStyle: options.subtitleStyle }
+      setCut(await startCut(ideaId, shotCount, speed, extra))
       setLoadKey((k) => k + 1)
     } catch (e) {
       setError((e as Error).message)
@@ -141,6 +159,19 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
             </select>
           </label>
 
+          <GradePicker ideaId={ideaId} value={options.grade} hasTake={shotsDone > 0} disabled={active} onChange={(grade) => setOptions({ ...options, grade })} />
+
+          <SubtitleControls
+            burn={options.burnSubtitles}
+            style={options.subtitleStyle}
+            disabled={active}
+            showSample={!output}
+            zone={zone}
+            onZone={setZone}
+            onBurn={(burnSubtitles) => setOptions({ ...options, burnSubtitles })}
+            onStyle={(subtitleStyle) => setOptions({ ...options, subtitleStyle })}
+          />
+
           <div className="cut-music">
             <span className="small">Add music (optional)</span>
             {cut?.music ? (
@@ -182,6 +213,7 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
               Make the video
             </button>
           )}
+          {output && !active && optionsDiffer(madeWith, options) && <span className="small gr-hint">Make the video again to apply</span>}
           {review?.status === 'approved' && <span className="muted small">Making it again clears {manager}'s approval.</span>}
           {review?.status === 'waiting' && <span className="muted small">Making it again takes it off {manager}'s list until you send it again.</span>}
         </div>
@@ -225,7 +257,13 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
       {output && (
         <div className="cut-output">
           {cut?.stale && <p className="small">The takes or music changed after this was made. Make it again.</p>}
-          <video key={output.url} controls playsInline preload="metadata" src={output.url} />
+          <CutVideo url={output.url} cues={approved ? (cueData?.cues ?? null) : null} previewStyle={approved && options.burnSubtitles && previewOn && madeWith?.burnSubtitles !== true ? options.subtitleStyle : null} zone={approved && options.burnSubtitles ? zone : null} />
+          {approved && options.burnSubtitles && cueData && madeWith?.burnSubtitles !== true && (
+            <label className="check small">
+              <input type="checkbox" checked={previewOn} onChange={(e) => setPreviewOn(e.target.checked)} />
+              <span>Show a preview of the subtitles on this video (they are added when you make it again)</span>
+            </label>
+          )}
           <div className="cut-output-meta">
             <a className="btn btn-ghost btn-sm" href={`${output.url}${output.url.includes('?') ? '&' : '?'}download=1`} download>
               Download
@@ -239,6 +277,10 @@ export function CutPanel({ ideaId, status, shotCount, shotsDone, takesRevision =
               {formatDuration(output.durationSec)} · {formatSize(output.size)}
             </span>
           </div>
+          {cut?.autoCut && <AutoCutNote autoCut={cut.autoCut} finalSec={output.durationSec} />}
+          {approved && cueData && cueData.cues.length > 0 && (
+            <CueEditor key={output.url} ideaId={ideaId} cues={cueData.cues} edited={cueData.edited} disabled={active} onSaved={setCueData} />
+          )}
           {line && <p className="small cut-review-line">{line}</p>}
           {review?.status === 'rejected' && review.reason && <p className="quote">{review.reason}</p>}
         </div>

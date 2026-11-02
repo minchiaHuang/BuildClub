@@ -21,5 +21,6 @@
 @import './styles/client-home.css'; /* client Home + Brief, on the theme-remake tokens */
 @import './styles/plans-board.css'; /* Plans board (drag between columns), on the theme-remake tokens */
 @import './styles/production-board.css'; /* Plans board as the production hub: six steps, StepProgress, FlagBadge */
+@import './styles/grading.css'; /* Make the video: colour look, subtitles, cue editor */
 @import './styles/publish.css'; /* Publishing: Post the video panel, results entry, topic and board result lines */
 @import './styles/storyboard.css'; /* script and storyboard on the plan page: shot cards, script table, frames, swatches */
