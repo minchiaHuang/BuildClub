@@ -1,0 +1,35 @@
+/* Production board (Plans tab): one card per video, six steps. Tokens from theme-remake.css only.
+   The columns scroll inside the board (plans-board.css: contain inline-size) and snap to one column at 760px. */
+
+/* StepProgress: six segments; done filled, current marked and named, rest empty. */
+:root[data-ui="altitude"] .step-progress { display: grid; gap: 6px; min-width: 0; }
+:root[data-ui="altitude"] .step-progress-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--step-gap); }
+:root[data-ui="altitude"] .step-progress-seg { height: 6px; border-radius: var(--radius-pill); background: var(--step-todo); opacity: 0.55; }
+:root[data-ui="altitude"] .step-progress-seg.is-done { background: var(--step-done); opacity: 1; }
+:root[data-ui="altitude"] .step-progress-seg.is-current { background: var(--step-current); opacity: 1; height: 8px; margin-top: -1px; }
+:root[data-ui="altitude"] .step-progress-label { font-size: var(--text-sm); font-weight: 600; line-height: 1.3; }
+:root[data-ui="altitude"] .step-progress-full .step-progress-seg { height: auto; min-height: 28px; display: grid; align-items: center; padding: 0 8px; border-radius: var(--radius-xs); background: var(--surface-2); opacity: 1; color: var(--muted); }
+:root[data-ui="altitude"] .step-progress-full .step-progress-seg.is-done { background: var(--early-soft); color: var(--early); }
+:root[data-ui="altitude"] .step-progress-full .step-progress-seg.is-current { background: var(--blue-soft); color: var(--blue); font-weight: 600; margin: 0; }
+:root[data-ui="altitude"] .step-progress-name { font-size: var(--text-sm); overflow-wrap: anywhere; }
+
+/* FlagBadge */
+:root[data-ui="altitude"] .flag-badge { display: inline-flex; align-items: center; font-size: var(--text-xs); font-weight: 600; padding: 3px 9px; border-radius: var(--radius-pill); white-space: nowrap; }
+:root[data-ui="altitude"] .flag-badge-stuck { background: var(--flag-stuck-soft); color: var(--flag-stuck); }
+:root[data-ui="altitude"] .flag-badge-overdue { background: var(--flag-overdue-soft); color: var(--flag-overdue); }
+
+/* The card: thumb and title on top, then progress, flags, next action, controls. */
+:root[data-ui="altitude"] .pb-card .pb-foot { grid-column: 1 / -1; display: grid; gap: 8px; min-width: 0; }
+:root[data-ui="altitude"] .pb-flags { display: flex; flex-wrap: wrap; gap: 6px; }
+:root[data-ui="altitude"] .pb-client { font-weight: 600; }
+:root[data-ui="altitude"] .pb-next { margin: 0; overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .pb-next-label { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
+:root[data-ui="altitude"] .pb-card .board-reason { overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .pb-card .pb-move { max-width: 100%; }
+:root[data-ui="altitude"] .pb-due input { width: auto; max-width: 100%; min-width: 0; font-size: var(--text-sm); padding: 4px 6px; }
+:root[data-ui="altitude"] .pb-card.is-locked { cursor: default; }
+:root[data-ui="altitude"] .pb-col .board-batch, :root[data-ui="altitude"] .pb-col .board-link { min-width: 0; }
+:root[data-ui="altitude"] .pb-card select, :root[data-ui="altitude"] .pb-due input { font-size: var(--text-sm); min-height: 34px; padding: 4px 8px; }
+:root[data-ui="altitude"] .pb-card .board-card-actions { gap: 8px; }
+:root[data-ui="altitude"] .pb-board { align-items: stretch; } /* short columns stay easy to drop on */
+:root[data-ui="altitude"] .pb-confirm-text { margin-right: auto; font-size: var(--text-ms); overflow-wrap: anywhere; }

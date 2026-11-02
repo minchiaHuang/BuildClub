@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import type { IdeaStatus } from '../../types'
+import type { Step } from '../../lib/steps.ts'
 import { columnTitle } from './moves'
 
 interface Props {
-  status: IdeaStatus
+  step: Step
   count: number
   // While a plan is being dragged: can it be dropped here? null when nothing is being dragged.
   canDrop: boolean | null
@@ -15,14 +15,14 @@ interface Props {
 
 // One column of the Plans board. Only columns the dragged plan can move to take a drop.
 export function PlanColumn(p: Props) {
-  const { setNodeRef, isOver } = useDroppable({ id: p.status, disabled: p.canDrop !== true })
+  const { setNodeRef, isOver } = useDroppable({ id: p.step, disabled: p.canDrop !== true })
   const drop = p.canDrop === null ? undefined : p.canDrop ? (isOver ? 'over' : 'yes') : 'no'
-  const title = columnTitle[p.status]
+  const title = columnTitle[p.step]
   return (
     <section
       ref={setNodeRef}
-      id={`board-${p.status}`}
-      className={`plans-col plans-col-${p.status}`}
+      id={`board-${p.step}`}
+      className={`plans-col pb-col plans-col-${p.step}`}
       data-drop={drop}
       aria-label={`${title}, ${p.count}`}
     >
