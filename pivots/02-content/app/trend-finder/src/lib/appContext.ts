@@ -1,10 +1,13 @@
 import { createContext, useContext } from 'react'
+import type { Account } from './auth'
 import type { AgencySettings, Client, ClientEvent, Role } from '../types'
 
 // Shared app state that many screens need, so they can read it without props threaded through App.tsx.
 export interface AppContextValue {
   agency: AgencySettings
   setAgency: (patch: Partial<AgencySettings>) => void
+  // The signed-in account (from /api/auth/me); null when the API has no accounts or nobody is signed in.
+  account: Account | null
   role: Role
   setRole: (role: Role) => void
   addClient: (client: Client) => void
