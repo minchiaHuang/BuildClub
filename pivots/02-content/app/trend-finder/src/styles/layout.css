@@ -120,3 +120,4 @@
 
 /* Notice when the API could not load or save the user's data */
 .sync-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-base); margin: var(--space-xl) var(--space-xl) 0; padding: var(--space-md) var(--space-xl); background: var(--surface-2); color: var(--fg); border-radius: var(--radius-sm); font-size: var(--text-sm); }
+.prefs-section .theme-seg { max-width: 320px; }

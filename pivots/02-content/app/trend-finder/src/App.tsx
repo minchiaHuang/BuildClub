@@ -24,6 +24,7 @@ import { ReviewScreen } from './components/ReviewScreen'
 // stream C: decisions and client memory
 import { applyDecision, type Decision } from './lib/memory'
 import { SettingsScreen } from './components/SettingsScreen'
+import { PreferencesScreen } from './components/PreferencesScreen'
 import { ChannelScreen } from './components/ChannelScreen'
 import { LoginScreen } from './components/LoginScreen'
 import type { Client, Format, Platform, Video } from './types'
@@ -56,7 +57,7 @@ import { AppContext } from './lib/appContext'
 import type { AppContextValue } from './lib/appContext'
 import { ShortlistBoard } from './components/ShortlistBoard'
 import { AddClientScreen } from './components/AddClientScreen'
-import { logout, me } from './lib/auth'
+import { logout, me, type Account } from './lib/auth'
 import { nextView, onUnauthorized } from './lib/authGate'
 import { markMigrated, pickInitialIdeas, wasMigrated } from './lib/migrateLocal'
 import { applyDraft, keepUnsavedDraft, rebaseIdeas, sameIdeaList, withoutSamples } from './lib/ideasSync'
@@ -142,6 +143,7 @@ export default function App() {
 
   // 'open' = the API has no accounts (demo sign-in above); otherwise the API's session decides.
   const [auth, setAuth] = useState<'checking' | 'open' | 'signed-out' | 'signed-in'>('checking')
+  const [account, setAccount] = useState<Account | null>(null)
   const returnTo = useRef<ReturnTo | null>(null)
   const keepDraft = useRef<() => void>(() => {})
   const restoreView = useCallback(() => {
@@ -169,6 +171,7 @@ export default function App() {
   useEffect(() => {
     me().then((a) => {
       setAuth(a.kind)
+      setAccount(a.kind === 'signed-in' ? a.account : null)
       if (a.kind === 'signed-in') restoreView()
     })
   }, [restoreView])
@@ -874,7 +877,9 @@ export default function App() {
   }
 
   const appContext: AppContextValue = {
-    agency,
+    // A signed-in account's agency name wins over the per-browser setting; without accounts the setting is used.
+    agency: account?.agency ? { ...agency, agencyName: account.agency } : agency,
+    account,
     setAgency: (patch) => setAgencyRaw((a) => ({ ...a, ...patch })),
     role,
     setRole,
@@ -900,6 +905,7 @@ export default function App() {
     review: 'review',
     plan: 'plan',
     settings: 'brief',
+    preferences: 'settings',
     channel: 'channel',
     shortlist: 'plans',
     'add-client': 'add client',
@@ -967,6 +973,7 @@ export default function App() {
             setSignedOut(false)
             if (auth === 'signed-out') {
               setAuth('signed-in')
+              void me().then((m) => setAccount(m.kind === 'signed-in' ? m.account : null))
               setRetryTick((t) => t + 1)
               // Back from an ended session: return to where the user was, not the overview.
               if (restoreView()) return
@@ -989,6 +996,7 @@ export default function App() {
     returnTo.current = null
     void logout().then(() => {
       setSynced(false)
+      setAccount(null)
       setAuth('signed-out')
     })
   }
@@ -1041,7 +1049,7 @@ export default function App() {
             />
           )}
 
-          {((!inClient && view !== 'add-client' && view !== 'channel') || view === 'overview') && (
+          {((!inClient && view !== 'add-client' && view !== 'channel' && view !== 'preferences') || view === 'overview') && (
             <OverviewScreen
               clients={clients}
               ideas={shownIdeas}
@@ -1084,6 +1092,8 @@ export default function App() {
           )}
 
           {view === 'channel' && <ChannelScreen />}
+
+          {view === 'preferences' && <PreferencesScreen />}
 
           {inClient && view === 'search' && (
             <SearchScreen

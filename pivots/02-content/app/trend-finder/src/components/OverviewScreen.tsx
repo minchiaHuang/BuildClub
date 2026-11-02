@@ -23,7 +23,7 @@ interface Props {
 
 // Agency name and manager name, edited here because they apply to every client. Saves as you type.
 function AgencySection() {
-  const { agency, setAgency } = useApp()
+  const { agency, setAgency, account } = useApp()
   return (
     <fieldset className="cannot agency-box">
       <legend>
@@ -33,7 +33,7 @@ function AgencySection() {
       <div className="settings-grid">
         <label className="field">
           <span className="field-label">Agency name</span>
-          <input id="agency-name" value={agency.agencyName} onChange={(e) => setAgency({ agencyName: e.target.value })} />
+          <input id="agency-name" value={agency.agencyName} readOnly={!!account?.agency} title={account?.agency ? "Set by your account" : undefined} onChange={(e) => setAgency({ agencyName: e.target.value })} />
         </label>
         <label className="field">
           <span className="field-label">Manager's name</span>
