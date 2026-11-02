@@ -74,7 +74,7 @@
   --sky-tint: none;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-ui="altitude"] {
+  :root:not([data-theme="light"])[data-ui="altitude"] {
     --canvas: #0b0d1c;
     --canvas-alt: #14172b;
     --ink: #eceef6;
@@ -105,6 +105,37 @@
     --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
   }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  :root[data-theme="dark"][data-ui="altitude"] {
+    --canvas: #0b0d1c;
+    --canvas-alt: #14172b;
+    --ink: #eceef6;
+    --ink-muted: #a3a7c0;
+    --navy: #10145a;
+    --blue: #4a5cff;
+    --blue-hover: #3a4cf0;
+    --blue-soft: #1a2160;
+    --accent-soft-fg: var(--label);
+    --label: #8f9bff;
+    --violet: #b98aff;
+    --violet-soft: #2a1752;
+    --surface: #14172b;
+    --surface-3: #262a48;
+    --line: #262a48;
+    --line-strong: #454a78;
+    --frost: rgb(11 13 28 / 0.88);
+    --scrim: rgb(0 0 0 / 0.6);
+    --accent-fg: #ffffff;
+    --hot-fg: #0b0d1c;
+    --early: #6fd39a;
+    --early-soft: #10301f;
+    --rising: #f0b44a;
+    --rising-soft: #33260a;
+    --no: #ff8a7a;
+    --no-soft: #3a1512;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
+  }
 
 /* Canvas: plain, no sky tint */
 :root[data-ui="altitude"] body,

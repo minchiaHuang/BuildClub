@@ -54,5 +54,8 @@
 
 @media (prefers-color-scheme: dark) {
   /* Keep the reference's light, sunny look in dark mode too */
-  :root[data-ui="altitude"] .landing-alt { color-scheme: light; --fg: #141414; --muted: #4a4a4a; --surface: #fff; }
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt { color-scheme: light; --fg: #141414; --muted: #4a4a4a; --surface: #fff; }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  /* Keep the reference's light, sunny look in dark mode too */
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt { color-scheme: light; --fg: #141414; --muted: #4a4a4a; --surface: #fff; }

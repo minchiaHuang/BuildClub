@@ -135,7 +135,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000000;
     --surface: #1c1c1e;
     --surface-2: #2c2c2e;
@@ -176,3 +176,44 @@
     color-scheme: dark;
   }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  :root[data-theme="dark"] {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --surface-3: #3a3a3c;
+    --fg: #f5f5f7;
+    --muted: #a1a1a6;
+    --line: #2c2c2e;
+    --line-strong: #48484a;
+    --frost: rgb(28 28 30 / 0.9);
+    --scrim: rgb(0 0 0 / 0.6);
+
+    --accent: #f5f5f7;
+    --accent-hover: #ffffff;
+    --accent-fg: #1d1d1f;
+    --accent-soft: #2c2c2e;
+
+    --hot: #f08a5d;
+    --hot-soft: #3a1f14;
+    --hot-fg: #1a0b04;
+    --early: #62cf8f;
+    --early-soft: #15301f;
+    --early-fg: #06140c;
+    --rising: #e6b452;
+    --rising-soft: #33280f;
+    --late: #a0a0a7;
+    --late-soft: #232327;
+    --no: #f2877b;
+    --no-soft: #3a1c19;
+
+    --tiktok: #f2f2f4;
+    --instagram: #e46aaf;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.55);
+    --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
+
+    color-scheme: dark;
+  }

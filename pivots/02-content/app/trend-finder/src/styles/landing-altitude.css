@@ -82,15 +82,24 @@
 
 /* Night sky */
 @media (prefers-color-scheme: dark) {
-  :root[data-ui="altitude"] .landing-alt .la-hero .alt-sky {
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt .la-hero .alt-sky {
     background: radial-gradient(50% 40% at 70% 10%, rgb(120 150 220 / 0.25), transparent 70%), linear-gradient(180deg, #0a1428 0%, #14233f 45%, #1b2638 70%);
   }
-  :root[data-ui="altitude"] .landing-alt .la-strip { background: #000; border-bottom: 1px solid #22262c; }
-  :root[data-ui="altitude"] .landing-alt .la-vis { background: linear-gradient(180deg, #1d2a44, #18202c); }
-  :root[data-ui="altitude"] .landing-alt .la-bar.b { background: #f3f4f6; }
-  :root[data-ui="altitude"] .landing-alt .la-bar.a { background: #9fb3d1; }
-  :root[data-ui="altitude"] .landing-alt .la-pill:hover { box-shadow: 0 6px 18px rgb(0 0 0 / 0.4); }
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt .la-strip { background: #000; border-bottom: 1px solid #22262c; }
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt .la-vis { background: linear-gradient(180deg, #1d2a44, #18202c); }
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt .la-bar.b { background: #f3f4f6; }
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt .la-bar.a { background: #9fb3d1; }
+  :root:not([data-theme="light"])[data-ui="altitude"] .landing-alt .la-pill:hover { box-shadow: 0 6px 18px rgb(0 0 0 / 0.4); }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt .la-hero .alt-sky {
+    background: radial-gradient(50% 40% at 70% 10%, rgb(120 150 220 / 0.25), transparent 70%), linear-gradient(180deg, #0a1428 0%, #14233f 45%, #1b2638 70%);
+  }
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt .la-strip { background: #000; border-bottom: 1px solid #22262c; }
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt .la-vis { background: linear-gradient(180deg, #1d2a44, #18202c); }
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt .la-bar.b { background: #f3f4f6; }
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt .la-bar.a { background: #9fb3d1; }
+  :root[data-theme="dark"][data-ui="altitude"] .landing-alt .la-pill:hover { box-shadow: 0 6px 18px rgb(0 0 0 / 0.4); }
 
 @media (max-width: 1000px) {
   :root[data-ui="altitude"] .landing-alt .la-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
