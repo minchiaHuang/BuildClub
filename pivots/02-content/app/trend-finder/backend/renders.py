@@ -21,6 +21,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 import cutting
+import grading
+import subtitles
 from cutting import CutError
 
 # Job columns describe the latest run; the out_* columns describe the video on disk and are written only
@@ -115,6 +117,9 @@ def has_review_link(conn, client_id: str) -> bool:
 class CutRequest(BaseModel):
     shotCount: int = Field(strict=True, ge=1, le=MAX_SHOTS)
     speed: float
+    grade: str = "none"
+    burnSubtitles: bool = False
+    subtitleStyle: subtitles.BurnStyle = subtitles.BurnStyle()
 
 
 def chosen_ids(conn, idea_id: str, shots: int) -> list[tuple[str, str]]:
@@ -209,7 +214,20 @@ class RenderJobs:
             def step(progress: float, text: str) -> None:
                 self._set(idea_id, progress=progress, step=text)
 
-            result = run_pipeline(takes, music_path, speed, work, nxt, step)
+            # Extras are passed only when asked for, so a plain cut calls the pipeline exactly as before.
+            with self._db() as conn:
+                opts = grading.load_options(conn, idea_id)
+            extra = {}
+            if opts.get("grade", "none") != "none":
+                extra["grade"] = opts["grade"]
+            if opts.get("burnSubtitles"):
+                extra["burn"] = subtitles.BurnStyle(**opts.get("subtitleStyle", {}))
+            cues_file = subtitles.cues_path(self._media(), idea_id)
+            cut_sig = signature([t["id"] for t in takes], speed, None)  # what the cue timings depend on
+            kept = subtitles.reusable_cues(cues_file, cut_sig)
+            if kept is not None:
+                extra["cues"] = kept
+            result = run_pipeline(takes, music_path, speed, work, nxt, step, **extra)
             os.replace(nxt, folder / "final.mp4")  # only now does the old video go
             # A new video is not the one that was sent, so the review goes in the same transaction.
             with self._db() as conn:
@@ -220,6 +238,10 @@ class RenderJobs:
                     (int(time.time() * 1000), result["size"], result["durationSec"], speed, shots,
                      signature([t["id"] for t in takes], speed, music[0] if music else None), idea_id))
                 conn.execute("DELETE FROM cut_reviews WHERE idea_id = ?", (idea_id,))
+            if result.get("cues") and cues_file is not None:
+                subtitles.save_cues(cues_file, result["cues"], cut_sig, kept is not None)
+            elif cues_file is not None:
+                cues_file.unlink(missing_ok=True)
         except CutError as e:
             print(f"[render] {idea_id} failed: {e}", flush=True)
             self._set(idea_id, status="failed", error=str(e), finished_at=int(time.time() * 1000))
@@ -247,7 +269,8 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
             row = conn.execute(f"SELECT {COLUMNS} FROM renders WHERE idea_id = ?", (idea_id,)).fetchone()
             music = music_row(conn, idea_id)
             out = {"status": "none", "progress": 0, "step": "", "speed": DEFAULT_SPEED, "stale": False,
-                   "music": {"name": music[2], "size": music[3]} if music else None, "review": None}
+                   "music": {"name": music[2], "size": music[3]} if music else None, "review": None,
+                   "options": grading.load_options(conn, idea_id) or None}
             if row is None:
                 return out
             status, progress, step, err, speed, size, duration, out_sig, out_speed, out_shots = row
@@ -433,6 +456,8 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
     def start_cut(idea_id: str, body: CutRequest):
         if body.speed not in SPEEDS:
             return error(422, BAD_SPEED)
+        if body.grade not in grading.PRESETS:
+            return error(422, grading.BAD_GRADE)
         refused = editable(idea_id)
         if refused:
             return refused
@@ -486,6 +511,9 @@ def make_router(db, load, media_dir: Callable[[], Path]) -> APIRouter:
                 raise
             finally:
                 conn.close()
+        with db() as conn:
+            grading.save_options(conn, idea_id, {"grade": body.grade, "burnSubtitles": body.burnSubtitles,
+                                                 "subtitleStyle": body.subtitleStyle.model_dump()})
         jobs.submit(idea_id)
         return JSONResponse(state_of(idea_id), status_code=202)
 

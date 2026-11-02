@@ -334,10 +334,14 @@ def _render_pass(cmd: list[str], total: float, on_progress, err_path: Path) -> N
 
 
 def render_cut(takes: list[dict], music: Path | None, speed: float, work: Path, out: Path, step,
-               *, words_fn=transcribe_words) -> dict:
+               *, words_fn=transcribe_words, grade: str = "none", burn=None, cues: list | None = None) -> dict:
     """Join the takes, cut silences and fillers, speed up, mix music, two-pass loudnorm, and write `out`
     (via out.with_suffix('.part')). `step(progress, text)` is called at each milestone. Intermediate
-    files stay in `work`; removing `work` is the caller's job."""
+    files stay in `work`; removing `work` is the caller's job. `grade` is a grading.PRESETS name and `burn`
+    a subtitles.BurnStyle (None: no burned-in subtitles); `cues` replaces the cues made from the words.
+    The result also carries the subtitle `cues` of the final video."""
+    import grading
+    import subtitles
     work, out = Path(work), Path(out)
     work.mkdir(parents=True, exist_ok=True)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -396,13 +400,27 @@ def render_cut(takes: list[dict], music: Path | None, speed: float, work: Path, 
     graph = build_cut_graph(keeps, speed, music=use_music, audio_only=False, loudnorm=measured)
     if measured is None:
         graph = re.sub(r"loudnorm=[^,;]*,", "", graph)
-    g2.write_text(graph)
-
     expected = output_duration(keeps, speed)
+    cues = subtitles.build_cues(words, keeps, speed) if cues is None else cues
+    label, extra_in = "v", []
+    grade_chain = grading.grade_filter(grade)
+    if grade_chain:
+        graph += f";[v]{grade_chain}[vg]"
+        label = "vg"
+    if burn is not None and cues:
+        step(0.62, "Drawing the subtitles")
+        try:
+            listing = subtitles.write_overlay(cues, burn, work / "subs", expected)
+        except subtitles.SubtitleError as e:
+            raise CutError(str(e))
+        extra_in = ["-f", "concat", "-safe", "0", "-i", str(listing)]
+        graph += subtitles.overlay_graph(label, 2 if use_music else 1)
+        label = "vo"
+    g2.write_text(graph)
     part = out.with_suffix(".part")
     step(0.65, "Rendering")
-    _render_pass(["ffmpeg", "-y", "-nostdin", "-v", "error", *src, "-/filter_complex", str(g2),
-                  "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+    _render_pass(["ffmpeg", "-y", "-nostdin", "-v", "error", *src, *extra_in, "-/filter_complex", str(g2),
+                  "-map", f"[{label}]", "-map", "[a]", "-c:v", "libx264", "-crf", "18", "-preset", "medium",
                   "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
                   "-movflags", "+faststart", "-t", num(expected + 0.5), "-f", "mp4",
                   "-progress", "pipe:1", "-nostats", str(part)],
@@ -415,4 +433,4 @@ def render_cut(takes: list[dict], music: Path | None, speed: float, work: Path, 
         part.unlink(missing_ok=True)
         raise CutError("The finished video didn't match the expected format, so it was discarded.")
     os.replace(part, out)
-    return {"size": out.stat().st_size, "durationSec": p["duration"]}
+    return {"size": out.stat().st_size, "durationSec": p["duration"], "cues": cues}

@@ -36,11 +36,11 @@ def make_clip(path, parts, size="640x360", with_audio=True):
     return path
 
 
-def cut(tmp_path, takes, *, speed=1.0, words_fn=fake_words, music=None, steps=None):
+def cut(tmp_path, takes, *, speed=1.0, words_fn=fake_words, music=None, steps=None, **kw):
     out = tmp_path / "out.mp4"
     steps = steps if steps is not None else []
     info = cutting.render_cut(takes, music, speed, tmp_path / "w", out, lambda p, t: steps.append((p, t)),
-                              words_fn=words_fn)
+                              words_fn=words_fn, **kw)
     return info, cutting.probe(out), out
 
 
@@ -251,3 +251,63 @@ def test_silent_broll_take_is_kept_whole(tmp_path):
     _, p, _ = cut(tmp_path, [{"path": talk}, {"path": broll}])  # fake words only exist in the first take
     assert p["duration"] == pytest.approx(2.24 + 2.0, abs=0.2)
     assert_spec(p)
+
+
+# ---- grade and burned-in subtitles ---------------------------------------------------------------------
+
+SUB_WORDS = [(0.0, 0.5, "你好"), (0.5, 1.0, "world"), (2.5, 3.0, "again")]
+
+
+def sub_words(wav, work):
+    return SUB_WORDS
+
+
+def frame_png(video, at, path):
+    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(at), "-i", str(video), "-frames:v", "1", str(path)],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    return path
+
+
+@need_ffmpeg
+def test_burn_off_leaves_the_command_unchanged(tmp_path, monkeypatch):
+    clip = make_clip(tmp_path / "a.mp4", GAP_CLIP)
+    seen = []
+    real = cutting._render_pass
+    monkeypatch.setattr(cutting, "_render_pass", lambda cmd, *a: (seen.append(cmd), real(cmd, *a))[1])
+    info, p, out = cut(tmp_path, [{"path": clip}], words_fn=sub_words)
+    cmd = seen[0]
+    assert "concat" not in cmd and cmd.count("-i") == 1 and cmd[cmd.index("-map") + 1] == "[v]"
+    graph = (tmp_path / "w" / "g2.txt").read_text()
+    assert "overlay" not in graph and "colorbalance" not in graph and "eq=" not in graph
+    assert info["cues"][0]["text"].startswith("你好")
+
+
+@need_ffmpeg
+def test_burn_in_and_grade_end_to_end(tmp_path):
+    from PIL import Image, ImageChops
+    import subtitles
+    clip = make_clip(tmp_path / "a.mp4", GAP_CLIP)
+    plain_dir = tmp_path / "plain"
+    plain_dir.mkdir()
+    _, _, plain = cut(plain_dir, [{"path": clip}], words_fn=sub_words, grade="warm")
+    burn_dir = tmp_path / "burn"
+    burn_dir.mkdir()
+    out = burn_dir / "out.mp4"
+    info = cutting.render_cut([{"path": clip}], None, 1.0, burn_dir / "w", out, lambda p, t: None,
+                              words_fn=sub_words, grade="warm", burn=subtitles.BurnStyle(size="L"))
+    p = cutting.probe(out)
+    assert_spec(p)
+    a = Image.open(frame_png(plain, 0.5, tmp_path / "a.png")).convert("RGB")
+    b = Image.open(frame_png(out, 0.5, tmp_path / "b.png")).convert("RGB")
+    diff = ImageChops.difference(a, b).convert("L")
+    top, low = diff.crop((0, 0, 1080, 1000)), diff.crop((0, 1000, 1080, 1920))
+    assert top.getextrema()[1] < 40      # two separate encodes: only compression noise above the subtitle
+    assert low.getextrema()[1] > 150     # the subtitle (white text / dark box) is drawn in the lower part
+    # graded: the warm preset changes the picture against an ungraded cut
+    ungraded_dir = tmp_path / "ungraded"
+    ungraded_dir.mkdir()
+    _, _, ungraded = cut(ungraded_dir, [{"path": clip}], words_fn=sub_words)
+    c = Image.open(frame_png(ungraded, 0.5, tmp_path / "c.png")).convert("RGB")
+    assert ImageChops.difference(a, c).getbbox() is not None
+    assert info["cues"]
