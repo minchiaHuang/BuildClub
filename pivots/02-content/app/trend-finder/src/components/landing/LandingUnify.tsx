@@ -1,9 +1,10 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { SlotCounter } from '../themes/unify/SlotCounter'
 import { usePrefersReducedMotion } from '../../lib/motion'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 
 // Public landing page for the Unify direction: website hero + "how it works" section, with Log in and Register.
-// Sign-in is a demo for now, so both buttons enter the sample agency.
+// Sign-in is a demo for now. With sample data (no API) the page says so; with the live API it shows real counts and drops the sample labels.
 
 const STEPS = [
   { title: 'Search a niche', body: "Type your client's niche, like budget recipes. Trend Finder searches TikTok live for what's working right now." },
@@ -57,6 +58,8 @@ function StepVisual({ i }: { i: number }) {
 
 export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
   const reduced = usePrefersReducedMotion()
+  const { mode, stats } = useLiveInfo()
+  const sample = mode === 'sample'
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -73,7 +76,7 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
         <div className="lu-links"><a href="#">Product</a><a href="#how">How it works</a><a href="#">Customers</a></div>
         <div className="lu-auth">
           <button type="button" className="lu-text" onClick={onLogIn}>Log in</button>
-          <button type="button" className="lu-black" onClick={onRegister}>Register</button>
+          <button type="button" className="lu-black" onClick={onRegister}>Ask for access</button>
         </div>
       </nav>
 
@@ -86,12 +89,15 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             </h1>
             <p className="lu-lede">See which TikToks are getting far more views than usual, and plan a version for each brand you manage.</p>
             <div className="lu-ctas">
-              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Register free</button>
+              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Ask for access</button>
               <button type="button" className="lu-under" onClick={onLogIn}>Log in to your dashboard</button>
             </div>
-            <p className="lu-note">Demo: both buttons open the sample agency.</p>
+            {sample && <p className="lu-note">Demo: both buttons open the sample agency.</p>}
             <ul className="lu-pills"><li>TikTok live search</li><li>Outlier scores</li><li>Client approvals</li><li>Editor briefs</li></ul>
-            <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>
+            {sample && <p className="lu-count">Trend Finder has scanned <SlotCounter value={1284301} /> videos <span className="lu-sample">sample</span></p>}
+            {mode === 'live' && stats && stats.videosScanned > 0 && (
+              <p className="lu-count">Trend Finder has scanned <SlotCounter value={stats.videosScanned} /> videos</p>
+            )}
           </div>
 
           <div className="lu-preview" aria-label="Product preview">
@@ -130,6 +136,8 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             </div>
           </div>
 
+          {sample && (
+          <>
           <div className="lu-stats">
             <div className="lu-stat"><b>153×</b><span>best outlier this week</span></div>
             <div className="lu-stat"><b>12</b><span>clients in one dashboard</span></div>
@@ -137,13 +145,15 @@ export function LandingUnify({ onLogIn, onRegister }: { onLogIn: () => void; onR
             <div className="lu-stat"><b>1 tap</b><span>for your client to approve</span></div>
           </div>
           <p className="lu-note">Sample numbers.</p>
+          </>
+          )}
         </section>
 
         <section className="lu-strip">
           <div className="lu-strip-card">
             <h2 className="lu-h2">Bring your next client a trend <em style={em(0)}>first</em></h2>
             <div className="lu-ctas">
-              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Register free</button>
+              <button type="button" className="lu-black lu-lg" onClick={onRegister}>Ask for access</button>
               <button type="button" className="lu-under" onClick={onLogIn}>Log in</button>
             </div>
           </div>

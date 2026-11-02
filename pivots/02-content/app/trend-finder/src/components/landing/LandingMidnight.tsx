@@ -1,6 +1,7 @@
-// Public landing page for the Midnight direction. Sign-in is a demo for now, so both buttons enter the sample agency.
+// Public landing page for the Midnight direction. Sign-in is a demo for now; the sample-agency notes show only without the live API.
 import { Pill, type PillSpec } from './midnight/Pills'
 import { TypingSearch } from './TypingSearch'
+import { useLiveInfo } from '../../lib/useLiveInfo'
 import { useParallax } from './midnight/useParallax'
 
 const PILLS: PillSpec[] = [
@@ -40,6 +41,7 @@ const Arrow = () => (
 )
 
 export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; onRegister: () => void }) {
+  const { mode } = useLiveInfo()
   const ref = useParallax<HTMLDivElement>()
   return (
     <main className="landing landing-midnight">
@@ -56,7 +58,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
           </span>
           <span className="mn-nav-right">
             <button className="mn-textbtn" onClick={onLogIn}>Log in</button>
-            <button className="mn-whitepill" onClick={onRegister}>Register</button>
+            <button className="mn-whitepill" onClick={onRegister}>Ask for access</button>
           </span>
         </nav>
 
@@ -77,10 +79,10 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
         <TypingSearch variant="midnight" />
         <div className="mn-hero-cta">
           <button className="mn-blue" onClick={onRegister}>
-            Register <Arrow />
+            Ask for access <Arrow />
           </button>
           <button className="mn-link" onClick={onLogIn}>Log in to your dashboard</button>
-          <span className="mn-demo">Demo: both buttons open the sample agency.</span>
+          {mode === 'sample' && <span className="mn-demo">Demo: both buttons open the sample agency.</span>}
         </div>
         <ul className="mn-laurels">
           {BADGES.map((b) => (
@@ -133,7 +135,7 @@ export function LandingMidnight({ onLogIn, onRegister }: { onLogIn: () => void; 
         <div className="mn-close">
           <h2>Find the next one first.</h2>
           <div className="mn-close-btns">
-            <button className="mn-blue" onClick={onRegister}>Register <Arrow /></button>
+            <button className="mn-blue" onClick={onRegister}>Ask for access <Arrow /></button>
             <button className="mn-ghost" onClick={onLogIn}>Log in</button>
           </div>
         </div>

@@ -55,7 +55,7 @@ def test_the_cap_resets_the_next_day(client, monkeypatch):
 
 def test_breakdowns_stop_at_the_cap_but_finished_ones_stay_free(client, monkeypatch):
     monkeypatch.setattr(analyze, "prepare", fake_prepare)
-    monkeypatch.setattr(analyze, "breakdown", lambda prepared, work: RESULT)
+    monkeypatch.setattr(analyze, "breakdown", lambda prepared, work, vocab=None: RESULT)
     monkeypatch.setattr(server, "jobs", analyze.Jobs())
     monkeypatch.setattr(server, "DAILY_CLAUDE_USD", 0.08)  # one breakdown
     r = client.post("/api/analyze", json={"url": URL})

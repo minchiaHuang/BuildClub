@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Client } from '../types'
 import type { Workspace } from '../state'
 import { AGENCY_NAME } from '../state'
+import type { Account } from '../lib/auth'
 
 export type View = 'overview' | 'search' | 'results' | 'saved' | 'approvals' | 'review' | 'plans' | 'plan' | 'settings' | 'channel'
 
@@ -42,12 +43,15 @@ interface Props {
   setView: (v: View) => void
   counts: { saved: number; waiting: number; plans: number }
   onSignOut: () => void
+  // The signed-in person; null in the no-account demo.
+  account: Account | null
   open: boolean
   onClose: () => void
   live: boolean
+  onAddClient: () => void
 }
 
-function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'>) {
+function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient, agency }: Pick<Props, 'clients' | 'workspace' | 'setWorkspace'> & { onAddClient: () => void; agency: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const current = clients.find((c) => c.id === workspace)
@@ -74,7 +78,7 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
       <button className="switcher-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className={`avatar ${current ? '' : 'avatar-agency'}`}>{current ? initials(current.name) : '▦'}</span>
         <span className="switcher-text">
-          <span className="switcher-label">{current ? 'Client' : AGENCY_NAME}</span>
+          <span className="switcher-label">{current ? 'Client' : agency}</span>
           <strong>{current ? current.name : 'All clients'}</strong>
         </span>
         <span className="switcher-caret" aria-hidden="true">
@@ -107,11 +111,18 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
             </button>
           ))}
           <div className="switcher-sep" />
-          <button role="menuitem" className="switcher-item switcher-add" disabled title="Coming later">
+          <button
+            role="menuitem"
+            className="switcher-item switcher-add"
+            onClick={() => {
+              setOpen(false)
+              onAddClient()
+            }}
+          >
             <span className="avatar avatar-add">+</span>
             <span>
               <strong>Add client</strong>
-              <span className="small muted">Coming soon</span>
+              <span className="small muted">New client</span>
             </span>
           </button>
         </div>
@@ -120,8 +131,29 @@ function ClientSwitcher({ clients, workspace, setWorkspace }: Pick<Props, 'clien
   )
 }
 
+const PHONE = '(max-width: 860px)'
+
 export function Sidebar(p: Props) {
   const inClient = p.workspace !== 'all'
+  // On phones the sidebar is a slide-over: closed, it is off-screen, so keyboard and screen readers must skip it.
+  const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
+  useEffect(() => {
+    const m = window.matchMedia(PHONE)
+    const onChange = () => setPhone(m.matches)
+    m.addEventListener('change', onChange)
+    return () => m.removeEventListener('change', onChange)
+  }, [])
+  const { open, onClose } = p
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      onClose()
+      document.querySelector<HTMLElement>('.mobile-bar .icon-btn')?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
   const item = (v: View, icon: keyof typeof paths, label: string, count?: number, active = p.view === v) => (
     <button
       className={`side-link ${active ? 'side-on' : ''}`}
@@ -140,7 +172,7 @@ export function Sidebar(p: Props) {
   return (
     <>
       {p.open && <div className="side-scrim" onClick={p.onClose} />}
-      <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label="Main">
+      <aside className={`sidebar ${p.open ? 'sidebar-open' : ''}`} aria-label="Main" inert={phone && !p.open}>
         <div className="side-brand">
           <span className="brand-mark" aria-hidden="true">
             ↗
@@ -148,7 +180,7 @@ export function Sidebar(p: Props) {
           Trend Finder
         </div>
 
-        <ClientSwitcher clients={p.clients} workspace={p.workspace} setWorkspace={p.setWorkspace} />
+        <ClientSwitcher agency={p.account?.agency || AGENCY_NAME} clients={p.clients} workspace={p.workspace} setWorkspace={(w) => { p.setWorkspace(w); p.onClose() }} onAddClient={() => { p.onClose(); p.onAddClient() }} />
 
         <nav className="side-nav">
           {inClient ? (
@@ -181,10 +213,10 @@ export function Sidebar(p: Props) {
             </span>
           )}
           <div className="side-user">
-            <span className="avatar avatar-user">D</span>
+            <span className="avatar avatar-user">{p.account ? initials(p.account.name || p.account.email) : 'D'}</span>
             <span className="side-user-text">
-              <strong>Demo user</strong>
-              <span className="small muted">{AGENCY_NAME}</span>
+              <strong>{p.account ? p.account.name || p.account.email : 'Demo user'}</strong>
+              <span className="small muted">{p.account?.agency || AGENCY_NAME}</span>
             </span>
             <button className="icon-btn" onClick={p.onSignOut} aria-label="Sign out" title="Sign out">
               <Icon name="out" />

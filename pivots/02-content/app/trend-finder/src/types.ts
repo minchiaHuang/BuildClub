@@ -54,9 +54,19 @@ export interface Format {
   shotList: Shot[]
   props: string[]
   needs: string[]
+  // True once the AI has judged `needs`; before that an empty list means "not checked", not "nothing needed".
+  needsKnown?: boolean
+  // The key lines of a real video and the job each does (from its AI breakdown).
+  lines?: Line[]
   // How hard it is for a typical client to film.
   effort: 'easy' | 'medium' | 'hard'
   editorNotes: string
+}
+
+export interface Line {
+  time: string
+  text: string
+  role: 'hook' | 'setup' | 'proof' | 'payoff' | 'cta'
 }
 
 export interface Client {
@@ -73,6 +83,7 @@ export interface Client {
   cannot: string[]
 }
 
+export type IdeaStage = 'approved' | 'filming' | 'editing' | 'posted'
 export type IdeaStatus = 'saved' | 'waiting' | 'approved' | 'rejected'
 
 export interface SavedIdea {
@@ -89,4 +100,10 @@ export interface SavedIdea {
   noteToApprover?: string
   sentAt?: number
   rejectReason?: string
+  // When the approver answered (ms). Stops an older tab from putting the idea back to waiting.
+  decidedAt?: number
+  // Where an approved idea is in production. Missing means 'approved'.
+  stage?: IdeaStage
+  // When it was marked posted (ms).
+  postedAt?: number
 }

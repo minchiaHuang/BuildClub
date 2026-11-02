@@ -3,9 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './lib/theme'
 import App from './App.tsx'
+import { ReviewPage } from './components/ReviewPage'
+import { reviewTokenFromPath } from './lib/share'
+
+// Annie's link opens her page directly, outside the app shell.
+const reviewToken = reviewTokenFromPath(window.location.pathname)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {reviewToken ? <ReviewPage token={reviewToken} /> : <App />}
   </StrictMode>,
 )

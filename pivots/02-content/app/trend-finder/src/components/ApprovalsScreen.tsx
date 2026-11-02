@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Video } from '../types'
 import { compact, hasScore, outlierScore, times, viewsWord } from '../lib/metrics'
+import { createShareLink, revokeClientLinks } from '../lib/share'
 import { Thumb } from './Thumb'
 
 interface Props {
@@ -11,9 +13,29 @@ interface Props {
   onGoSaved: () => void
   onPlan: (ideaId: string) => void
   onReview: () => void
+  // The share link needs the API.
+  live: boolean
 }
 
-export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById, onPlan, onReview }: Props) {
+export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved, formatById, onPlan, onReview, live }: Props) {
+  const [linkNote, setLinkNote] = useState('')
+  const noteTimer = useRef<number>(0)
+  useEffect(() => () => window.clearTimeout(noteTimer.current), [])
+  const flash = (text: string) => {
+    setLinkNote(text)
+    window.clearTimeout(noteTimer.current)
+    noteTimer.current = window.setTimeout(() => setLinkNote(''), 2000)
+  }
+  const copyLink = () =>
+    createShareLink(client.id)
+      .then((l) => navigator.clipboard.writeText(l.url))
+      .then(() => flash('Copied'))
+      .catch(() => flash("Couldn't copy the link"))
+  const turnOffLink = () =>
+    revokeClientLinks(client.id)
+      .then(() => flash('Link turned off'))
+      .catch(() => flash("Couldn't turn off the link"))
+
   const mine = ideas.filter((i) => i.clientId === client.id)
   const waiting = mine.filter((i) => i.status === 'waiting')
   const decided = mine.filter((i) => i.status === 'approved' || i.status === 'rejected')
@@ -52,11 +74,26 @@ export function ApprovalsScreen({ client, ideas, videoById, setStatus, onGoSaved
         <span className="eyebrow">{client.name} · Approvals</span>
         <h1>{waiting.length ? `${waiting.length} waiting for Annie` : 'Nothing waiting'}</h1>
         <p className="muted">Ideas you've sent to Annie. Annie's answers show up here.</p>
-        {waiting.length > 0 && (
-          <button className="btn btn-primary" onClick={onReview}>
-            Review as Annie
-          </button>
-        )}
+        <div className="share-actions">
+          {waiting.length > 0 && (
+            <button className="btn btn-primary" onClick={onReview}>
+              Review as Annie
+            </button>
+          )}
+          {live && (
+            <>
+              <button className="btn btn-ghost" onClick={copyLink}>
+                {linkNote === 'Copied' ? 'Copied' : 'Copy link for Annie'}
+              </button>
+              <button className="link-btn" onClick={turnOffLink}>
+                Turn off link
+              </button>
+              <span className="small muted" role="status">
+                {linkNote && linkNote !== 'Copied' ? linkNote : ''}
+              </span>
+            </>
+          )}
+        </div>
       </header>
 
       {waiting.length === 0 ? (

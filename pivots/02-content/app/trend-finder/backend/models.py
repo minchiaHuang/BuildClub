@@ -1,9 +1,9 @@
 """API contract between this backend and the front end. Field names match src/types.ts
 (camelCase), so the front end can use the JSON as is. /docs shows these models."""
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class SearchVideo(BaseModel):
@@ -79,6 +79,32 @@ class SavedIdea(BaseModel):
     noteToApprover: Optional[str] = None
     sentAt: Optional[int] = None
     rejectReason: Optional[str] = None
+    decidedAt: Optional[int] = None
+    # Daphne's production stage for an approved idea. No stage means "approved".
+    stage: Optional[Literal["approved", "filming", "editing", "posted"]] = None
+    postedAt: Optional[int] = None
+
+
+class Pattern(BaseModel):
+    """A sound or hashtag shared by several accounts in a search (Pattern in src/lib/live.ts)."""
+    kind: Literal["sound", "hashtag"]
+    label: str
+    accounts: int
+    avgScore: float
+    videoIds: list[str]
+
+
+class Breakout(BaseModel):
+    hook: str
+    score: float
+
+
+class Pulse(BaseModel):
+    """One client's last "Trending now" check (Pulse in src/lib/clientChips.ts)."""
+    topic: str
+    fetchedAt: int
+    patterns: list[Pattern]
+    breakouts: list[Breakout]
 
 
 class Library(BaseModel):
@@ -110,10 +136,68 @@ class Breakdown(BaseModel):
     props: list[str]
     editorNotes: str
     lines: list[Line]
+    # What the client needs to film it, chosen from a fixed list. Empty on breakdowns saved before this existed.
+    needs: list[str] = []
 
 
 class AnalyzeRequest(BaseModel):
     url: str
+    # The things a client may be unable to do; the breakdown picks its needs from this list only.
+    needs: list[str] = []
+
+
+class NeedsRequest(BaseModel):
+    url: str
+    needs: list[str] = []
+
+
+class NeedsResult(BaseModel):
+    needs: list[str]
+
+
+class LikeRequest(BaseModel):
+    url: str
+
+
+class LikeImageRequest(BaseModel):
+    image: str  # base64 of the file, without a data: prefix
+    mediaType: Literal["image/png", "image/jpeg", "image/webp"]
+
+
+class LikeImageResult(BaseModel):
+    keywords: list[str]
+    formatName: str
+    description: str
+
+
+class AnswerVideo(BaseModel):
+    id: str = Field(max_length=100)
+    platform: str = Field(max_length=30)
+    hook: str = Field(max_length=300)
+    views: int
+    outlier: Optional[float] = None
+    hashtags: list[Annotated[str, StringConstraints(max_length=60)]] = Field(default=[], max_length=30)
+    music: str = Field(default="", max_length=200)
+
+
+class AnswerRequest(BaseModel):
+    query: str = Field(max_length=200)
+    videos: list[AnswerVideo] = Field(max_length=30)
+
+
+class AnswerResult(BaseModel):  # same fields as the front end's Answer (src/lib/answer.ts)
+    lines: list[str]
+    basis: str
+
+
+class LikeJob(BaseModel):
+    status: Literal["queued", "running", "done", "failed"]
+    step: str = ""
+    error: Optional[str] = None
+    breakdown: Optional[Breakdown] = None
+    # 1-3 search keywords and a short format name, taken from the real video's breakdown.
+    keywords: Optional[list[str]] = None
+    formatName: Optional[str] = None
 
 
 class AnalyzeStarted(BaseModel):
@@ -157,3 +241,58 @@ class AnalyzeJob(BaseModel):
     step: str = ""
     result: Optional[Breakdown] = None
     error: Optional[str] = None
+
+
+class ShareRequest(BaseModel):
+    clientId: str
+
+
+class ShareLink(BaseModel):
+    """What the store keeps under share:<token>."""
+    clientId: str
+    createdAt: int
+
+
+class ShareCreated(BaseModel):
+    token: str
+    url: str
+
+
+class ReviewClient(BaseModel):
+    name: str
+
+
+class ReviewIdea(BaseModel):
+    """A SavedIdea as the approver sees it: without `notes`, Daphne's private note to her editor."""
+    id: str
+    videoId: str
+    clientId: str
+    status: Literal["saved", "waiting", "approved", "rejected"]
+    dueDate: str
+    shots: Optional[list[Shot]] = None
+    noteToApprover: Optional[str] = None
+    sentAt: Optional[int] = None
+    rejectReason: Optional[str] = None
+    decidedAt: Optional[int] = None
+
+
+class ReviewItem(BaseModel):
+    idea: ReviewIdea
+    video: Optional[dict] = None
+    format: Optional[dict] = None
+
+
+class ReviewList(BaseModel):
+    client: ReviewClient
+    ideas: list[ReviewItem]
+
+
+class DecideRequest(BaseModel):
+    ideaId: str
+    decision: Literal["approved", "rejected"]
+    reason: Optional[str] = Field(default=None, max_length=1000)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(max_length=320)
+    password: str = Field(max_length=1024)

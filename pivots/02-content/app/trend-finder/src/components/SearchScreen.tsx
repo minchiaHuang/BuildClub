@@ -1,6 +1,7 @@
 import type { Query } from '../state'
 import type { PulseInfo } from './ClientChips'
 import type { ChipGroup } from '../lib/clientChips'
+import { ErrorText } from './ErrorText'
 import { SearchBox } from './SearchBox'
 import type { ComponentType, ReactNode } from 'react'
 import { useUiTheme, type UiTheme } from '../lib/theme'
@@ -30,6 +31,7 @@ interface Props {
   query: Query
   setQuery: (q: Query) => void
   onSearch: (text: string) => void
+  onImage?: (file: File) => void
   clientName: string
   // Live mode searches real TikTok videos; otherwise the sample tofu data.
   live: boolean
@@ -39,7 +41,7 @@ interface Props {
   chipGroups: ChipGroup[]
   pulse: PulseInfo
   onRefreshPulse: () => void
-  // Videos sent or approved for this client this month, and the monthly target.
+  // Videos sent for approval or approved for this client (not limited to this month), and the monthly target.
   planned: number
   target: number
   // The last search that had results, to offer a way back.
@@ -56,6 +58,7 @@ export function SearchScreen(props: Props) {
           value={query.keyword}
           onValueChange={(text) => setQuery({ ...query, keyword: text })}
           onSearch={onSearch}
+          onImage={props.onImage}
           platforms={query.platforms}
           onPlatformsChange={(platforms) => setQuery({ ...query, platforms })}
           live={live}
@@ -77,7 +80,7 @@ export function SearchScreen(props: Props) {
             <strong>
               {props.planned} of {props.target}
             </strong>{' '}
-            videos planned for {clientName} this month
+            videos sent or approved for {clientName}
             <span className="progress-mini" aria-hidden="true">
               <span style={{ width: `${Math.min(props.planned / props.target, 1) * 100}%` }} />
             </span>
@@ -101,7 +104,7 @@ export function SearchScreen(props: Props) {
 
       {error && (
         <p className="error" role="alert">
-          {error}
+          <ErrorText text={error} onSearch={props.onSearch} />
         </p>
       )}
       <p className="hint">
