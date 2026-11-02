@@ -45,8 +45,10 @@ import auth
 import google_auth
 import publishing
 import cut_review
+import grading
 import renders
 import storyboard
+import subtitles
 import takes
 from analyze import DEFAULT_NEEDS, Jobs, job_id_for
 from models import (AnalyzeJob, AnswerRequest, AnswerResult, AnalyzeRequest, AnalyzeStarted, LikeImageRequest, LikeImageResult, LikeJob, LikeRequest, ChannelJob, ChannelRequest, ChannelStarted, Client,
@@ -693,7 +695,7 @@ def db() -> sqlite3.Connection:
     conn.execute("CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("CREATE TABLE IF NOT EXISTS medians (author TEXT PRIMARY KEY, median REAL, fetched_at REAL NOT NULL)")
     migrate_medians(conn)
-    for statement in auth.SCHEMA + publishing.SCHEMA + takes.SCHEMA + renders.SCHEMA:
+    for statement in auth.SCHEMA + publishing.SCHEMA + takes.SCHEMA + renders.SCHEMA + grading.SCHEMA:
         conn.execute(statement)
     auth.migrate(conn)
     publishing.migrate(conn)
@@ -841,6 +843,8 @@ def storyboard_budget(wallet: str, usd: float):
 app.include_router(storyboard.make_router(load, lambda: MEDIA_DIR, storyboard_budget))
 app.include_router(renders.make_router(db, load, lambda: MEDIA_DIR))
 app.include_router(cut_review.make_router(db, load, lambda: MEDIA_DIR))
+app.include_router(grading.make_router(db, lambda: MEDIA_DIR))
+app.include_router(subtitles.make_router(lambda: MEDIA_DIR, lambda i: any(x["id"] == i for x in load("ideas") or [])))
 publishing.seed_demo(db)
 
 
