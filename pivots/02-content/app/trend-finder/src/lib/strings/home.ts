@@ -581,7 +581,7 @@ export const zhHant: Record<keyof typeof en, string> = {
   "home.overview.decisionsOf": "{decided} 個決定中核准 {approved} 個",
   "home.overview.noneYet": "尚無",
   "home.overview.nothingApproved": "尚無已核准的企劃",
-  "home.overview.home": "首頁",
+  "home.overview.home": "開啟",
   "home.overview.laterIntro": "這些需要影片上線後各客戶 TikTok 帳號的數據。Remake 目前還沒有蒐集，所以這裡沒有任何真實資料。",
   "home.overview.later1Title": "各客戶已發佈影片的表現",
   "home.overview.later1What": "每位客戶本月發佈影片的觀看數，並對照該客戶平常的觀看數。",

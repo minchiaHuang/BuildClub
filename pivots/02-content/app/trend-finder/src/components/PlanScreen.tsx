@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Client, Format, IdeaStatus, SavedIdea, Shot, Video } from '../types'
 import { useApp, useManagerName } from '../lib/appContext'
-import { clientFit, compact, hasScore, scoreBase, outlierScore, platformName, tierOf, viewsWord } from '../lib/metrics'
+import { compact, hasScore, scoreBase, outlierScore, platformName, tierOf, viewsWord } from '../lib/metrics'
 import { dueLabel, formatDay } from '../lib/dates'
 import type { Decision } from '../lib/memory'
 import { BestVideo } from './BestVideo'
@@ -15,7 +15,8 @@ import { ShotChecklist } from './ShotChecklist'
 import { CutPanel } from './CutPanel'
 import { PublishPanel } from './publish/PublishPanel'
 import { StoryboardSection } from './storyboard/StoryboardSection'
-import { t } from '../lib/i18n'
+import { getActiveLang, t } from '../lib/i18n'
+import { approverNote } from '../lib/approverNote'
 
 interface Props {
   idea: SavedIdea
@@ -98,14 +99,13 @@ export function PlanScreen(p: Props) {
         {t('plan.screen.comment', { text: comments[i] })}
       </span>
     )
-  const fit = clientFit(format, client)
   const score = outlierScore(video)
   const tier = tierOf(score)
-  const defaultNote = t('plan.screen.defaultNote', { audience: client.audience.toLowerCase(), fit: fit.text })
+  const defaultNote = approverNote(client, format, getActiveLang())
   const note = idea.noteToApprover ?? defaultNote
 
   const send = () => {
-    onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: note, rejectReason: undefined, rejectTags: undefined })
+    onChange({ status: 'waiting', sentAt: Date.now(), noteToApprover: idea.noteToApprover ?? approverNote(client, format, 'en'), rejectReason: undefined, rejectTags: undefined })
     // Bring the confirmation into view.
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
