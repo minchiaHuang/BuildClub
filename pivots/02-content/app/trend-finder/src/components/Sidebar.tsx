@@ -3,6 +3,7 @@ import { Logo } from './Logo'
 import type { Client } from '../types'
 import type { Workspace } from '../state'
 import { useApp } from '../lib/appContext'
+import { THEME_CHOICES, applyTheme, readTheme, writeTheme, type ThemeChoice } from '../lib/theme'
 
 export type View =
   | 'overview'
@@ -143,6 +144,26 @@ function ClientSwitcher({ clients, workspace, setWorkspace, onAddClient }: Pick<
   )
 }
 
+const themeLabel: Record<ThemeChoice, string> = { system: 'System', light: 'Light', dark: 'Dark' }
+
+function ThemeSetting() {
+  const [choice, setChoice] = useState<ThemeChoice>(() => readTheme())
+  const pick = (c: ThemeChoice) => {
+    setChoice(c)
+    writeTheme(c)
+    applyTheme(c)
+  }
+  return (
+    <div className="theme-seg" role="radiogroup" aria-label="Theme">
+      {THEME_CHOICES.map((c) => (
+        <button key={c} type="button" role="radio" aria-checked={choice === c} className={choice === c ? 'on' : ''} onClick={() => pick(c)}>
+          {themeLabel[c]}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Sidebar(p: Props) {
   const { agency, role } = useApp()
   const userName = role === 'manager' ? agency.managerName : 'Team member'
@@ -218,6 +239,7 @@ export function Sidebar(p: Props) {
               Sample data
             </span>
           )}
+          <ThemeSetting />
           <div className="side-user">
             <span className="avatar avatar-user">{initials(userName) || '?'}</span>
             <span className="side-user-text">

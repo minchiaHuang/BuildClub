@@ -82,6 +82,11 @@
 .side-hint { font-size: var(--text-sm); color: var(--muted); padding: 6px 10px; }
 .side-foot { margin-top: auto; display: grid; gap: var(--space-base); }
 .side-foot .sample-pill { margin: 0; justify-self: start; }
+.theme-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; background: var(--surface-2); border-radius: var(--radius-pill); }
+.theme-seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-sm); padding: 6px 4px; min-height: 32px; border-radius: var(--radius-pill); cursor: pointer; }
+.theme-seg button:hover { color: var(--fg); }
+.theme-seg button.on { background: var(--surface); color: var(--fg); font-weight: 600; box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); }
+.theme-seg button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .side-user { display: flex; align-items: center; gap: var(--space-md); padding: 12px 4px 0; border-top: 1px solid var(--line); }
 .side-user-text { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
 

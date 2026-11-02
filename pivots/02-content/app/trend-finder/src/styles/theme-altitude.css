@@ -21,7 +21,7 @@
   --shadow-md: 0 1px 2px rgb(10 20 40 / 0.04), 0 10px 30px rgb(10 20 40 / 0.06);
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-ui="altitude"] {
+  :root:not([data-theme="light"])[data-ui="altitude"] {
     --bg: #0d0f12;
     --surface: #16191d;
     --surface-2: #1d2126;
@@ -40,6 +40,25 @@
     --sky-tint: linear-gradient(180deg, rgb(42 74 114 / 0.35), rgb(26 38 56 / 0) 320px);
   }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  :root[data-theme="dark"][data-ui="altitude"] {
+    --bg: #0d0f12;
+    --surface: #16191d;
+    --surface-2: #1d2126;
+    --surface-3: #262b31;
+    --fg: #f3f4f6;
+    --muted: #a0a4ab;
+    --line: #262a30;
+    --line-strong: #353a41;
+    --accent: #f3f4f6;
+    --accent-hover: #d6d8dc;
+    --accent-fg: #0b0b0c;
+    --accent-soft: #23272d;
+    --sky-top: #1c3456;
+    --sky-mid: #2a4a72;
+    --sky-low: #1a2638;
+    --sky-tint: linear-gradient(180deg, rgb(42 74 114 / 0.35), rgb(26 38 56 / 0) 320px);
+  }
 
 /* Type */
 :root[data-ui="altitude"] h1,
@@ -117,8 +136,10 @@
 :root[data-ui="altitude"] .c4 { width: 200px; height: 70px; top: 2%; left: 52%; opacity: 0.7; animation-duration: 55s; }
 @keyframes alt-drift { from { transform: translateX(-30px); } to { transform: translateX(40px); } }
 @media (prefers-color-scheme: dark) {
-  :root[data-ui="altitude"] .alt-cloud { opacity: 0.18; }
+  :root:not([data-theme="light"])[data-ui="altitude"] .alt-cloud { opacity: 0.18; }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  :root[data-theme="dark"][data-ui="altitude"] .alt-cloud { opacity: 0.18; }
 :root[data-ui="altitude"] .alt-ground {
   position: absolute; z-index: -1; left: -20%; right: -20%; top: 62%; height: 120%;
   border-radius: 50% 50% 0 0 / 22% 22% 0 0;
@@ -126,11 +147,15 @@
   box-shadow: 0 -18px 40px rgb(255 255 255 / 0.5);
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-ui="altitude"] .alt-ground { background: linear-gradient(180deg, #181b20, var(--bg) 30%); box-shadow: none; }
+  :root:not([data-theme="light"])[data-ui="altitude"] .alt-ground { background: linear-gradient(180deg, #181b20, var(--bg) 30%); box-shadow: none; }
 }
+/* Explicit Dark setting: same rules, regardless of the OS */
+  :root[data-theme="dark"][data-ui="altitude"] .alt-ground { background: linear-gradient(180deg, #181b20, var(--bg) 30%); box-shadow: none; }
 :root[data-ui="altitude"] .alt-hero-inner { display: grid; justify-items: center; gap: 22px; max-width: 1080px; width: 100%; }
 :root[data-ui="altitude"] .alt-eyebrow { font-size: var(--text-sm); font-weight: 500; color: #24324a; }
-@media (prefers-color-scheme: dark) { :root[data-ui="altitude"] .alt-eyebrow { color: #cfdcef; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-ui="altitude"] .alt-eyebrow { color: #cfdcef; } }
+/* Explicit Dark setting: same rules, regardless of the OS */
+ :root[data-theme="dark"][data-ui="altitude"] .alt-eyebrow { color: #cfdcef; } 
 :root[data-ui="altitude"] .alt-headline {
   display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 20px; width: 100%;
   font-size: clamp(28px, 3.1vw, 44px); line-height: 1.02; font-weight: 600; letter-spacing: -0.045em;
