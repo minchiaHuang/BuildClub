@@ -72,10 +72,23 @@ class Client(BaseModel):
     cannot: list[str]
 
 
+Hex = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
+
+
 class Shot(BaseModel):
     time: str
     shot: str
     text: Optional[str] = None
+    # Per-shot script and storyboard (all optional, so plans saved before they existed still load).
+    # line: what is said; options: up to 3 other lines; edited: the user changed the line, so a
+    # regeneration must not overwrite it unless asked. frameImage: a URL from the frame endpoint.
+    # palette: hex colours the client reads from the frame; the server only stores them.
+    line: Optional[str] = Field(default=None, max_length=500)
+    purpose: Optional[Literal["hook", "body", "cta"]] = None
+    options: Optional[list[Annotated[str, StringConstraints(max_length=500)]]] = Field(default=None, max_length=3)
+    edited: Optional[bool] = None
+    frameImage: Optional[str] = Field(default=None, max_length=500, pattern=r"^(/|https?://)")
+    palette: Optional[list[Hex]] = Field(default=None, max_length=8)
 
 
 Tag = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
