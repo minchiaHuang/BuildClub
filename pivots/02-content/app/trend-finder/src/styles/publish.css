@@ -1,0 +1,52 @@
+/* Publishing: the "Post the video" panel, a post per platform, results entry, and the topic/board result lines.
+   Tokens from theme-remake.css and tokens.css only; no colour here is a literal. Prefix .pub- */
+
+:root[data-ui="altitude"] .pub-panel { min-width: 0; overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .pub-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+:root[data-ui="altitude"] .pub-head h3 { margin: 0; }
+:root[data-ui="altitude"] .pub-badge { white-space: nowrap; }
+:root[data-ui="altitude"] .pub-sim { margin: var(--space-sm) 0 0; padding: var(--space-sm) var(--space-base); border-radius: var(--radius-sm); background: var(--rising-soft); color: var(--fg); }
+:root[data-ui="altitude"] .pub-gate { margin: var(--space-sm) 0 0; padding: var(--space-sm) var(--space-base); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--fg); }
+
+:root[data-ui="altitude"] .pub-form { display: grid; gap: var(--space-base); margin-top: var(--space-base); min-width: 0; }
+:root[data-ui="altitude"] .pub-caption, :root[data-ui="altitude"] .pub-when { display: grid; gap: var(--space-2xs); min-width: 0; }
+:root[data-ui="altitude"] .pub-caption textarea { width: 100%; max-width: 100%; box-sizing: border-box; resize: vertical; font: inherit; }
+:root[data-ui="altitude"] .pub-count { justify-self: end; font-variant-numeric: tabular-nums; }
+:root[data-ui="altitude"] .pub-when input { max-width: 100%; box-sizing: border-box; }
+:root[data-ui="altitude"] .pub-platforms { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--space-xs); }
+:root[data-ui="altitude"] .pub-platforms legend { padding: 0; margin-bottom: var(--space-xs); }
+:root[data-ui="altitude"] .pub-platform-list { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+:root[data-ui="altitude"] .pub-platform { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 40px; padding: 0 var(--space-base); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--surface); cursor: pointer; }
+:root[data-ui="altitude"] .pub-platform.is-on { border-color: var(--blue); background: var(--surface-2); font-weight: 600; }
+:root[data-ui="altitude"] .pub-platform:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+:root[data-ui="altitude"] .pub-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+:root[data-ui="altitude"] .pub-field-error { color: var(--no); }
+
+:root[data-ui="altitude"] .pub-rows { list-style: none; margin: var(--space-base) 0 0; padding: 0; display: grid; gap: var(--space-sm); }
+:root[data-ui="altitude"] .pub-row { display: grid; gap: var(--space-xs); padding: var(--space-base); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); min-width: 0; }
+:root[data-ui="altitude"] .pub-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+:root[data-ui="altitude"] .pub-row-name { display: inline-flex; align-items: center; gap: var(--space-xs); }
+:root[data-ui="altitude"] .pub-note { margin: 0; color: var(--muted); }
+:root[data-ui="altitude"] .pub-failed { display: grid; gap: var(--space-xs); justify-items: start; }
+:root[data-ui="altitude"] .pub-failed .error { margin: 0; }
+
+:root[data-ui="altitude"] .pub-results { display: grid; gap: var(--space-xs); justify-items: start; min-width: 0; max-width: 100%; }
+:root[data-ui="altitude"] .pub-results p { margin: 0; }
+:root[data-ui="altitude"] .pub-metrics { display: grid; gap: var(--space-sm); width: 100%; min-width: 0; }
+:root[data-ui="altitude"] .pub-metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-sm); }
+:root[data-ui="altitude"] .pub-metric { display: grid; gap: var(--space-2xs); min-width: 0; align-content: start; }
+:root[data-ui="altitude"] .pub-metric input { width: 100%; box-sizing: border-box; min-width: 0; }
+:root[data-ui="altitude"] .pub-metric input[aria-invalid="true"] { border-color: var(--no); }
+
+/* Earlier results on Find ideas and under a search: one compact line per topic. */
+:root[data-ui="altitude"] .pub-topics { margin: var(--space-base) 0; padding: var(--space-sm) var(--space-base); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); min-width: 0; overflow-wrap: anywhere; }
+:root[data-ui="altitude"] .pub-topics-title { margin: 0 0 var(--space-2xs); font-weight: 600; color: var(--muted); }
+:root[data-ui="altitude"] .pub-topics ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2xs); }
+:root[data-ui="altitude"] .pub-card-result { margin: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 520px) {
+  :root[data-ui="altitude"] .pub-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root[data-ui="altitude"] .pub-actions .btn { min-height: 40px; }
+}
+
+:root[data-ui="altitude"] .pub-approval { margin: var(--space-sm) 0 0; padding: var(--space-xs) var(--space-base); border-radius: var(--radius-sm); background: var(--early-soft); color: var(--early); font-weight: 600; }
