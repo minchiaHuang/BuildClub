@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { STEPS, STEP_LABEL, stepOf, shotNeeds, nextAction, flagsOf, patchFor, targetsOf, STUCK_DAYS } from '../src/lib/steps.ts'
+import { STEPS, STEP_LABEL, stepOf, shotNeeds, nextAction, flagsOf, patchFor, targetsOf, needsConfirm, STUCK_DAYS } from '../src/lib/steps.ts'
 
 const idea = { id: 'i', videoId: 'v', clientId: 'c', dueDate: '2099-01-01', notes: '', status: 'saved' }
 const shot = (o = {}) => ({ time: '0-2s', shot: 'close-up', ...o })
@@ -170,4 +170,12 @@ test('patchFor: moving to a stage uses the stage move; approving is the board\'s
   assert.equal(patchFor(a, 'idea', none, false, 5), null)
   assert.equal(patchFor({ ...idea, status: 'waiting' }, 'filming', none, false, 5), null)
   assert.deepEqual(patchFor({ ...idea, status: 'waiting' }, 'filming', none, true, 5), { status: 'approved' })
+})
+
+test('only taking an approval back needs confirming', () => {
+  const a = { ...idea, status: 'approved' }
+  assert.equal(needsConfirm(a, 'storyboard'), true)
+  assert.equal(needsConfirm(a, 'editing'), false)
+  assert.equal(needsConfirm({ ...idea, status: 'saved' }, 'storyboard'), false)
+  assert.equal(needsConfirm({ ...idea, status: 'waiting' }, 'filming'), false)
 })

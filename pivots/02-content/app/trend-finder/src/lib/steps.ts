@@ -143,3 +143,8 @@ export function targetsOf(idea: SavedIdea, shots: Shot[], signals: Signals, canD
     return stepOf({ ...idea, ...patch }, shots, signals) === t
   })
 }
+
+// Taking an approval back (dropping an approved plan on Storyboard) asks first, like the plan page's Edit button.
+export function needsConfirm(idea: SavedIdea, to: Step): boolean {
+  return idea.status === 'approved' && to === 'storyboard'
+}

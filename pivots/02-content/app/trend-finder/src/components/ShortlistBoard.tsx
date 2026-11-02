@@ -25,7 +25,7 @@ import { plural } from "../lib/metrics";
 import { inTwoWeeks } from "../state";
 import { createShareLink, revokeClientLinks } from "../lib/share";
 import { postedThisMonth } from "../lib/stage";
-import { STEPS, flagsOf, nextAction, patchFor, stepOf, targetsOf } from "../lib/steps.ts";
+import { STEPS, flagsOf, needsConfirm, nextAction, patchFor, stepOf, targetsOf } from "../lib/steps.ts";
 import type { Step } from "../lib/steps.ts";
 import { useProduction } from "../lib/production.ts";
 import { ProgressRing } from "./ProgressRing";
@@ -89,6 +89,8 @@ export function ShortlistBoard(p: Props) {
   const manager = useManagerName();
   const [dueDate, setDueDate] = useState(inTwoWeeks);
   const [note, setNote] = useState("");
+  // The approved plan waiting for "Continue?" before its approval is taken back.
+  const [confirm, setConfirm] = useState<string | null>(null);
   // The approver's link for the client being shown: null url = turned off here.
   const [link, setLink] = useState<{ clientId: string; url: string | null } | null>(null);
   const [linkError, setLinkError] = useState("");
@@ -234,6 +236,15 @@ export function ShortlistBoard(p: Props) {
   // plan can really do (send, approve, stage); the card then lands in the step its data says.
   const move = (idea: SavedIdea, to: Step) => {
     if (!infoOf(idea).targets.includes(to)) return;
+    // Taking an approval back asks first; nothing changes until "Continue".
+    if (needsConfirm(idea, to)) {
+      setConfirm(idea.id);
+      setSaid(`Moving ${nameOf(idea)} back to Waiting for approval needs confirming. Continue or cancel.`);
+      return;
+    }
+    apply(idea, to);
+  };
+  const apply = (idea: SavedIdea, to: Step) => {
     const name = nameOf(idea);
     const patch = patchFor(idea, to, signalsById[idea.id] ?? {}, canDecide);
     if (!patch) return;
@@ -389,6 +400,7 @@ export function ShortlistBoard(p: Props) {
       </div>
     ),
   };
+  const confirmIdea = mine.find((i) => i.id === confirm && i.status === "approved");
   const dragInfo = dragging && infoOf(dragging);
   const dragVideo = dragging && p.videoById.get(dragging.videoId);
   const motion = !reducedMotion();
@@ -465,6 +477,26 @@ export function ShortlistBoard(p: Props) {
               );
             })}
           </div>
+          {confirmIdea && (
+            <div className="plan-bar pb-confirm" role="alertdialog" aria-label="Confirm taking approval back">
+              <span className="pb-confirm-text">
+                {nameOf(confirmIdea)}: this moves it back to Waiting for approval. Continue?
+              </span>
+              <button className="btn btn-ghost" onClick={() => setConfirm(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                autoFocus
+                onClick={() => {
+                  setConfirm(null);
+                  apply(confirmIdea, "storyboard");
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          )}
           <p className="sr-only" role="status" aria-live="polite">
             {said}
           </p>

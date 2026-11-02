@@ -32,3 +32,4 @@
 :root[data-ui="altitude"] .pb-card select, :root[data-ui="altitude"] .pb-due input { font-size: var(--text-sm); min-height: 34px; padding: 4px 8px; }
 :root[data-ui="altitude"] .pb-card .board-card-actions { gap: 8px; }
 :root[data-ui="altitude"] .pb-board { align-items: stretch; } /* short columns stay easy to drop on */
+:root[data-ui="altitude"] .pb-confirm-text { margin-right: auto; font-size: var(--text-ms); overflow-wrap: anywhere; }
